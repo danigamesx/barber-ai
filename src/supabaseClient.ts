@@ -1,4 +1,3 @@
-// FIX: Add a triple-slash directive to include Vite's client types. This provides the necessary type definitions for `import.meta.env` and resolves TypeScript errors.
 /// <reference types="vite/client" />
 
 import { createClient } from '@supabase/supabase-js';

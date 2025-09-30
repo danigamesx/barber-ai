@@ -123,10 +123,10 @@ const AnalyticsScreen: React.FC = () => {
         const completed = filteredAppointments.filter(a => a.status === 'completed');
         const cancelledWithFee = filteredAppointments.filter(a => a.status === 'cancelled' && a.cancellation_fee && a.cancellation_fee > 0);
         
-        // FIX: Explicitly cast values to Number to prevent type errors during arithmetic operations.
-        const revenueFromServices = completed.reduce((sum, app) => sum + Number(app.price || 0), 0);
-        const revenueFromFees = cancelledWithFee.reduce((sum, app) => sum + Number(app.cancellation_fee || 0), 0);
-        const totalCommissions = completed.reduce((sum, app) => sum + Number(app.commission_amount || 0), 0);
+        // FIX: Explicitly handle potentially null values in reduce operations to prevent type errors.
+        const revenueFromServices = completed.reduce((sum, app) => sum + (app.price || 0), 0);
+        const revenueFromFees = cancelledWithFee.reduce((sum, app) => sum + (app.cancellation_fee || 0), 0);
+        const totalCommissions = completed.reduce((sum, app) => sum + (app.commission_amount || 0), 0);
         
         const totalRevenue = revenueFromServices + revenueFromFees;
         const netRevenue = (revenueFromServices - totalCommissions) + revenueFromFees;

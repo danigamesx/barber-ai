@@ -1,7 +1,7 @@
 
 import React, { useContext, useMemo, useState } from 'react';
 import { AppContext } from '../../App';
-import { Appointment, WaitingListEntry, CancellationPolicy, Barbershop, Address } from '../../types';
+import { Appointment, WaitingListEntry, CancellationPolicy, Barbershop } from '../../types';
 import Button from '../../components/Button';
 import ReviewModal from './ReviewModal';
 import BookingModal from './BookingModal';
@@ -228,8 +228,8 @@ const ClientAppointmentsScreen: React.FC = () => {
               setAppointmentToPay(data);
               setRebookingAppointment(null);
           }}
-          initialBarberId={rebookingAppointment.barber_id}
-          initialServiceId={rebookingAppointment.service_id}
+          initialBarberId={rebookingAppointment.barber_id || undefined}
+          initialServiceId={rebookingAppointment.service_id || undefined}
         />
     )}
     {appointmentToPay && (
@@ -270,3 +270,4 @@ const ClientAppointmentsScreen: React.FC = () => {
 };
 
 export default ClientAppointmentsScreen;
+    

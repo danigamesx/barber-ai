@@ -1,5 +1,4 @@
 
-
 import React, { useState, useContext, useMemo } from 'react';
 import { AppContext } from '../../App';
 import { Barbershop, Barber, Service, Appointment, OpeningHours, BlockedTimeSlot, DayOpeningHours } from '../../types';
@@ -14,8 +13,8 @@ interface BookingModalProps {
   barbershop: Barbershop;
   onClose: () => void;
   onInitiatePayment: (appointmentData: NewAppointmentData) => void;
-  initialBarberId?: string;
-  initialServiceId?: string;
+  initialBarberId?: string | null;
+  initialServiceId?: string | null;
 }
 
 const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInitiatePayment, initialBarberId, initialServiceId }) => {
@@ -403,3 +402,4 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
 };
 
 export default BookingModal;
+    

@@ -1,3 +1,4 @@
+
 import React, { useContext, useMemo, useState } from 'react';
 import { AppContext } from '../../App';
 import { Appointment, WaitingListEntry, CancellationPolicy, Barbershop } from '../../types';
@@ -269,3 +270,4 @@ const ClientAppointmentsScreen: React.FC = () => {
 };
 
 export default ClientAppointmentsScreen;
+    
