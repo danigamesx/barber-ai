@@ -1,15 +1,16 @@
-const CACHE_NAME = 'barberai-v1';
+const CACHE_NAME = 'barberai-v2';
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
-  '/index.tsx',
+  '/icon-192.png',
+  '/icon-512.png'
 ];
 
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(function(cache) {
-        console.log('Cache aberto');
+        console.log('Cache aberto e arquivos adicionados');
         return cache.addAll(URLS_TO_CACHE);
       })
   );
@@ -35,6 +36,7 @@ self.addEventListener('activate', event => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheWhitelist.indexOf(cacheName) === -1) {
+            console.log('Deletando cache antigo:', cacheName);
             return caches.delete(cacheName);
           }
         })
