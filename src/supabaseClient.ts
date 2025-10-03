@@ -1,12 +1,13 @@
 // FIX: Define ImportMeta interface to make TypeScript aware of import.meta.env
 // This is necessary because the project cannot find the 'vite/client' type definitions.
-interface ImportMetaEnv {
-  readonly VITE_SUPABASE_URL: string;
-  readonly VITE_SUPABASE_ANON_KEY: string;
-}
-
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
+// By declaring this in the global scope, we augment the existing ImportMeta type.
+declare global {
+  interface ImportMeta {
+    readonly env: {
+      readonly VITE_SUPABASE_URL: string;
+      readonly VITE_SUPABASE_ANON_KEY: string;
+    }
+  }
 }
 
 import { createClient } from '@supabase/supabase-js';

@@ -1,5 +1,3 @@
-
-
 import React, { useContext, useState, useMemo, useEffect } from 'react';
 import { Barbershop, Appointment, Address, LoyaltyProgram } from '../../types';
 import { StarIcon, HeartIcon } from '../../components/icons/OutlineIcons';
@@ -69,8 +67,10 @@ const ClientHomeScreen: React.FC = () => {
       setSelectedBarbershop(null);
       if (directBarbershop) {
           setDirectBarbershop(null);
-          // Limpa o parâmetro da URL para não reabrir o modal ao atualizar a página
-          window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+          // Clean the URL to avoid modal reopening on refresh
+          const { pathname, search } = window.location;
+          const newUrl = pathname + search.replace(/&?barbershopId=[^&]*/g, '');
+          window.history.replaceState({}, document.title, newUrl.replace(/#\/\?/, ''));
       }
   };
   

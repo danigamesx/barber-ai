@@ -1,4 +1,3 @@
-
 import React, { useState, useContext, useMemo } from 'react';
 import { AppContext } from '../../App';
 import { Barbershop, Barber, Service, Appointment, OpeningHours, BlockedTimeSlot, DayOpeningHours } from '../../types';
@@ -151,7 +150,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
         barber_name: selectedBarber.name,
         service_id: selectedService.id,
         service_name: isUsingReward ? `(Recompensa) ${selectedService.name}` : selectedService.name,
-        price: selectedService.price, 
+        price: isUsingReward ? 0 : selectedService.price, 
         start_time: startTime,
         end_time: endTime,
         notes,
@@ -402,4 +401,3 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
 };
 
 export default BookingModal;
-    

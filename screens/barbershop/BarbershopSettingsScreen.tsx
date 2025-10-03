@@ -1,10 +1,8 @@
-
-
 import React, { useContext, useState, useEffect } from 'react';
 import { AppContext, PlanContext } from '../../App';
 import Button from '../../components/Button';
 import { PencilIcon, PlusCircleIcon, TrashIcon } from '../../components/icons/OutlineIcons';
-import { Barber, Barbershop, Service, Json, ServicePackage, SubscriptionPlan, Address, CancellationPolicy, IntegrationSettings, LoyaltyProgram, OpeningHours, DayOpeningHours } from '../../types';
+import { Barber, Barbershop, Service, Json, ServicePackage, SubscriptionPlan, Address, CancellationPolicy, IntegrationSettings, OpeningHours, DayOpeningHours } from '../../types';
 import ManageServiceModal from './ManageServiceModal';
 import ManageBarberModal from './ManageBarberModal';
 import ManageScheduleModal from './ManageScheduleModal';

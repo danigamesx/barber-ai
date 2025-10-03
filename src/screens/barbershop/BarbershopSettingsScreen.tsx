@@ -263,7 +263,7 @@ const BarbershopSettingsScreen: React.FC = () => {
                     <div className="w-1/2">
                         <SearchableSelect 
                             options={cities[address.state || ''] || []}
-                            value={address.city || ''}
+                            value={address.city}
                             onChange={(value) => handleAddressChange('city', value)}
                             placeholder="Selecione a Cidade"
                         />
@@ -491,7 +491,7 @@ const BarbershopSettingsScreen: React.FC = () => {
         <ManageLoyaltyModal
             currentSettings={barbershopData.loyalty_program}
             onClose={() => setModalState(null)}
-            onSave={(settings: Barbershop['loyalty_program']) => {
+            onSave={(settings) => {
               updateBarbershopData(barbershopData.id, { loyalty_program: settings as unknown as Json });
               setModalState(null);
             }}
@@ -503,7 +503,7 @@ const BarbershopSettingsScreen: React.FC = () => {
             currentPackages={packages}
             availableServices={services}
             onClose={() => setModalState(null)}
-            onSave={(packages: ServicePackage[]) => {
+            onSave={(packages) => {
               updateBarbershopData(barbershopData.id, { packages: packages as unknown as Json });
               setModalState(null);
             }}
