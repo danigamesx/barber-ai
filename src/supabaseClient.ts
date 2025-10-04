@@ -1,24 +1,13 @@
-// FIX: Define ImportMeta interface to make TypeScript aware of import.meta.env
-// This is necessary because the project cannot find the 'vite/client' type definitions.
-// By declaring this in the global scope, we augment the existing ImportMeta type.
-declare global {
-  interface ImportMeta {
-    readonly env: {
-      readonly VITE_SUPABASE_URL: string;
-      readonly VITE_SUPABASE_ANON_KEY: string;
-      readonly VITE_STRIPE_PUBLISHABLE_KEY: string;
-    }
-  }
-}
-
 import { createClient } from '@supabase/supabase-js';
 import { Database } from './types/database';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// FIX: Changed from import.meta.env to process.env to align with the Vite configuration update.
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+// FIX: Changed from import.meta.env to process.env to align with the Vite configuration update.
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Supabase URL and Anon Key are required in your .env file.");
+  throw new Error("As variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY são necessárias no seu ambiente.");
 }
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);

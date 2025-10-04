@@ -1,12 +1,14 @@
-import { createClient } from '@supabase/supabase-js';
-import { Database } from './types/database'; // We will create this type definition file next
+// FIX: Troquei de import.meta.env para process.env para resolver erros de runtime.
+// Removi a declaração de tipo global ImportMeta, que não é mais usada.
 
-// TODO: Substitua pelas suas credenciais do Supabase que você obteve na Etapa 1.
-const supabaseUrl = 'https://yrhdmqusjnniyibfbsgf.supabase.co'; // Ex: 'https://xxxxxxxx.supabase.co'
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlyaGRtcXVzam5uaXlpYmZic2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgwNTIxNzQsImV4cCI6MjA3MzYyODE3NH0.b31clXYGeKdXlH1pTZxidDPMmeRDncYCWplTjH2wwYM'; // Ex: 'eyJh...'
+import { createClient } from '@supabase/supabase-js';
+import { Database } from './types/database';
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Supabase URL and Anon Key are required.");
+  throw new Error("As variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY são necessárias no seu ambiente.");
 }
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);

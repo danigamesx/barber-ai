@@ -17,7 +17,8 @@ interface PaymentModalProps {
 
 // Carrega a instância do Stripe com sua chave publicável.
 // É importante que esta variável de ambiente VITE_STRIPE_PUBLISHABLE_KEY esteja configurada.
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+// FIX: Changed from import.meta.env to process.env to align with the Vite configuration update.
+const stripePromise = loadStripe(process.env.VITE_STRIPE_PUBLISHABLE_KEY!);
 
 const CARD_ELEMENT_OPTIONS = {
   style: {
