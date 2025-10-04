@@ -102,7 +102,8 @@ const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ currentIntegratio
     }
     if (!barbershopData) return;
     try {
-        const { accountId, onboardingUrl } = await api.getStripeConnectOnboardingLink(barbershopData.id, integrations);
+        // FIX: The second argument must be a return URL string, not the integrations object.
+        const { accountId, onboardingUrl } = await api.getStripeConnectOnboardingLink(barbershopData.id, window.location.href);
         setIntegrations(prev => ({...prev, stripeAccountId: accountId, stripeAccountOnboarded: false }));
         alert("Simulação: Redirecionando para o Stripe para completar o cadastro...");
         console.log("Stripe Onboarding URL:", onboardingUrl);
@@ -112,11 +113,19 @@ const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ currentIntegratio
   };
 
   const handleCompleteStripeOnboarding = async () => {
-    if (!barbershopData) return;
+    if (!barbershopData || !integrations.stripeAccountId) {
+        setError("ID da conta Stripe não encontrado. Tente conectar novamente.");
+        return;
+    }
     try {
-        await api.completeStripeOnboarding(barbershopData.id, integrations);
-        setIntegrations(prev => ({ ...prev, stripeAccountOnboarded: true }));
-        alert("Onboarding do Stripe concluído com sucesso!");
+        // FIX: Pass the stripeAccountId string, not the entire integrations object.
+        const onboarded = await api.completeStripeOnboarding(barbershopData.id, integrations.stripeAccountId);
+        if (onboarded) {
+            setIntegrations(prev => ({ ...prev, stripeAccountOnboarded: true }));
+            alert("Onboarding do Stripe concluído com sucesso!");
+        } else {
+            setError("O processo de onboarding ainda não foi concluído. Por favor, complete o cadastro no site do Stripe.");
+        }
     } catch (err: any) {
         setError(err.message);
     }

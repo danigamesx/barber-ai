@@ -24,7 +24,7 @@ const WeeklyRevenueChart: React.FC<{ appointments: Appointment[] }> = ({ appoint
         const completedAppointments = appointments.filter(a => a.status === 'completed');
         const cancelledWithFee = appointments.filter(a => a.status === 'cancelled' && a.cancellation_fee && a.cancellation_fee > 0);
 
-        // FIX: Handle potentially null values for amount.
+        // FIX: Handle potentially null values for amount by using '|| 0'.
         const allRevenueEvents = [
             ...completedAppointments.map(a => ({ date: a.start_time, amount: a.price || 0, type: 'service' })),
             ...cancelledWithFee.map(a => ({ date: a.start_time, amount: a.cancellation_fee || 0, type: 'fee' }))

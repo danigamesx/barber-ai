@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { User, Barbershop, Appointment, Review, Barber, FinancialRecord, Promotion, ClientNotification, WaitingListEntry, Json, IntegrationSettings, Address } from './types';
+import { User, Barbershop, Appointment, Review, Barber, Service, FinancialRecord, Promotion, ClientNotification, WaitingListEntry, Json, IntegrationSettings, Address } from './types';
 import { TablesInsert, TablesUpdate } from './types/database';
 
 // Helper functions to convert DB row types to application types (especially for dates)
