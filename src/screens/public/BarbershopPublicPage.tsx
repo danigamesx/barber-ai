@@ -2,7 +2,7 @@ import React, { useState, useContext, useMemo } from 'react';
 import { Barbershop, Service, Barber, Address, SocialMedia, Review } from '../../types';
 import { AppContext } from '../../App';
 import Button from '../../components/Button';
-import { StarIcon } from '../../components/icons/OutlineIcons';
+import { StarIcon, PhoneIcon, InstagramIcon, FacebookIcon, GlobeAltIcon } from '../../components/icons/OutlineIcons';
 import BookingModal from '../client/BookingModal';
 import PaymentModal from '../client/PaymentModal';
 import { Appointment } from '../../types';
@@ -16,9 +16,12 @@ const BarbershopPublicPage: React.FC<{ barbershop: Barbershop }> = ({ barbershop
     
     const address = barbershop.address as Address;
     const social = barbershop.social_media as SocialMedia;
+    const phone = barbershop.phone;
     const barbers = Array.isArray(barbershop.barbers) ? barbershop.barbers as Barber[] : [];
     const services = Array.isArray(barbershop.services) ? barbershop.services as Service[] : [];
     const gallery = barbershop.gallery_images || [];
+
+    const whatsappLink = phone ? `https://wa.me/55${phone.replace(/\D/g, '')}` : null;
     
     const barbershopReviews = useMemo(() => reviews.filter(r => r.barbershop_id === barbershop.id), [reviews, barbershop.id]);
     const averageRating = useMemo(() => {
@@ -48,6 +51,29 @@ const BarbershopPublicPage: React.FC<{ barbershop: Barbershop }> = ({ barbershop
                             </div>
                         </div>
                         {address && <p className="text-sm text-gray-400 mt-1">{`${address.street}, ${address.number} - ${address.neighborhood}, ${address.city}`}</p>}
+                        
+                        <div className="flex items-center gap-4 mt-4">
+                            {whatsappLink && (
+                                <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="text-gray-300 hover:text-brand-primary" aria-label="WhatsApp">
+                                    <PhoneIcon className="w-6 h-6" />
+                                </a>
+                            )}
+                            {social?.instagram && (
+                                <a href={social.instagram} target="_blank" rel="noopener noreferrer" className="text-gray-300 hover:text-brand-primary" aria-label="Instagram">
+                                    <InstagramIcon className="w-6 h-6" />
+                                </a>
+                            )}
+                            {social?.facebook && (
+                                <a href={social.facebook} target="_blank" rel="noopener noreferrer" className="text-gray-300 hover:text-brand-primary" aria-label="Facebook">
+                                    <FacebookIcon className="w-6 h-6" />
+                                </a>
+                            )}
+                             {social?.website && (
+                                <a href={social.website} target="_blank" rel="noopener noreferrer" className="text-gray-300 hover:text-brand-primary" aria-label="Website">
+                                    <GlobeAltIcon className="w-6 h-6" />
+                                </a>
+                            )}
+                        </div>
                     </div>
                 </header>
 
