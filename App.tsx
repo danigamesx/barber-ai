@@ -593,6 +593,8 @@ const App: React.FC = () => {
         if (barbershopId) {
             const shop = barbershops.find(b => b.id === barbershopId);
             
+            // FIX: Re-ordered logic to correctly handle the loading state for public pages.
+            // It now waits for loading to complete before deciding if a barbershop is "not found".
             if (shop) {
                 return <BarbershopPublicPage barbershop={shop} />;
             } else if (loading) {
