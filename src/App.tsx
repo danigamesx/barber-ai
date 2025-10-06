@@ -584,7 +584,6 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
-    // Check for barbershopId in URL hash first for public page, even for unauthenticated users
     const hash = window.location.hash;
     if (hash.includes('barbershopId')) {
         const queryString = hash.substring(hash.indexOf('?'));
@@ -592,13 +591,12 @@ const App: React.FC = () => {
         const barbershopId = urlParams.get('barbershopId');
 
         if (barbershopId) {
-            // If public data is still loading, show a specific loader.
-            if (loading && barbershops.length === 0) {
-                return <div className="flex items-center justify-center h-screen"><p>Carregando barbearia...</p></div>;
-            }
             const shop = barbershops.find(b => b.id === barbershopId);
+            
             if (shop) {
                 return <BarbershopPublicPage barbershop={shop} />;
+            } else if (loading) {
+                return <div className="flex items-center justify-center h-screen"><p>Carregando barbearia...</p></div>;
             } else {
                  return (
                     <div className="flex flex-col items-center justify-center h-screen p-4 text-center">
@@ -647,8 +645,7 @@ const App: React.FC = () => {
     return <LoginScreen initialAccountType={loginAccountType} />;
   };
 
-  // The context value no longer needs `directBarbershop` or its setter
-  const finalAppContextValue = { ...appContextValue, directBarbershop: null, setDirectBarbershop: () => {} };
+  const finalAppContextValue = { ...appContextValue };
 
   return (
     <AppContext.Provider value={finalAppContextValue}>
