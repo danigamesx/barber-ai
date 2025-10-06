@@ -125,77 +125,84 @@ const App: React.FC = () => {
     trialEndDate: Date | null;
   }>({ hasAccess: false, isTrial: false, planId: 'BASIC', trialEndDate: null });
 
-  useEffect(() => {
-    setLoading(true);
-    // Fetch public data and session state together to avoid race conditions.
-    Promise.all([
-        api.getBarbershops(),
-        api.getAllUsers(),
-        api.getReviews(),
-        api.getSession(),
-    ]).then(([barbershopsData, usersData, reviewsData, { data: sessionData }]) => {
-        setBarbershops(barbershopsData);
-        setUsers(usersData);
-        setReviews(reviewsData);
-        setSession(sessionData.session);
-        // If there's no session, we can stop the main loading indicator.
-        // If there is a session, the useEffect below will handle its own loading state for private data.
-        if (!sessionData.session) {
-            setLoading(false);
-        }
-    }).catch(err => {
-        console.error("Failed to fetch initial data:", err);
-        setError("Não foi possível carregar os dados essenciais. Verifique sua conexão.");
-        setLoading(false);
-    });
+  const fetchAuthenticatedData = async (userId: string) => {
+    try {
+        const [appointmentsData, userProfile] = await Promise.all([
+            api.getAppointments(),
+            api.getUserProfile(userId),
+        ]);
+        setAppointments(appointmentsData);
+        setUser(userProfile);
+    } catch (error) {
+        console.error("Error fetching authenticated data:", error);
+        throw error;
+    }
+  };
 
-    // Listen for auth changes (login/logout)
-    const { data: authListener } = api.onAuthStateChange((_event, session) => {
-        setSession(session);
-        if (!session) {
+  useEffect(() => {
+    const bootstrapApp = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            // Fetch all public data and session in parallel
+            const [
+              barbershopsData,
+              usersData,
+              reviewsData,
+              { data: sessionData },
+            ] = await Promise.all([
+              api.getBarbershops(),
+              api.getAllUsers(),
+              api.getReviews(),
+              api.getSession(),
+            ]);
+    
+            // Set all public state
+            setBarbershops(barbershopsData);
+            setUsers(usersData);
+            setReviews(reviewsData);
+    
+            // If there's a user, fetch their private data
+            if (sessionData.session?.user) {
+              await fetchAuthenticatedData(sessionData.session.user.id);
+            }
+            
+            // Finally, set the session.
+            setSession(sessionData.session);
+    
+          } catch (err: any) {
+            console.error("Failed to initialize app data:", err);
+            setError("Não foi possível carregar os dados. Verifique sua conexão.");
+          } finally {
+            // This is guaranteed to run after all awaits are done.
+            setLoading(false);
+          }
+    };
+    
+    bootstrapApp();
+
+    // Listener for subsequent changes (manual login/logout)
+    const { data: authListener } = api.onAuthStateChange((_event, newSession) => {
+        const userJustLoggedIn = newSession && !session;
+        const userJustLoggedOut = !newSession && session;
+        
+        setSession(newSession);
+
+        if (userJustLoggedIn) {
+            // Refetch data for the new user
+            fetchAuthenticatedData(newSession.user.id);
+        } else if (userJustLoggedOut) {
+            // User logged out, clear their specific data
             setUser(null);
-            setAppointments([]); // Only clear user-specific data on logout
+            setAppointments([]);
             setGoogleToken(null);
         }
     });
 
     return () => {
-        authListener.subscription.unsubscribe();
+      authListener.subscription.unsubscribe();
     };
   }, []);
-
-  useEffect(() => {
-    if (session?.user) {
-        setLoading(true);
-        setError(null);
-        fetchAuthenticatedData(session.user.id)
-            .then(() => {
-                const bookingIntentId = sessionStorage.getItem('bookingIntentBarbershopId');
-                if (bookingIntentId) {
-                    sessionStorage.removeItem('bookingIntentBarbershopId');
-                    // Redirect back to the barbershop page with a flag to open the booking modal
-                    window.location.hash = `/?barbershopId=${bookingIntentId}&openBooking=true`;
-                }
-            })
-            .catch(err => {
-                console.error("Failed to fetch authenticated data:", err);
-                let errorMessage = "Ocorreu um erro ao carregar seus dados. Tente novamente mais tarde.";
-                if (err && typeof err === 'object' && 'message' in err) {
-                    const supabaseError = err as { message: string, details?: string };
-                    errorMessage = `Erro ao carregar dados: ${supabaseError.message}`;
-                    if (supabaseError.message.toLowerCase().includes('failed to fetch')) {
-                        errorMessage = "Falha na conexão. Verifique sua internet e tente novamente.";
-                    } else if (supabaseError.message.toLowerCase().includes('security policy')) {
-                        errorMessage = "Erro de permissão ao buscar dados. Verifique as políticas de segurança (RLS) no Supabase.";
-                    }
-                } else if (err instanceof Error) {
-                     errorMessage = err.message;
-                }
-                setError(errorMessage);
-            })
-            .finally(() => setLoading(false));
-    }
-  }, [session]);
 
     const barbershopData = useMemo(() => {
         if (user?.user_type === 'BARBERSHOP') {
@@ -281,22 +288,6 @@ const App: React.FC = () => {
         features: currentFeatures,
     };
   }, [accessStatus, barbershopData]);
-
-
-  const fetchAuthenticatedData = async (userId: string) => {
-      try {
-          // Public data is already being fetched, so we only need private data here.
-          const [appointmentsData, userProfile] = await Promise.all([
-              api.getAppointments(),
-              api.getUserProfile(userId),
-          ]);
-          setAppointments(appointmentsData);
-          setUser(userProfile);
-      } catch (error) {
-          console.error("Error fetching authenticated data:", error);
-          throw error;
-      }
-  };
   
   const signupAndRefetch = async (name: string, email: string, password: string, accountType: 'client' | 'barbershop', phone: string, birthDate?: string, barbershopName?: string) => {
     await api.signUpUser(name, email, password, accountType, phone, birthDate, barbershopName);
@@ -594,20 +585,19 @@ const App: React.FC = () => {
         const barbershopId = urlParams.get('barbershopId');
 
         if (barbershopId) {
-            // Find shop directly in the state, which is now reliable
             const shop = barbershops.find(b => b.id === barbershopId);
             
-            // If still loading, show loading indicator.
-            if (loading) {
-                return <div className="flex items-center justify-center h-screen"><p>Carregando barbearia...</p></div>;
-            }
-            
-            // If loading is finished and shop is found, show page.
+            // If the shop is found, render it immediately.
             if (shop) {
                 return <BarbershopPublicPage barbershop={shop} />;
             } 
             
-            // If loading is finished and shop is NOT found, show error.
+            // If the shop is not found, check if we are still loading data.
+            if (loading) {
+                return <div className="flex items-center justify-center h-screen"><p>Carregando barbearia...</p></div>;
+            }
+            
+            // If we are done loading and the shop was not found, then show the error.
             return (
                 <div className="flex flex-col items-center justify-center h-screen p-4 text-center">
                     <p className="text-red-500 text-lg mb-4">Barbearia não encontrada.</p>
