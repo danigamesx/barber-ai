@@ -1,4 +1,3 @@
-
 export const formatCEP = (value: string): string => {
   if (!value) return "";
   value = value.replace(/\D/g, ''); // Remove todos os caracteres não numéricos
@@ -14,7 +13,6 @@ export const formatPhone = (value: string): string => {
   return value.slice(0, 15); // Garante que o comprimento não exceda o formato (xx) xxxxx-xxxx
 };
 
-// FIX: Added missing formatCNPJ function to resolve import error.
 export const formatCNPJ = (value: string): string => {
     if (!value) return "";
     value = value.replace(/\D/g, '');

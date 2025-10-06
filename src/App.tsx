@@ -22,6 +22,7 @@ import TrialBanner from './components/TrialBanner';
 import TrialExpiredScreen from './screens/barbershop/TrialExpiredScreen';
 import LandingScreen from './screens/LandingScreen';
 import Button from './components/Button';
+import BarbershopPublicPage from './screens/public/BarbershopPublicPage';
 
 export const AppContext = React.createContext<{
   user: User | null;
@@ -39,8 +40,6 @@ export const AppContext = React.createContext<{
     planId: string;
     trialEndDate: Date | null;
   };
-  directBarbershop: Barbershop | null;
-  setDirectBarbershop: (barbershop: Barbershop | null) => void;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   signup: (name: string, email: string, password: string, accountType: 'client' | 'barbershop', phone: string, birthDate?: string, barbershopName?: string) => Promise<void>;
@@ -71,8 +70,6 @@ export const AppContext = React.createContext<{
   googleToken: null,
   isSuperAdmin: false,
   accessStatus: { hasAccess: false, isTrial: false, planId: 'BASIC', trialEndDate: null },
-  directBarbershop: null,
-  setDirectBarbershop: () => {},
   login: async () => {},
   logout: async () => {},
   signup: async () => {},
@@ -114,7 +111,6 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showLanding, setShowLanding] = useState(true);
   const [loginAccountType, setLoginAccountType] = useState<'client' | 'barbershop' | null>(null);
-  const [directBarbershop, setDirectBarbershop] = useState<Barbershop | null>(null);
 
   const [activeClientScreen, setActiveClientScreen] = useState('home');
   const [activeBarbershopScreen, setActiveBarbershopScreen] = useState('dashboard');
@@ -130,20 +126,32 @@ const App: React.FC = () => {
   }>({ hasAccess: false, isTrial: false, planId: 'BASIC', trialEndDate: null });
 
   useEffect(() => {
+    // Fetch all static data on initial load, regardless of auth state
     setLoading(true);
-    api.getSession().then(({ data: { session } }) => {
-        setSession(session);
-        if (!session) setLoading(false);
+    Promise.all([
+        api.getBarbershops(),
+        api.getAllUsers(),
+        api.getReviews(),
+    ]).then(([barbershopsData, usersData, reviewsData]) => {
+        setBarbershops(barbershopsData);
+        setUsers(usersData);
+        setReviews(reviewsData);
+    }).catch(err => {
+        console.error("Failed to fetch initial public data:", err);
+        setError("Não foi possível carregar os dados essenciais. Verifique sua conexão.");
+    }).finally(() => {
+        // Now check auth state
+        api.getSession().then(({ data: { session } }) => {
+            setSession(session);
+            if (!session) setLoading(false);
+        });
     });
 
     const { data: authListener } = api.onAuthStateChange((_event, session) => {
         setSession(session);
         if (!session) {
             setUser(null);
-            setBarbershops([]);
-            setAppointments([]);
-            setUsers([]);
-            setReviews([]);
+            setAppointments([]); // Only clear user-specific data
             setGoogleToken(null);
             setLoading(false);
         }
@@ -155,31 +163,13 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Check the URL hash for a direct barbershop link.
-    // This is more robust for SPAs on servers that don't handle query params well on deep links.
-    const hash = window.location.hash; // e.g., #/?barbershopId=...
-    if (hash.includes('barbershopId')) {
-        const queryString = hash.substring(hash.indexOf('?'));
-        const urlParams = new URLSearchParams(queryString);
-        const barbershopId = urlParams.get('barbershopId');
-
-        if (barbershopId && barbershops.length > 0) {
-            const shop = barbershops.find(b => b.id === barbershopId);
-            if (shop) {
-                setDirectBarbershop(shop);
-            }
-        }
-    }
-  }, [barbershops]);
-
-  useEffect(() => {
     if (session?.user) {
         setLoading(true);
         setError(null);
-        fetchData(session.user.id)
+        fetchAuthenticatedData(session.user.id)
             .catch(err => {
-                console.error("Failed to fetch data:", err);
-                let errorMessage = "Ocorreu um erro ao carregar os dados. Tente novamente mais tarde.";
+                console.error("Failed to fetch authenticated data:", err);
+                let errorMessage = "Ocorreu um erro ao carregar seus dados. Tente novamente mais tarde.";
                 if (err && typeof err === 'object' && 'message' in err) {
                     const supabaseError = err as { message: string, details?: string };
                     errorMessage = `Erro ao carregar dados: ${supabaseError.message}`;
@@ -283,26 +273,16 @@ const App: React.FC = () => {
   }, [accessStatus, barbershopData]);
 
 
-  const fetchData = async (userId?: string) => {
+  const fetchAuthenticatedData = async (userId: string) => {
       try {
-          const [barbershopsData, appointmentsData, usersData, reviewsData] = await Promise.all([
-              api.getBarbershops(),
+          const [appointmentsData, userProfile] = await Promise.all([
               api.getAppointments(),
-              api.getAllUsers(),
-              api.getReviews(),
+              api.getUserProfile(userId),
           ]);
-
-          setBarbershops(barbershopsData);
           setAppointments(appointmentsData);
-          setUsers(usersData);
-          setReviews(reviewsData);
-
-          if (userId) {
-              const userProfile = await api.getUserProfile(userId);
-              setUser(userProfile);
-          }
+          setUser(userProfile);
       } catch (error) {
-          console.error("Error fetching data:", error);
+          console.error("Error fetching authenticated data:", error);
           throw error;
       }
   };
@@ -311,7 +291,10 @@ const App: React.FC = () => {
     await api.signUpUser(name, email, password, accountType, phone, birthDate, barbershopName);
     const { data: { session } } = await api.getSession();
     if (session?.user?.id) {
-        await fetchData(session.user.id);
+        await fetchAuthenticatedData(session.user.id);
+        // Also refetch public data that might have changed
+        setBarbershops(await api.getBarbershops());
+        setUsers(await api.getAllUsers());
     }
   };
   
@@ -458,7 +441,7 @@ const App: React.FC = () => {
   };
 
   const appContextValue = { 
-      user, users, barbershops, barbershopData, appointments, allAppointments: appointments, reviews, googleToken, isSuperAdmin, accessStatus, directBarbershop, setDirectBarbershop,
+      user, users, barbershops, barbershopData, appointments, allAppointments: appointments, reviews, googleToken, isSuperAdmin, accessStatus,
       ...contextFunctions
   };
   
@@ -593,6 +576,21 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
+    // Check for barbershopId in URL hash first for public page
+    const hash = window.location.hash;
+    if (hash.includes('barbershopId')) {
+        const queryString = hash.substring(hash.indexOf('?'));
+        const urlParams = new URLSearchParams(queryString);
+        const barbershopId = urlParams.get('barbershopId');
+
+        if (barbershopId) {
+            const shop = barbershops.find(b => b.id === barbershopId);
+            if (shop) {
+                return <BarbershopPublicPage barbershop={shop} />;
+            }
+        }
+    }
+
     if (showLanding && !session) {
         return <LandingScreen onEnter={handleEnterApp} />;
     }
@@ -630,8 +628,11 @@ const App: React.FC = () => {
     return <LoginScreen initialAccountType={loginAccountType} />;
   };
 
+  // The context value no longer needs `directBarbershop` or its setter
+  const finalAppContextValue = { ...appContextValue, directBarbershop: null, setDirectBarbershop: () => {} };
+
   return (
-    <AppContext.Provider value={appContextValue}>
+    <AppContext.Provider value={finalAppContextValue}>
       <PlanContext.Provider value={planContextValue}>
         <div className="antialiased font-sans bg-brand-dark min-h-screen">
           {renderContent()}

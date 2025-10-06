@@ -100,6 +100,8 @@ export type Database = {
           client_records: Json | null
           cnpj: string | null
           created_at: string | null
+          description: string | null
+          gallery_images: string[] | null
           has_completed_setup: boolean | null
           id: string
           image_url: string | null
@@ -109,9 +111,11 @@ export type Database = {
           opening_hours: Json | null
           owner_id: string
           packages: Json | null
+          phone: string | null
           promotions: Json | null
           rating: number | null
           services: Json | null
+          social_media: Json | null
           subscriptions: Json | null
           trial_ends_at: string | null
           waiting_list: Json | null
@@ -125,6 +129,8 @@ export type Database = {
           client_records?: Json | null
           cnpj?: string | null
           created_at?: string | null
+          description?: string | null
+          gallery_images?: string[] | null
           has_completed_setup?: boolean | null
           id?: string
           image_url?: string | null
@@ -134,9 +140,11 @@ export type Database = {
           opening_hours?: Json | null
           owner_id: string
           packages?: Json | null
+          phone?: string | null
           promotions?: Json | null
           rating?: number | null
           services?: Json | null
+          social_media?: Json | null
           subscriptions?: Json | null
           trial_ends_at?: string | null
           waiting_list?: Json | null
@@ -150,6 +158,8 @@ export type Database = {
           client_records?: Json | null
           cnpj?: string | null
           created_at?: string | null
+          description?: string | null
+          gallery_images?: string[] | null
           has_completed_setup?: boolean | null
           id?: string
           image_url?: string | null
@@ -159,9 +169,11 @@ export type Database = {
           opening_hours?: Json | null
           owner_id?: string
           packages?: Json | null
+          phone?: string | null
           promotions?: Json | null
           rating?: number | null
           services?: Json | null
+          social_media?: Json | null
           subscriptions?: Json | null
           trial_ends_at?: string | null
           waiting_list?: Json | null

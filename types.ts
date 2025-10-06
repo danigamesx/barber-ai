@@ -49,6 +49,12 @@ export interface ClientRecord {
   notes: string;
 }
 
+export interface SocialMedia {
+    instagram?: string;
+    facebook?: string;
+    website?: string;
+}
+
 export interface IntegrationSettings {
     googleCalendar?: boolean;
     whatsapp?: boolean;
@@ -180,7 +186,11 @@ export interface Barbershop {
   owner_id: string;
   name: string;
   cnpj?: string | null;
+  phone: string | null;
+  description: string | null;
   image_url: string | null;
+  gallery_images: string[] | null;
+  social_media: Json | SocialMedia | null;
   created_at: string | null;
   rating: number | null;
   has_completed_setup: boolean | null;

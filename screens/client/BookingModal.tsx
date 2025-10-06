@@ -1,5 +1,3 @@
-
-
 import React, { useState, useContext, useMemo } from 'react';
 import { AppContext } from '../../App';
 import { Barbershop, Barber, Service, Appointment, OpeningHours, BlockedTimeSlot, DayOpeningHours } from '../../types';
@@ -14,8 +12,8 @@ interface BookingModalProps {
   barbershop: Barbershop;
   onClose: () => void;
   onInitiatePayment: (appointmentData: NewAppointmentData) => void;
-  initialBarberId?: string;
-  initialServiceId?: string;
+  initialBarberId?: string | null;
+  initialServiceId?: string | null;
 }
 
 const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInitiatePayment, initialBarberId, initialServiceId }) => {
@@ -40,7 +38,10 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
   const hasReward = (user?.rewards as any)?.[barbershop.id]?.hasReward;
 
   const handleJoinWaitingList = () => {
-    if (!user) return;
+    if (!user) {
+        alert("Por favor, faça login ou crie uma conta para entrar na lista de espera.");
+        return;
+    };
     const dateString = new Date(selectedDate.getTime() - (selectedDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
     addToWaitingList(barbershop.id, dateString);
     alert('Você foi adicionado à lista de espera! Nós te avisaremos se um horário vagar.');
@@ -152,7 +153,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
         barber_name: selectedBarber.name,
         service_id: selectedService.id,
         service_name: isUsingReward ? `(Recompensa) ${selectedService.name}` : selectedService.name,
-        price: selectedService.price, 
+        price: isUsingReward ? 0 : selectedService.price, 
         start_time: startTime,
         end_time: endTime,
         notes,
@@ -165,6 +166,10 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
   }
 
   const handleRequestAndPayLater = async () => {
+    if (!user) {
+        alert("Por favor, faça login ou crie uma conta para agendar um horário.");
+        return;
+    }
     const newAppointment = getAppointmentData();
     if (newAppointment) {
         try {
@@ -193,6 +198,10 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
   };
   
   const handlePayNow = () => {
+    if (!user) {
+        alert("Por favor, faça login ou crie uma conta para agendar um horário.");
+        return;
+    }
     const newAppointment = getAppointmentData();
     if(newAppointment) {
         onInitiatePayment(newAppointment);

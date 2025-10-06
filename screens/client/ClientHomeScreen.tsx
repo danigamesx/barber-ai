@@ -1,7 +1,5 @@
-
-
 import React, { useContext, useState, useMemo, useEffect } from 'react';
-import { Barbershop, Appointment, Address, LoyaltyProgram } from '../../types';
+import { Barbershop, Appointment, Address, LoyaltyProgram, Review } from '../../types';
 import { StarIcon, HeartIcon } from '../../components/icons/OutlineIcons';
 import BookingModal from './BookingModal';
 import PaymentModal from './PaymentModal';
@@ -17,17 +15,32 @@ const BarbershopCard: React.FC<{
 }> = ({ barbershop, onSelect, isFavorite, onToggleFavorite }) => {
   const address = (barbershop.address as Address) || {};
   const formattedAddress = `${address.street || 'Endereço não informado'}, ${address.number || ''} - ${address.city || ''}`;
+  const { reviews } = useContext(AppContext);
+  
+  const barbershopReviews = useMemo(() => reviews.filter(r => r.barbershop_id === barbershop.id), [reviews, barbershop.id]);
+  const averageRating = useMemo(() => {
+      if (barbershopReviews.length === 0) return barbershop.rating || 'Novo';
+      const sum = barbershopReviews.reduce((acc, review) => acc + review.rating, 0);
+      return (sum / barbershopReviews.length).toFixed(1);
+  }, [barbershopReviews, barbershop.rating]);
+
+
+  const handleCardClick = () => {
+    // Navigate to the public page instead of opening a modal
+    window.location.hash = `/?barbershopId=${barbershop.id}`;
+  };
 
   return (
     <div className="bg-brand-secondary rounded-lg overflow-hidden shadow-lg relative">
-      <div onClick={onSelect} className="cursor-pointer">
+      <div onClick={handleCardClick} className="cursor-pointer">
         <img src={barbershop.image_url || `https://placehold.co/600x400/1F2937/FBBF24?text=${encodeURIComponent(barbershop.name)}`} alt={barbershop.name} className="w-full h-40 object-cover" />
         <div className="p-4">
           <h3 className="font-bold text-lg text-brand-light">{barbershop.name}</h3>
           <p className="text-gray-400 text-sm">{formattedAddress}</p>
           <div className="flex items-center mt-2">
             <StarIcon className="w-5 h-5 text-brand-primary" />
-            <span className="text-brand-light font-semibold ml-1">{barbershop.rating || 'Novo'}</span>
+            <span className="text-brand-light font-semibold ml-1">{averageRating}</span>
+             <span className="text-gray-400 text-sm ml-2">({barbershopReviews.length} avaliações)</span>
           </div>
         </div>
       </div>
@@ -54,31 +67,9 @@ const LoyaltyCard: React.FC<{ barbershopName: string, stamps: number, goal: numb
 );
 
 const ClientHomeScreen: React.FC = () => {
-  const { user, barbershops, toggleFavoriteBarbershop, directBarbershop, setDirectBarbershop } = useContext(AppContext);
-  const [selectedBarbershop, setSelectedBarbershop] = useState<Barbershop | null>(null);
-  const [appointmentToPay, setAppointmentToPay] = useState<NewAppointmentData | null>(null);
+  const { user, barbershops, toggleFavoriteBarbershop } = useContext(AppContext);
   const [searchQuery, setSearchQuery] = useState('');
   
-  useEffect(() => {
-    if (directBarbershop) {
-        setSelectedBarbershop(directBarbershop);
-    }
-  }, [directBarbershop]);
-
-  const handleCloseBookingModal = () => {
-      setSelectedBarbershop(null);
-      if (directBarbershop) {
-          setDirectBarbershop(null);
-          // Limpa o parâmetro da URL para não reabrir o modal ao atualizar a página
-          window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-      }
-  };
-  
-  const handleInitiatePayment = (appointmentData: NewAppointmentData) => {
-    setAppointmentToPay(appointmentData);
-    handleCloseBookingModal();
-  };
-
   const handleToggleFavorite = (e: React.MouseEvent, shopId: string) => {
     e.stopPropagation();
     toggleFavoriteBarbershop(shopId);
@@ -162,7 +153,7 @@ const ClientHomeScreen: React.FC = () => {
               <BarbershopCard 
                 key={shop.id} 
                 barbershop={shop} 
-                onSelect={() => setSelectedBarbershop(shop)}
+                onSelect={() => {}}
                 isFavorite={true}
                 onToggleFavorite={(e) => handleToggleFavorite(e, shop.id)}
               />
@@ -179,28 +170,13 @@ const ClientHomeScreen: React.FC = () => {
               <BarbershopCard 
                   key={shop.id} 
                   barbershop={shop} 
-                  onSelect={() => setSelectedBarbershop(shop)}
+                  onSelect={() => {}}
                   isFavorite={false}
                   onToggleFavorite={(e) => handleToggleFavorite(e, shop.id)}
                 />
             ))}
           </div>
         </section>
-      )}
-      
-      {selectedBarbershop && (
-        <BookingModal 
-          barbershop={selectedBarbershop} 
-          onClose={handleCloseBookingModal}
-          onInitiatePayment={handleInitiatePayment}
-        />
-      )}
-
-      {appointmentToPay && (
-        <PaymentModal
-          appointmentData={appointmentToPay}
-          onClose={() => setAppointmentToPay(null)}
-        />
       )}
     </div>
   );

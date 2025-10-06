@@ -38,7 +38,10 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
   const hasReward = (user?.rewards as any)?.[barbershop.id]?.hasReward;
 
   const handleJoinWaitingList = () => {
-    if (!user) return;
+    if (!user) {
+        alert("Por favor, faça login ou crie uma conta para entrar na lista de espera.");
+        return;
+    };
     const dateString = new Date(selectedDate.getTime() - (selectedDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
     addToWaitingList(barbershop.id, dateString);
     alert('Você foi adicionado à lista de espera! Nós te avisaremos se um horário vagar.');
@@ -163,6 +166,10 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
   }
 
   const handleRequestAndPayLater = async () => {
+    if (!user) {
+        alert("Por favor, faça login ou crie uma conta para agendar um horário.");
+        return;
+    }
     const newAppointment = getAppointmentData();
     if (newAppointment) {
         try {
@@ -191,6 +198,10 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
   };
   
   const handlePayNow = () => {
+    if (!user) {
+        alert("Por favor, faça login ou crie uma conta para agendar um horário.");
+        return;
+    }
     const newAppointment = getAppointmentData();
     if(newAppointment) {
         onInitiatePayment(newAppointment);

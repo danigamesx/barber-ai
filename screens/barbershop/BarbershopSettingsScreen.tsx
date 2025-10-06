@@ -1,10 +1,8 @@
-
-
 import React, { useContext, useState, useEffect } from 'react';
 import { AppContext, PlanContext } from '../../App';
 import Button from '../../components/Button';
 import { PencilIcon, PlusCircleIcon, TrashIcon } from '../../components/icons/OutlineIcons';
-import { Barber, Barbershop, Service, Json, ServicePackage, SubscriptionPlan, Address, CancellationPolicy, IntegrationSettings, LoyaltyProgram, OpeningHours, DayOpeningHours } from '../../types';
+import { Barber, Barbershop, Service, Json, ServicePackage, SubscriptionPlan, Address, CancellationPolicy, IntegrationSettings, OpeningHours, DayOpeningHours, SocialMedia } from '../../types';
 import ManageServiceModal from './ManageServiceModal';
 import ManageBarberModal from './ManageBarberModal';
 import ManageScheduleModal from './ManageScheduleModal';
@@ -13,7 +11,7 @@ import ManageLoyaltyModal from './ManageLoyaltyModal';
 import ManagePackagesModal from './ManagePackagesModal';
 import ManageSubscriptionsModal from './ManageSubscriptionsModal';
 import { states, cities } from '../../data/brazil-locations';
-import { formatCEP, formatCNPJ } from '../../utils/formatters';
+import { formatCEP, formatCNPJ, formatPhone } from '../../utils/formatters';
 import SearchableSelect from '../../components/SearchableSelect';
 import UpgradePlanModal from './UpgradePlanModal';
 import PlansModal from './PlansModal';
@@ -53,6 +51,10 @@ const BarbershopSettingsScreen: React.FC = () => {
   const [autoConfirm, setAutoConfirm] = useState(false);
   const [name, setName] = useState('');
   const [cnpj, setCnpj] = useState('');
+  const [phone, setPhone] = useState('');
+  const [description, setDescription] = useState('');
+  const [socialMedia, setSocialMedia] = useState<SocialMedia>({});
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [address, setAddress] = useState<Address>({
     street: '', number: '', neighborhood: '', city: '', state: '', zip: '', country: 'Brasil'
   });
@@ -61,6 +63,10 @@ const BarbershopSettingsScreen: React.FC = () => {
     if(barbershopData) {
         setName(barbershopData.name || '');
         setCnpj(barbershopData.cnpj || '');
+        setPhone(barbershopData.phone || '');
+        setDescription(barbershopData.description || '');
+        setSocialMedia((barbershopData.social_media as SocialMedia) || {});
+        setGalleryImages(barbershopData.gallery_images || []);
         setPolicy((barbershopData.cancellation_policy as CancellationPolicy) || { enabled: false, feePercentage: 50, timeLimitHours: 2 });
         setAddress((barbershopData.address as Address) || { street: '', number: '', neighborhood: '', city: '', state: '', zip: '', country: 'Brasil' });
         setAutoConfirm(!!(barbershopData.integrations as IntegrationSettings)?.auto_confirm_appointments);
@@ -112,7 +118,11 @@ const BarbershopSettingsScreen: React.FC = () => {
   const handleSaveInfo = () => {
     updateBarbershopData(barbershopData.id, { 
         name, 
-        cnpj, 
+        cnpj,
+        phone,
+        description,
+        social_media: socialMedia as Json,
+        gallery_images: galleryImages,
         address: address as unknown as Json 
     });
     alert('Informações salvas com sucesso!');
@@ -241,45 +251,55 @@ const BarbershopSettingsScreen: React.FC = () => {
           </div>
           
           <div className="bg-brand-secondary p-4 rounded-lg">
-             <h2 className="text-lg font-semibold text-brand-primary mb-3">Informações da Barbearia</h2>
+             <h2 className="text-lg font-semibold text-brand-primary mb-3">Página da Barbearia</h2>
              <div className="space-y-3">
-                <input type="text" name="name" value={name} onChange={e => setName(e.target.value)} placeholder="Nome da Barbearia" className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
-                <input type="text" name="cnpj" value={cnpj} onChange={e => setCnpj(formatCNPJ(e.target.value))} placeholder="CNPJ" maxLength={18} className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
-                <input type="text" name="street" value={address.street} onChange={e => handleAddressChange('street', e.target.value)} placeholder="Rua" className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
+                <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Nome da Barbearia" className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
+                <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Sobre sua barbearia..." rows={3} className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
+                <input type="tel" value={phone} onChange={e => setPhone(formatPhone(e.target.value))} placeholder="Telefone para Contato" maxLength={15} className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
+                <input type="text" value={cnpj} onChange={e => setCnpj(formatCNPJ(e.target.value))} placeholder="CNPJ" maxLength={18} className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
+                
+                <h3 className="text-md font-semibold text-gray-300 pt-2">Endereço</h3>
+                <input type="text" value={address.street} onChange={e => handleAddressChange('street', e.target.value)} placeholder="Rua / Avenida" className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
                 <div className="flex gap-3">
-                    <input type="text" name="number" value={address.number} onChange={e => handleAddressChange('number', e.target.value)} placeholder="Número" className="w-1/3 px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
-                    <input type="text" name="neighborhood" value={address.neighborhood} onChange={e => handleAddressChange('neighborhood', e.target.value)} placeholder="Bairro" className="w-2/3 px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
+                    <input type="text" value={address.number} onChange={e => handleAddressChange('number', e.target.value)} placeholder="Nº" className="w-1/3 px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
+                    <input type="text" value={address.neighborhood} onChange={e => handleAddressChange('neighborhood', e.target.value)} placeholder="Bairro" className="w-2/3 px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
                 </div>
                  <div className="flex gap-3">
                     <div className="w-1/2">
                         <select 
-                            name="state"
                             value={address.state}
                             onChange={(e) => handleAddressChange('state', e.target.value)}
                             className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg h-[42px]"
                         >
-                            <option value="">Selecione o Estado</option>
+                            <option value="">Estado</option>
                             {states.map(s => <option key={s.uf} value={s.uf}>{s.name}</option>)}
                         </select>
                     </div>
                     <div className="w-1/2">
                         <SearchableSelect 
                             options={cities[address.state || ''] || []}
-                            value={address.city}
+                            value={address.city || ''}
                             onChange={(value) => handleAddressChange('city', value)}
-                            placeholder="Selecione a Cidade"
+                            placeholder="Cidade"
                         />
                     </div>
                 </div>
-                <input 
-                  type="text" 
-                  name="zip" 
-                  value={address.zip || ''} 
-                  onChange={e => handleAddressChange('zip', formatCEP(e.target.value))}
-                  placeholder="CEP (xxxxx-xxx)" 
-                  maxLength={9}
-                  className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"
+                <input type="text" value={address.zip || ''} onChange={e => handleAddressChange('zip', formatCEP(e.target.value))} placeholder="CEP (xxxxx-xxx)" maxLength={9} className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
+                
+                <h3 className="text-md font-semibold text-gray-300 pt-2">Redes Sociais</h3>
+                <input type="url" value={socialMedia.instagram || ''} onChange={e => setSocialMedia(p => ({...p, instagram: e.target.value}))} placeholder="URL do Instagram" className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
+                <input type="url" value={socialMedia.facebook || ''} onChange={e => setSocialMedia(p => ({...p, facebook: e.target.value}))} placeholder="URL do Facebook" className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
+                <input type="url" value={socialMedia.website || ''} onChange={e => setSocialMedia(p => ({...p, website: e.target.value}))} placeholder="URL do seu Website" className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
+                
+                <h3 className="text-md font-semibold text-gray-300 pt-2">Galeria de Fotos</h3>
+                 <textarea 
+                    value={galleryImages.join('\n')} 
+                    onChange={e => setGalleryImages(e.target.value.split('\n'))}
+                    placeholder="Cole as URLs das imagens aqui, uma por linha." 
+                    rows={4} 
+                    className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg font-mono text-sm"
                 />
+
                 <Button onClick={handleSaveInfo} variant="secondary">Salvar Informações</Button>
              </div>
           </div>
