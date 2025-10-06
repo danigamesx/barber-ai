@@ -167,6 +167,14 @@ const App: React.FC = () => {
         setLoading(true);
         setError(null);
         fetchAuthenticatedData(session.user.id)
+            .then(() => {
+                const bookingIntentId = sessionStorage.getItem('bookingIntentBarbershopId');
+                if (bookingIntentId) {
+                    sessionStorage.removeItem('bookingIntentBarbershopId');
+                    // Redirect back to the barbershop page with a flag to open the booking modal
+                    window.location.hash = `/?barbershopId=${bookingIntentId}&openBooking=true`;
+                }
+            })
             .catch(err => {
                 console.error("Failed to fetch authenticated data:", err);
                 let errorMessage = "Ocorreu um erro ao carregar seus dados. Tente novamente mais tarde.";
@@ -576,7 +584,7 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
-    // Check for barbershopId in URL hash first for public page
+    // Check for barbershopId in URL hash first for public page, even for unauthenticated users
     const hash = window.location.hash;
     if (hash.includes('barbershopId')) {
         const queryString = hash.substring(hash.indexOf('?'));
@@ -584,9 +592,20 @@ const App: React.FC = () => {
         const barbershopId = urlParams.get('barbershopId');
 
         if (barbershopId) {
+            // If public data is still loading, show a specific loader.
+            if (loading && barbershops.length === 0) {
+                return <div className="flex items-center justify-center h-screen"><p>Carregando barbearia...</p></div>;
+            }
             const shop = barbershops.find(b => b.id === barbershopId);
             if (shop) {
                 return <BarbershopPublicPage barbershop={shop} />;
+            } else {
+                 return (
+                    <div className="flex flex-col items-center justify-center h-screen p-4 text-center">
+                        <p className="text-red-500 text-lg mb-4">Barbearia não encontrada.</p>
+                        <a href="#" onClick={() => window.location.hash = ''} className="text-brand-primary hover:underline">Voltar para o início</a>
+                    </div>
+                );
             }
         }
     }

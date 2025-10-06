@@ -1,8 +1,8 @@
-import React, { useState, useContext, useMemo } from 'react';
+import React, { useState, useContext, useMemo, useEffect } from 'react';
 import { Barbershop, Service, Barber, Address, SocialMedia, Review } from '../../types';
 import { AppContext } from '../../App';
 import Button from '../../components/Button';
-import { StarIcon, PhoneIcon, InstagramIcon, FacebookIcon, GlobeAltIcon } from '../../components/icons/OutlineIcons';
+import { StarIcon, PhoneIcon, InstagramIcon, FacebookIcon, GlobeAltIcon, XCircleIcon } from '../../components/icons/OutlineIcons';
 import BookingModal from '../client/BookingModal';
 import PaymentModal from '../client/PaymentModal';
 import { Appointment } from '../../types';
@@ -13,7 +13,34 @@ const BarbershopPublicPage: React.FC<{ barbershop: Barbershop }> = ({ barbershop
     const { reviews, user } = useContext(AppContext);
     const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
     const [appointmentToPay, setAppointmentToPay] = useState<NewAppointmentData | null>(null);
+    const [showLoginPrompt, setShowLoginPrompt] = useState(false);
     
+    useEffect(() => {
+        const hash = window.location.hash;
+        if (hash.includes('openBooking=true') && user) {
+            const urlParams = new URLSearchParams(hash.substring(hash.indexOf('?')));
+            setIsBookingModalOpen(true);
+            // Limpa a URL para não reabrir o modal ao atualizar a página
+            urlParams.delete('openBooking');
+            const newHash = `#/?${urlParams.toString()}`;
+            window.history.replaceState(null, '', newHash);
+        }
+    }, [user]);
+
+    const handleScheduleClick = () => {
+        if (user) {
+            setIsBookingModalOpen(true);
+        } else {
+            setShowLoginPrompt(true);
+        }
+    };
+    
+    const redirectToLogin = () => {
+        sessionStorage.setItem('bookingIntentBarbershopId', barbershop.id);
+        // Limpar o hash redireciona para a tela de login/landing
+        window.location.hash = '';
+    };
+
     const address = barbershop.address as Address;
     const social = barbershop.social_media as SocialMedia;
     const phone = barbershop.phone;
@@ -78,7 +105,7 @@ const BarbershopPublicPage: React.FC<{ barbershop: Barbershop }> = ({ barbershop
                 </header>
 
                 <main className="p-4 space-y-8">
-                     <Button onClick={() => setIsBookingModalOpen(true)}>Agendar Horário</Button>
+                     <Button onClick={handleScheduleClick}>Agendar Horário</Button>
 
                      {barbershop.description && (
                         <section>
@@ -145,6 +172,19 @@ const BarbershopPublicPage: React.FC<{ barbershop: Barbershop }> = ({ barbershop
 
                 </main>
             </div>
+
+            {showLoginPrompt && (
+                <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[70]">
+                    <div className="bg-brand-dark w-full max-w-sm rounded-lg shadow-xl p-6 text-center relative">
+                        <button onClick={() => setShowLoginPrompt(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white">
+                            <XCircleIcon className="w-8 h-8" />
+                        </button>
+                        <h2 className="text-xl font-bold mb-4">Quase lá!</h2>
+                        <p className="text-gray-300 mb-6">Para agendar seu horário, por favor, entre na sua conta ou crie um cadastro.</p>
+                        <Button onClick={redirectToLogin}>Entrar ou Cadastrar</Button>
+                    </div>
+                </div>
+            )}
 
             {isBookingModalOpen && (
                 <BookingModal
