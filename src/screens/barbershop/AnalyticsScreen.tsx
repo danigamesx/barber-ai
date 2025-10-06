@@ -24,7 +24,6 @@ const WeeklyRevenueChart: React.FC<{ appointments: Appointment[] }> = ({ appoint
         const completedAppointments = appointments.filter(a => a.status === 'completed');
         const cancelledWithFee = appointments.filter(a => a.status === 'cancelled' && a.cancellation_fee && a.cancellation_fee > 0);
 
-        // FIX: Handle potentially null values for amount by using '|| 0'.
         const allRevenueEvents = [
             ...completedAppointments.map(a => ({ date: a.start_time, amount: a.price || 0, type: 'service' })),
             ...cancelledWithFee.map(a => ({ date: a.start_time, amount: a.cancellation_fee || 0, type: 'fee' }))
@@ -39,10 +38,8 @@ const WeeklyRevenueChart: React.FC<{ appointments: Appointment[] }> = ({ appoint
                  
                  if(event.date.getTime() >= weekStart.getTime() && event.date.getTime() < weekEnd.getTime()) {
                      if (event.type === 'service') {
-                        // FIX: event.amount is now guaranteed to be a number.
                         data[weekKey].services += event.amount;
                      } else {
-                        // FIX: event.amount is now guaranteed to be a number.
                         data[weekKey].fees += event.amount;
                      }
                  }
@@ -126,7 +123,6 @@ const AnalyticsScreen: React.FC = () => {
         const completed = filteredAppointments.filter(a => a.status === 'completed');
         const cancelledWithFee = filteredAppointments.filter(a => a.status === 'cancelled' && a.cancellation_fee && a.cancellation_fee > 0);
         
-        // FIX: Explicitly handle potentially null values in reduce operations to prevent type errors.
         const revenueFromServices = completed.reduce((sum, app) => sum + (app.price || 0), 0);
         const revenueFromFees = cancelledWithFee.reduce((sum, app) => sum + (app.cancellation_fee || 0), 0);
         const totalCommissions = completed.reduce((sum, app) => sum + (app.commission_amount || 0), 0);

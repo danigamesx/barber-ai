@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AppContext, PlanContext } from '../../App';
 import Button from '../../components/Button';
-import { PencilIcon, PlusCircleIcon, TrashIcon } from '../../components/icons/OutlineIcons';
+import { PencilIcon, PlusCircleIcon, TrashIcon, XCircleIcon } from '../../components/icons/OutlineIcons';
 import { Barber, Barbershop, Service, Json, ServicePackage, SubscriptionPlan, Address, CancellationPolicy, IntegrationSettings, OpeningHours, DayOpeningHours, SocialMedia } from '../../types';
 import ManageServiceModal from './ManageServiceModal';
 import ManageBarberModal from './ManageBarberModal';
@@ -11,10 +11,11 @@ import ManageLoyaltyModal from './ManageLoyaltyModal';
 import ManagePackagesModal from './ManagePackagesModal';
 import ManageSubscriptionsModal from './ManageSubscriptionsModal';
 import { states, cities } from '../../data/brazil-locations';
-import { formatCEP, formatCNPJ, formatPhone } from '../../utils/formatters';
+import { formatCEP, formatPhone } from '../../utils/formatters';
 import SearchableSelect from '../../components/SearchableSelect';
 import UpgradePlanModal from './UpgradePlanModal';
 import PlansModal from './PlansModal';
+import * as api from '../../api';
 
 
 const dayTranslations: { [key: string]: string } = {
@@ -50,11 +51,12 @@ const BarbershopSettingsScreen: React.FC = () => {
   
   const [autoConfirm, setAutoConfirm] = useState(false);
   const [name, setName] = useState('');
-  const [cnpj, setCnpj] = useState('');
   const [phone, setPhone] = useState('');
   const [description, setDescription] = useState('');
   const [socialMedia, setSocialMedia] = useState<SocialMedia>({});
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [newGalleryFiles, setNewGalleryFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const [address, setAddress] = useState<Address>({
     street: '', number: '', neighborhood: '', city: '', state: '', zip: '', country: 'Brasil'
   });
@@ -62,7 +64,6 @@ const BarbershopSettingsScreen: React.FC = () => {
   useEffect(() => {
     if(barbershopData) {
         setName(barbershopData.name || '');
-        setCnpj(barbershopData.cnpj || '');
         setPhone(barbershopData.phone || '');
         setDescription(barbershopData.description || '');
         setSocialMedia((barbershopData.social_media as SocialMedia) || {});
@@ -115,17 +116,63 @@ const BarbershopSettingsScreen: React.FC = () => {
     });
   };
   
-  const handleSaveInfo = () => {
-    updateBarbershopData(barbershopData.id, { 
-        name, 
-        cnpj,
-        phone,
-        description,
-        social_media: socialMedia as Json,
-        gallery_images: galleryImages,
-        address: address as unknown as Json 
-    });
-    alert('Informações salvas com sucesso!');
+    const handleMainImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0] && barbershopData) {
+            const file = e.target.files[0];
+            setIsUploading(true);
+            try {
+                const imageUrl = await api.uploadImage(file, 'barbershop-media', barbershopData.id);
+                await updateBarbershopData(barbershopData.id, { image_url: imageUrl });
+                alert('Imagem principal atualizada!');
+            } catch (error) {
+                console.error(error);
+                alert('Falha ao enviar a imagem.');
+            } finally {
+                setIsUploading(false);
+            }
+        }
+    };
+
+    const handleGalleryFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            setNewGalleryFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+        }
+    };
+
+    const removeExistingGalleryImage = (url: string) => {
+        setGalleryImages(prev => prev.filter(imgUrl => imgUrl !== url));
+    };
+  
+  const handleSaveInfo = async () => {
+    if (!barbershopData) return;
+    setIsUploading(true);
+    try {
+        let finalGalleryUrls = [...galleryImages];
+        if (newGalleryFiles.length > 0) {
+            const uploadPromises = newGalleryFiles.map(file => 
+                api.uploadImage(file, 'barbershop-media', barbershopData.id)
+            );
+            const uploadedUrls = await Promise.all(uploadPromises);
+            finalGalleryUrls.push(...uploadedUrls);
+        }
+
+        await updateBarbershopData(barbershopData.id, { 
+            name, 
+            phone,
+            description,
+            social_media: socialMedia as Json,
+            gallery_images: finalGalleryUrls.filter(Boolean),
+            address: address as unknown as Json 
+        });
+
+        setNewGalleryFiles([]);
+        alert('Informações salvas com sucesso!');
+    } catch (error) {
+        console.error("Failed to save barbershop info:", error);
+        alert("Ocorreu um erro ao salvar as informações.");
+    } finally {
+        setIsUploading(false);
+    }
   };
 
   const handleSavePolicy = () => {
@@ -253,10 +300,24 @@ const BarbershopSettingsScreen: React.FC = () => {
           <div className="bg-brand-secondary p-4 rounded-lg">
              <h2 className="text-lg font-semibold text-brand-primary mb-3">Página da Barbearia</h2>
              <div className="space-y-3">
+                
+                 <div className="flex items-center gap-4">
+                    <img 
+                        src={barbershopData.image_url || `https://placehold.co/400x400/1F2937/FBBF24?text=Logo`} 
+                        alt="Logo da Barbearia"
+                        className="w-24 h-24 rounded-lg object-cover bg-brand-secondary"
+                    />
+                    <div>
+                        <label htmlFor="logo-upload" className="text-md font-semibold text-gray-300">Logo e Imagem de Capa</label>
+                        <p className="text-xs text-gray-500 mb-2">Envie a imagem principal da sua barbearia.</p>
+                        <input id="logo-upload" type="file" accept="image/*" onChange={handleMainImageChange} disabled={isUploading} className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-brand-primary file:text-brand-dark hover:file:bg-amber-300"/>
+                        {isUploading && <p className="text-xs text-amber-400 mt-1">Enviando...</p>}
+                    </div>
+                </div>
+
                 <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Nome da Barbearia" className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
                 <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Sobre sua barbearia..." rows={3} className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
                 <input type="tel" value={phone} onChange={e => setPhone(formatPhone(e.target.value))} placeholder="Telefone para Contato" maxLength={15} className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
-                <input type="text" value={cnpj} onChange={e => setCnpj(formatCNPJ(e.target.value))} placeholder="CNPJ" maxLength={18} className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
                 
                 <h3 className="text-md font-semibold text-gray-300 pt-2">Endereço</h3>
                 <input type="text" value={address.street} onChange={e => handleAddressChange('street', e.target.value)} placeholder="Rua / Avenida" className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
@@ -291,16 +352,24 @@ const BarbershopSettingsScreen: React.FC = () => {
                 <input type="url" value={socialMedia.facebook || ''} onChange={e => setSocialMedia(p => ({...p, facebook: e.target.value}))} placeholder="URL do Facebook" className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
                 <input type="url" value={socialMedia.website || ''} onChange={e => setSocialMedia(p => ({...p, website: e.target.value}))} placeholder="URL do seu Website" className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
                 
-                <h3 className="text-md font-semibold text-gray-300 pt-2">Galeria de Fotos</h3>
-                 <textarea 
-                    value={galleryImages.join('\n')} 
-                    onChange={e => setGalleryImages(e.target.value.split('\n'))}
-                    placeholder="Cole as URLs das imagens aqui, uma por linha." 
-                    rows={4} 
-                    className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg font-mono text-sm"
-                />
+                 <h3 className="text-md font-semibold text-gray-300 pt-2">Galeria de Fotos</h3>
+                 <div className="grid grid-cols-3 gap-2 mb-2">
+                    {galleryImages.map((url) => (
+                        <div key={url} className="relative group">
+                            <img src={url} alt="Foto da galeria" className="w-full h-24 object-cover rounded-md" />
+                            <button onClick={() => removeExistingGalleryImage(url)} className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <XCircleIcon className="w-5 h-5" />
+                            </button>
+                        </div>
+                    ))}
+                 </div>
+                 <input type="file" multiple accept="image/*" onChange={handleGalleryFilesChange} disabled={isUploading} className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-brand-primary file:text-brand-dark hover:file:bg-amber-300"/>
+                 {newGalleryFiles.length > 0 && <p className="text-xs text-gray-400 mt-1">{newGalleryFiles.length} nova(s) imagem(ns) selecionada(s).</p>}
 
-                <Button onClick={handleSaveInfo} variant="secondary">Salvar Informações</Button>
+
+                <Button onClick={handleSaveInfo} variant="secondary" disabled={isUploading}>
+                    {isUploading ? 'Salvando...' : 'Salvar Informações'}
+                </Button>
              </div>
           </div>
 

@@ -98,7 +98,6 @@ export type Database = {
           blocked_time_slots: Json | null
           cancellation_policy: Json | null
           client_records: Json | null
-          cnpj: string | null
           created_at: string | null
           description: string | null
           gallery_images: string[] | null
@@ -127,7 +126,6 @@ export type Database = {
           blocked_time_slots?: Json | null
           cancellation_policy?: Json | null
           client_records?: Json | null
-          cnpj?: string | null
           created_at?: string | null
           description?: string | null
           gallery_images?: string[] | null
@@ -156,7 +154,6 @@ export type Database = {
           blocked_time_slots?: Json | null
           cancellation_policy?: Json | null
           client_records?: Json | null
-          cnpj?: string | null
           created_at?: string | null
           description?: string | null
           gallery_images?: string[] | null

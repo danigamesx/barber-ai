@@ -60,7 +60,6 @@ export const signUpUser = async (name: string, email: string, password: string, 
         const { error: barbershopError } = await supabase.from('barbershops').insert({
             owner_id: authData.user.id,
             name: barbershopName,
-            cnpj: null,
             image_url: `https://picsum.photos/seed/${Date.now()}/600/400`,
             trial_ends_at: trialEndDate.toISOString(),
             integrations: initialIntegrations as Json,
@@ -98,6 +97,34 @@ export const getReviews = async (): Promise<Review[]> => {
     const { data, error } = await supabase.from('reviews').select('*');
     if (error) throw error;
     return data.map(reviewFromRow);
+};
+
+// === STORAGE FUNCTIONS ===
+export const uploadImage = async (file: File, bucket: string, folder: string): Promise<string> => {
+    if (!file) {
+        throw new Error("Nenhum arquivo fornecido para upload.");
+    }
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}.${fileExt}`;
+    const filePath = `${folder}/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(filePath, file);
+
+    if (uploadError) {
+        console.error("Erro no upload para o Supabase storage:", uploadError);
+        throw uploadError;
+    }
+
+    const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
+    
+    if (!data || !data.publicUrl) {
+        throw new Error("Não foi possível obter a URL pública do arquivo enviado.");
+    }
+
+    return data.publicUrl;
 };
 
 

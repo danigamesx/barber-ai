@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { User, Barbershop, Appointment, Review, Barber, Service, FinancialRecord, Promotion, ClientNotification, WaitingListEntry, Json, IntegrationSettings, Address } from './types';
+import { User, Barbershop, Appointment, Review, Barber, FinancialRecord, Promotion, ClientNotification, WaitingListEntry, Json, IntegrationSettings, Address } from './types';
 import { TablesInsert, TablesUpdate } from './types/database';
 
 // Helper functions to convert DB row types to application types (especially for dates)
@@ -60,7 +60,6 @@ export const signUpUser = async (name: string, email: string, password: string, 
         const { error: barbershopError } = await supabase.from('barbershops').insert({
             owner_id: authData.user.id,
             name: barbershopName,
-            cnpj: null,
             image_url: `https://picsum.photos/seed/${Date.now()}/600/400`,
             trial_ends_at: trialEndDate.toISOString(),
             integrations: initialIntegrations as Json,
@@ -98,6 +97,34 @@ export const getReviews = async (): Promise<Review[]> => {
     const { data, error } = await supabase.from('reviews').select('*');
     if (error) throw error;
     return data.map(reviewFromRow);
+};
+
+// === STORAGE FUNCTIONS ===
+export const uploadImage = async (file: File, bucket: string, folder: string): Promise<string> => {
+    if (!file) {
+        throw new Error("Nenhum arquivo fornecido para upload.");
+    }
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}.${fileExt}`;
+    const filePath = `${folder}/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(filePath, file);
+
+    if (uploadError) {
+        console.error("Erro no upload para o Supabase storage:", uploadError);
+        throw uploadError;
+    }
+
+    const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
+    
+    if (!data || !data.publicUrl) {
+        throw new Error("Não foi possível obter a URL pública do arquivo enviado.");
+    }
+
+    return data.publicUrl;
 };
 
 
@@ -414,79 +441,37 @@ export const setAppointmentGoogleEventId = async (appointmentId: string, googleE
     if (error) throw error;
 };
 
-// === STRIPE PAYMENT INTEGRATION (STUBS) ===
+// === STRIPE PAYMENT INTEGRATION (REAL) ===
 
-/**
- * SIMULAÇÃO: No backend, esta função criaria uma conta Stripe Express para a barbearia,
- * salvaria o `accountId` e retornaria um link de onboarding.
- */
-export const getStripeConnectOnboardingLink = async (barbershopId: string, currentIntegrations: IntegrationSettings): Promise<{ accountId: string; onboardingUrl: string }> => {
-    console.log("BACKEND SIMULATION: Called getStripeConnectOnboardingLink");
-    console.log("1. Verificando se a barbearia já possui um stripeAccountId...");
-
-    let accountId = currentIntegrations.stripeAccountId;
-
-    if (!accountId) {
-        console.log("2. Nenhum ID encontrado. Criando uma nova conta Express no Stripe...");
-        // Em um backend real: const account = await stripe.accounts.create({ type: 'express' });
-        accountId = `acct_mock_${Date.now()}`;
-        console.log(`3. Conta criada com ID: ${accountId}. Salvando no banco de dados...`);
-        
-        // Salva o ID da conta no Supabase.
-        const updatedIntegrations = { ...currentIntegrations, stripeAccountId: accountId, stripeAccountOnboarded: false };
-        await updateBarbershop(barbershopId, { integrations: updatedIntegrations as Json });
-    } else {
-        console.log(`2. ID da conta existente encontrado: ${accountId}`);
-    }
-
-    console.log("4. Criando um link de onboarding do Stripe...");
-    // Em um backend real: const accountLink = await stripe.accountLinks.create({...});
-    const onboardingUrl = `https://connect.stripe.com/mock/onboarding/${accountId}`;
-    console.log(`5. Link de onboarding gerado: ${onboardingUrl}`);
-    
-    return { accountId, onboardingUrl };
-};
-
-/**
- * SIMULAÇÃO: No backend, esta função verificaria o status da conta Stripe.
- * Se o onboarding estiver completo, atualizaria o registro da barbearia.
- */
-export const completeStripeOnboarding = async (barbershopId: string, currentIntegrations: IntegrationSettings): Promise<void> => {
-    console.log("BACKEND SIMULATION: Called completeStripeOnboarding");
-    console.log("1. Verificando status da conta no Stripe para:", currentIntegrations.stripeAccountId);
-    // Em um backend real: const account = await stripe.accounts.retrieve(accountId);
-    // if (account.charges_enabled) { ... }
-    console.log("2. Simulação: Onboarding completo. Atualizando o banco de dados.");
-
-    const updatedIntegrations = { ...currentIntegrations, stripeAccountOnboarded: true };
-    await updateBarbershop(barbershopId, { integrations: updatedIntegrations as Json });
+export const getStripeConnectOnboardingLink = async (barbershopId: string, returnUrl: string): Promise<{ accountId: string, onboardingUrl: string }> => {
+    const response = await fetch(`/api/stripe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create-account-link', barbershopId, returnUrl }),
+    });
+    if (!response.ok) throw new Error(await response.text());
+    return response.json();
 };
 
 
-/**
- * SIMULAÇÃO: No backend, esta função criaria um PaymentIntent no Stripe,
- * associando-o à conta Stripe da barbearia.
- */
-export const createPaymentIntent = async (appointmentData: Omit<Appointment, 'id' | 'created_at' | 'start_time' | 'end_time'> & { start_time: Date, end_time: Date }, barbershopStripeAccountId: string): Promise<string> => {
-    console.log("BACKEND SIMULATION: Called createPaymentIntent");
-    const amountInCents = Math.round((appointmentData.price || 0) * 100);
-    
-    console.log(`1. Criando PaymentIntent de ${amountInCents} centavos para a conta Stripe: ${barbershopStripeAccountId}`);
-    
-    // Em um backend real:
-    // const paymentIntent = await stripe.paymentIntents.create({
-    //   amount: amountInCents,
-    //   currency: 'brl',
-    //   automatic_payment_methods: { enabled: true },
-    //   application_fee_amount: 123, // Opcional: sua taxa de plataforma
-    //   transfer_data: {
-    //     destination: barbershopStripeAccountId,
-    //   },
-    // });
-    // return paymentIntent.client_secret;
+export const completeStripeOnboarding = async (barbershopId: string, accountId: string): Promise<boolean> => {
+    const response = await fetch(`/api/stripe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'verify-account', barbershopId, accountId }),
+    });
+    if (!response.ok) throw new Error(await response.text());
+    const { onboarded } = await response.json();
+    return onboarded;
+};
 
-    const mockClientSecret = `pi_mock_${Date.now()}_secret_mock_${Date.now()}`;
-    console.log(`2. PaymentIntent criado. Retornando client_secret: ${mockClientSecret}`);
-
-    return new Promise(resolve => setTimeout(() => resolve(mockClientSecret), 1000));
+export const createPaymentIntent = async (appointmentData: Omit<Appointment, 'id' | 'created_at'> & { start_time: Date, end_time: Date }, barbershopStripeAccountId: string): Promise<string> => {
+    const response = await fetch(`/api/create-payment-intent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointmentData, barbershopStripeAccountId }),
+    });
+    if (!response.ok) throw new Error(await response.text());
+    const { clientSecret } = await response.json();
+    return clientSecret;
 };

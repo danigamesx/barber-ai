@@ -3,7 +3,6 @@ import { AppContext } from '../../App';
 import { Barbershop } from '../../types';
 import Button from '../../components/Button';
 import { XCircleIcon } from '../../components/icons/OutlineIcons';
-import { formatCNPJ } from '../../utils/formatters';
 
 interface EditBarbershopModalProps {
   barbershop: Barbershop;
@@ -13,12 +12,11 @@ interface EditBarbershopModalProps {
 const EditBarbershopModal: React.FC<EditBarbershopModalProps> = ({ barbershop, onClose }) => {
   const { users, updateBarbershopData } = useContext(AppContext);
   const [name, setName] = useState(barbershop.name);
-  const [cnpj, setCnpj] = useState(barbershop.cnpj || '');
 
   const owner = users.find(u => u.id === barbershop.owner_id);
 
   const handleSave = () => {
-    updateBarbershopData(barbershop.id, { name, cnpj });
+    updateBarbershopData(barbershop.id, { name });
     onClose();
   };
 
@@ -43,17 +41,6 @@ const EditBarbershopModal: React.FC<EditBarbershopModalProps> = ({ barbershop, o
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
-              className="w-full mt-1 px-4 py-3 bg-brand-secondary border border-gray-600 rounded-lg"
-            />
-          </div>
-          <div>
-            <label htmlFor="shop-cnpj" className="block text-sm font-medium text-gray-400">CNPJ</label>
-            <input
-              id="shop-cnpj"
-              type="text"
-              value={cnpj}
-              onChange={e => setCnpj(formatCNPJ(e.target.value))}
-              maxLength={18}
               className="w-full mt-1 px-4 py-3 bg-brand-secondary border border-gray-600 rounded-lg"
             />
           </div>
