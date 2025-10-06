@@ -126,34 +126,36 @@ const App: React.FC = () => {
   }>({ hasAccess: false, isTrial: false, planId: 'BASIC', trialEndDate: null });
 
   useEffect(() => {
-    // Fetch all static data on initial load, regardless of auth state
     setLoading(true);
+    // Fetch public data and session state together to avoid race conditions.
     Promise.all([
         api.getBarbershops(),
         api.getAllUsers(),
         api.getReviews(),
-    ]).then(([barbershopsData, usersData, reviewsData]) => {
+        api.getSession(),
+    ]).then(([barbershopsData, usersData, reviewsData, { data: sessionData }]) => {
         setBarbershops(barbershopsData);
         setUsers(usersData);
         setReviews(reviewsData);
+        setSession(sessionData.session);
+        // If there's no session, we can stop the main loading indicator.
+        // If there is a session, the useEffect below will handle its own loading state for private data.
+        if (!sessionData.session) {
+            setLoading(false);
+        }
     }).catch(err => {
-        console.error("Failed to fetch initial public data:", err);
+        console.error("Failed to fetch initial data:", err);
         setError("Não foi possível carregar os dados essenciais. Verifique sua conexão.");
-    }).finally(() => {
-        // Now check auth state
-        api.getSession().then(({ data: { session } }) => {
-            setSession(session);
-            if (!session) setLoading(false);
-        });
+        setLoading(false);
     });
 
+    // Listen for auth changes (login/logout)
     const { data: authListener } = api.onAuthStateChange((_event, session) => {
         setSession(session);
         if (!session) {
             setUser(null);
-            setAppointments([]); // Only clear user-specific data
+            setAppointments([]); // Only clear user-specific data on logout
             setGoogleToken(null);
-            setLoading(false);
         }
     });
 
@@ -283,6 +285,7 @@ const App: React.FC = () => {
 
   const fetchAuthenticatedData = async (userId: string) => {
       try {
+          // Public data is already being fetched, so we only need private data here.
           const [appointmentsData, userProfile] = await Promise.all([
               api.getAppointments(),
               api.getUserProfile(userId),
@@ -299,8 +302,8 @@ const App: React.FC = () => {
     await api.signUpUser(name, email, password, accountType, phone, birthDate, barbershopName);
     const { data: { session } } = await api.getSession();
     if (session?.user?.id) {
-        await fetchAuthenticatedData(session.user.id);
-        // Also refetch public data that might have changed
+        // After signup, the session change will trigger the useEffect to fetch all data
+        // But we can refetch public data here to ensure it's up-to-date immediately
         setBarbershops(await api.getBarbershops());
         setUsers(await api.getAllUsers());
     }
@@ -591,22 +594,26 @@ const App: React.FC = () => {
         const barbershopId = urlParams.get('barbershopId');
 
         if (barbershopId) {
+            // Find shop directly in the state, which is now reliable
             const shop = barbershops.find(b => b.id === barbershopId);
             
-            // FIX: Re-ordered logic to correctly handle the loading state for public pages.
-            // It now waits for loading to complete before deciding if a barbershop is "not found".
+            // If still loading, show loading indicator.
+            if (loading) {
+                return <div className="flex items-center justify-center h-screen"><p>Carregando barbearia...</p></div>;
+            }
+            
+            // If loading is finished and shop is found, show page.
             if (shop) {
                 return <BarbershopPublicPage barbershop={shop} />;
-            } else if (loading) {
-                return <div className="flex items-center justify-center h-screen"><p>Carregando barbearia...</p></div>;
-            } else {
-                 return (
-                    <div className="flex flex-col items-center justify-center h-screen p-4 text-center">
-                        <p className="text-red-500 text-lg mb-4">Barbearia não encontrada.</p>
-                        <a href="#" onClick={() => window.location.hash = ''} className="text-brand-primary hover:underline">Voltar para o início</a>
-                    </div>
-                );
-            }
+            } 
+            
+            // If loading is finished and shop is NOT found, show error.
+            return (
+                <div className="flex flex-col items-center justify-center h-screen p-4 text-center">
+                    <p className="text-red-500 text-lg mb-4">Barbearia não encontrada.</p>
+                    <a href="#" onClick={() => window.location.hash = ''} className="text-brand-primary hover:underline">Voltar para o início</a>
+                </div>
+            );
         }
     }
 
