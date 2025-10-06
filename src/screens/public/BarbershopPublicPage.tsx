@@ -2,7 +2,7 @@ import React, { useState, useContext, useMemo, useEffect } from 'react';
 import { Barbershop, Service, Barber, Address, SocialMedia, Review, IntegrationSettings } from '../../types';
 import { AppContext } from '../../App';
 import Button from '../../components/Button';
-import { StarIcon, PhoneIcon, InstagramIcon, FacebookIcon, GlobeAltIcon, XCircleIcon } from '../../components/icons/OutlineIcons';
+import { StarIcon, PhoneIcon, InstagramIcon, FacebookIcon, GlobeAltIcon, XCircleIcon, ArrowLeftIcon } from '../../components/icons/OutlineIcons';
 import BookingModal from '../client/BookingModal';
 import PaymentModal from '../client/PaymentModal';
 import { Appointment } from '../../types';
@@ -89,6 +89,15 @@ const BarbershopPublicPage: React.FC<{ barbershop: Barbershop }> = ({ barbershop
 
     return (
         <>
+            {user && (
+                <button 
+                    onClick={() => window.location.hash = ''} 
+                    className="fixed top-4 left-4 z-50 bg-brand-secondary/70 backdrop-blur-md text-white p-2 rounded-full shadow-lg hover:bg-brand-secondary transition-colors"
+                    aria-label="Voltar para o início"
+                >
+                    <ArrowLeftIcon className="w-6 h-6" />
+                </button>
+            )}
             <div className="bg-brand-dark min-h-screen text-brand-light">
                 <header className="relative">
                     <img src={barbershop.image_url || `https://placehold.co/1200x400/111827/FBBF24?text=${encodeURIComponent(barbershop.name)}`} alt={`Capa de ${barbershop.name}`} className="w-full h-48 object-cover"/>
