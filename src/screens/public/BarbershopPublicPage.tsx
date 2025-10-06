@@ -1,5 +1,5 @@
 import React, { useState, useContext, useMemo, useEffect } from 'react';
-import { Barbershop, Service, Barber, Address, SocialMedia, Review } from '../../types';
+import { Barbershop, Service, Barber, Address, SocialMedia, Review, IntegrationSettings } from '../../types';
 import { AppContext } from '../../App';
 import Button from '../../components/Button';
 import { StarIcon, PhoneIcon, InstagramIcon, FacebookIcon, GlobeAltIcon, XCircleIcon } from '../../components/icons/OutlineIcons';
@@ -26,6 +26,31 @@ const BarbershopPublicPage: React.FC<{ barbershop: Barbershop }> = ({ barbershop
             window.history.replaceState(null, '', newHash);
         }
     }, [user]);
+
+    const isAcceptingAppointments = useMemo(() => {
+        const now = new Date();
+        const integrations = barbershop.integrations as IntegrationSettings;
+    
+        if (integrations?.plan_status === 'suspended') {
+            return false;
+        }
+    
+        if (barbershop.trial_ends_at) {
+            const trialEnd = new Date(barbershop.trial_ends_at);
+            if (trialEnd > now) {
+                return true;
+            }
+        }
+    
+        if (integrations?.plan_expires_at) {
+            const planEndDate = new Date(integrations.plan_expires_at);
+            if (planEndDate > now) {
+                return true;
+            }
+        }
+    
+        return false;
+    }, [barbershop]);
 
     const handleScheduleClick = () => {
         if (user) {
@@ -105,41 +130,50 @@ const BarbershopPublicPage: React.FC<{ barbershop: Barbershop }> = ({ barbershop
                 </header>
 
                 <main className="p-4 space-y-8">
-                     <Button onClick={handleScheduleClick}>Agendar Horário</Button>
+                     {isAcceptingAppointments ? (
+                         <>
+                            <Button onClick={handleScheduleClick}>Agendar Horário</Button>
 
-                     {barbershop.description && (
-                        <section>
-                            <h2 className="text-xl font-semibold text-brand-primary mb-3">Sobre Nós</h2>
-                            <p className="text-gray-300 whitespace-pre-wrap">{barbershop.description}</p>
-                        </section>
+                             {barbershop.description && (
+                                <section>
+                                    <h2 className="text-xl font-semibold text-brand-primary mb-3">Sobre Nós</h2>
+                                    <p className="text-gray-300 whitespace-pre-wrap">{barbershop.description}</p>
+                                </section>
+                             )}
+
+                             <section>
+                                <h2 className="text-xl font-semibold text-brand-primary mb-3">Nossos Barbeiros</h2>
+                                <div className="flex gap-4 overflow-x-auto pb-2">
+                                    {barbers.map(barber => (
+                                        <div key={barber.id} className="text-center flex-shrink-0 w-24">
+                                            <img src={barber.avatarUrl} alt={barber.name} className="w-20 h-20 rounded-full mx-auto object-cover"/>
+                                            <p className="mt-2 text-sm font-medium truncate">{barber.name}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                             </section>
+
+                             <section>
+                                <h2 className="text-xl font-semibold text-brand-primary mb-3">Serviços</h2>
+                                <div className="space-y-2">
+                                    {services.map(service => (
+                                        <div key={service.id} className="bg-brand-secondary p-3 rounded-lg flex justify-between items-center">
+                                            <div>
+                                                <p className="font-semibold">{service.name}</p>
+                                                <p className="text-sm text-gray-400">{service.duration} min</p>
+                                            </div>
+                                            <p className="font-semibold">R$ {service.price.toFixed(2)}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                             </section>
+                         </>
+                     ) : (
+                         <div className="bg-brand-secondary p-6 rounded-lg text-center my-8">
+                            <h2 className="text-xl font-bold text-amber-400">Agendamentos Suspensos</h2>
+                            <p className="text-gray-300 mt-2">Esta barbearia não está aceitando agendamentos online no momento.</p>
+                         </div>
                      )}
-
-                     <section>
-                        <h2 className="text-xl font-semibold text-brand-primary mb-3">Nossos Barbeiros</h2>
-                        <div className="flex gap-4 overflow-x-auto pb-2">
-                            {barbers.map(barber => (
-                                <div key={barber.id} className="text-center flex-shrink-0 w-24">
-                                    <img src={barber.avatarUrl} alt={barber.name} className="w-20 h-20 rounded-full mx-auto object-cover"/>
-                                    <p className="mt-2 text-sm font-medium truncate">{barber.name}</p>
-                                </div>
-                            ))}
-                        </div>
-                     </section>
-
-                     <section>
-                        <h2 className="text-xl font-semibold text-brand-primary mb-3">Serviços</h2>
-                        <div className="space-y-2">
-                            {services.map(service => (
-                                <div key={service.id} className="bg-brand-secondary p-3 rounded-lg flex justify-between items-center">
-                                    <div>
-                                        <p className="font-semibold">{service.name}</p>
-                                        <p className="text-sm text-gray-400">{service.duration} min</p>
-                                    </div>
-                                    <p className="font-semibold">R$ {service.price.toFixed(2)}</p>
-                                </div>
-                            ))}
-                        </div>
-                     </section>
 
                       {gallery.length > 0 && (
                         <section>

@@ -19,10 +19,10 @@ import AdminDashboardScreen from './screens/admin/AdminDashboardScreen';
 import * as api from './api';
 import { SUPER_ADMIN_USER_ID, PLANS } from './constants';
 import TrialBanner from './components/TrialBanner';
-import TrialExpiredScreen from './screens/barbershop/TrialExpiredScreen';
 import LandingScreen from './screens/LandingScreen';
 import Button from './components/Button';
 import BarbershopPublicPage from './screens/public/BarbershopPublicPage';
+import InactivePlanBanner from './components/InactivePlanBanner';
 
 export const AppContext = React.createContext<{
   user: User | null;
@@ -123,78 +123,66 @@ const App: React.FC = () => {
     isTrial: boolean;
     planId: string;
     trialEndDate: Date | null;
-  }>({ hasAccess: false, isTrial: false, planId: 'BASIC', trialEndDate: null });
-
-  const fetchAuthenticatedData = async (userId: string) => {
-    try {
-        const [appointmentsData, userProfile] = await Promise.all([
-            api.getAppointments(),
-            api.getUserProfile(userId),
-        ]);
-        setAppointments(appointmentsData);
-        setUser(userProfile);
-    } catch (error) {
-        console.error("Error fetching authenticated data:", error);
-        throw error;
-    }
-  };
+  }>({ hasAccess: true, isTrial: false, planId: 'BASIC', trialEndDate: null });
 
   useEffect(() => {
-    const bootstrapApp = async () => {
+    const loadInitialData = async () => {
         setLoading(true);
         setError(null);
         try {
-            // Fetch all public data and session in parallel
-            const [
-              barbershopsData,
-              usersData,
-              reviewsData,
-              { data: sessionData },
-            ] = await Promise.all([
-              api.getBarbershops(),
-              api.getAllUsers(),
-              api.getReviews(),
-              api.getSession(),
+            // Sempre busca dados públicos
+            const [barbershopsData, usersData, reviewsData] = await Promise.all([
+                api.getBarbershops(),
+                api.getAllUsers(),
+                api.getReviews(),
             ]);
-    
-            // Set all public state
             setBarbershops(barbershopsData);
             setUsers(usersData);
             setReviews(reviewsData);
-    
-            // If there's a user, fetch their private data
-            if (sessionData.session?.user) {
-              await fetchAuthenticatedData(sessionData.session.user.id);
+
+            // Verifica a sessão e busca dados privados se houver
+            const { data: { session: currentSession } } = await api.getSession();
+            setSession(currentSession);
+
+            if (currentSession?.user) {
+                const [appointmentsData, userProfile] = await Promise.all([
+                    api.getAppointments(),
+                    api.getUserProfile(currentSession.user.id),
+                ]);
+                setAppointments(appointmentsData);
+                setUser(userProfile);
+            } else {
+                // Garante que os dados privados sejam limpos se não houver sessão
+                setUser(null);
+                setAppointments([]);
+                setGoogleToken(null);
             }
-            
-            // Finally, set the session.
-            setSession(sessionData.session);
-    
-          } catch (err: any) {
-            console.error("Failed to initialize app data:", err);
+        } catch (err: any) {
+            console.error("Falha ao carregar dados iniciais:", err);
             setError("Não foi possível carregar os dados. Verifique sua conexão.");
-          } finally {
-            // This is guaranteed to run after all awaits are done.
+        } finally {
             setLoading(false);
-          }
+        }
     };
     
-    bootstrapApp();
+    loadInitialData(); // Carga inicial na montagem do componente
 
-    // Listener for subsequent changes (manual login/logout)
     const { data: authListener } = api.onAuthStateChange((_event, newSession) => {
         const userJustLoggedIn = newSession && !session;
         const userJustLoggedOut = !newSession && session;
         
-        setSession(newSession);
+        setSession(newSession); // Sincroniza o estado da sessão imediatamente
 
         if (userJustLoggedIn) {
-            // Refetch data for the new user
-            fetchAuthenticatedData(newSession.user.id);
+            // Se um usuário acabou de fazer login, recarregue TODOS os dados para garantir um estado limpo
+            loadInitialData();
         } else if (userJustLoggedOut) {
-            // User logged out, clear their specific data
+            // Se um usuário acabou de fazer logout, limpe TODOS os estados para evitar dados obsoletos
             setUser(null);
             setAppointments([]);
+            setUsers([]);
+            setBarbershops([]);
+            setReviews([]);
             setGoogleToken(null);
         }
     });
@@ -202,7 +190,7 @@ const App: React.FC = () => {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, []); // O array vazio garante que este efeito seja executado apenas uma vez
 
     const barbershopData = useMemo(() => {
         if (user?.user_type === 'BARBERSHOP') {
@@ -216,53 +204,47 @@ const App: React.FC = () => {
           setAccessStatus({ hasAccess: true, isTrial: false, planId: 'BASIC', trialEndDate: null });
           return;
       }
-
+  
       const integrations = barbershopData.integrations as IntegrationSettings;
       const now = new Date();
       
-      let hasAccess = false;
+      let finalPlanId = 'INACTIVE';
       let isTrial = false;
-      let planId = 'BASIC';
       let trialEndDate: Date | null = null;
       
       if (integrations?.plan_status === 'suspended') {
-          setAccessStatus({ hasAccess: false, isTrial: false, planId: integrations.plan || 'BASIC', trialEndDate: null });
+          finalPlanId = 'INACTIVE';
+          setAccessStatus({ hasAccess: true, isTrial: false, planId: finalPlanId, trialEndDate: null });
           return;
       }
-
+  
       if (barbershopData.trial_ends_at) {
           const trialEnd = new Date(barbershopData.trial_ends_at);
           if (trialEnd > now) {
-              hasAccess = true;
               isTrial = true;
-              planId = 'PREMIUM'; 
               trialEndDate = trialEnd;
+              finalPlanId = 'PREMIUM'; 
+              setAccessStatus({ hasAccess: true, isTrial, planId: finalPlanId, trialEndDate });
+              return;
           }
       }
-
-      if (!hasAccess && integrations?.plan_expires_at) {
+  
+      if (integrations?.plan_expires_at) {
           const planEndDate = new Date(integrations.plan_expires_at);
           if (planEndDate > now) {
-              hasAccess = true;
-              isTrial = false;
-              planId = integrations.plan || 'BASIC';
+              finalPlanId = integrations.plan || 'BASIC';
+              setAccessStatus({ hasAccess: true, isTrial: false, planId: finalPlanId, trialEndDate: null });
+              return;
           }
       }
-
-      if (!hasAccess && !isTrial && (new Date(barbershopData.trial_ends_at || 0) < now)) {
-        hasAccess = false;
-      } else if (!hasAccess && !isTrial) {
-        planId = 'BASIC';
-        hasAccess = true; // Basic plan has access
-      }
-
-      setAccessStatus({ hasAccess, isTrial, planId, trialEndDate });
-
+      
+      setAccessStatus({ hasAccess: true, isTrial: false, planId: 'INACTIVE', trialEndDate: null });
+  
   }, [user, barbershopData]);
 
   const planContextValue = useMemo(() => {
     const integrations = barbershopData?.integrations as IntegrationSettings;
-    const planDetails = PLANS.find(p => p.id === accessStatus.planId) || PLANS.find(p => p.id === 'BASIC');
+    const planDetails = PLANS.find(p => p.id === accessStatus.planId) || PLANS.find(p => p.id === 'INACTIVE');
 
     if (!planDetails) {
         return { 
@@ -273,6 +255,7 @@ const App: React.FC = () => {
                 googleCalendar: false,
                 onlinePayments: false,
                 packagesAndSubscriptions: false,
+                clientManagement: false,
             } 
         };
     }
@@ -291,13 +274,7 @@ const App: React.FC = () => {
   
   const signupAndRefetch = async (name: string, email: string, password: string, accountType: 'client' | 'barbershop', phone: string, birthDate?: string, barbershopName?: string) => {
     await api.signUpUser(name, email, password, accountType, phone, birthDate, barbershopName);
-    const { data: { session } } = await api.getSession();
-    if (session?.user?.id) {
-        // After signup, the session change will trigger the useEffect to fetch all data
-        // But we can refetch public data here to ensure it's up-to-date immediately
-        setBarbershops(await api.getBarbershops());
-        setUsers(await api.getAllUsers());
-    }
+    // O listener onAuthStateChange irá lidar com o recarregamento dos dados
   };
   
   const patchUser = (updatedUser: User) => {
@@ -488,16 +465,12 @@ const App: React.FC = () => {
   )};
 
   const renderBarbershopApp = () => {
-    if (!accessStatus.hasAccess) {
-        return <TrialExpiredScreen />;
-    }
-      
     let navItems = [
       { id: 'dashboard', label: 'Painel', icon: HomeIcon, enabled: true },
       { id: 'appointments', label: 'Agenda', icon: CalendarIcon, enabled: true },
       { id: 'waiting_list', label: 'Espera', icon: ClipboardListIcon, enabled: true },
       { id: 'professionals', label: 'Equipe', icon: UsersIcon, enabled: true },
-      { id: 'clients', label: 'Clientes', icon: UserIcon, enabled: true },
+      { id: 'clients', label: 'Clientes', icon: UserIcon, enabled: planContextValue.features.clientManagement },
       { id: 'communications', label: 'Marketing', icon: MegaphoneIcon, enabled: planContextValue.features.marketing },
       { id: 'analytics', label: 'Análises', icon: ChartBarIcon, enabled: planContextValue.features.analytics },
       { id: 'settings', label: 'Ajustes', icon: CogIcon, enabled: true },
@@ -562,6 +535,10 @@ const App: React.FC = () => {
              <TrialBanner trialEndDate={accessStatus.trialEndDate} />
           )}
 
+          {accessStatus.planId === 'INACTIVE' && !accessStatus.isTrial && (
+            <InactivePlanBanner />
+          )}
+
           <main className="flex-grow overflow-y-auto">
             {activeBarbershopScreen === 'dashboard' && <BarbershopDashboardScreen />}
             {activeBarbershopScreen === 'appointments' && <BarbershopAppointmentsScreen />}
@@ -600,7 +577,8 @@ const App: React.FC = () => {
                 // If loading is finished and the shop is not found, then it truly doesn't exist.
                 return (
                     <div className="flex flex-col items-center justify-center h-screen p-4 text-center">
-                        <p className="text-red-500 text-lg mb-4">Barbearia não encontrada.</p>
+                        <h2 className="text-2xl font-bold text-red-500 mb-2">Barbearia não encontrada.</h2>
+                        <p className="text-gray-400 mb-6">O link que você acessou pode estar quebrado ou a barbearia pode ter sido removida.</p>
                         <a href="#" onClick={() => window.location.hash = ''} className="text-brand-primary hover:underline">Voltar para o início</a>
                     </div>
                 );

@@ -14,6 +14,7 @@ export const PLANS = [
       googleCalendar: true,
       onlinePayments: false, // Habilitado dinamicamente para plano anual no App.tsx
       packagesAndSubscriptions: true,
+      clientManagement: true,
     }
   },
   {
@@ -29,6 +30,7 @@ export const PLANS = [
       googleCalendar: true,
       onlinePayments: true,
       packagesAndSubscriptions: true,
+      clientManagement: true,
     }
   },
   {
@@ -44,6 +46,23 @@ export const PLANS = [
       googleCalendar: true,
       onlinePayments: true,
       packagesAndSubscriptions: true,
+      clientManagement: true,
+    }
+  },
+  {
+    id: 'INACTIVE',
+    name: 'Inativo',
+    description: 'Funcionalidades limitadas para contas com assinatura expirada.',
+    priceMonthly: 0,
+    priceAnnual: 0,
+    maxBarbers: 1,
+    features: {
+      analytics: false,
+      marketing: false,
+      googleCalendar: false,
+      onlinePayments: false,
+      packagesAndSubscriptions: false,
+      clientManagement: false,
     }
   },
 ];
