@@ -585,25 +585,26 @@ const App: React.FC = () => {
         const barbershopId = urlParams.get('barbershopId');
 
         if (barbershopId) {
-            const shop = barbershops.find(b => b.id === barbershopId);
-            
-            // If the shop is found, render it immediately.
-            if (shop) {
-                return <BarbershopPublicPage barbershop={shop} />;
-            } 
-            
-            // If the shop is not found, check if we are still loading data.
+            // First, check if we are still in a loading state.
             if (loading) {
                 return <div className="flex items-center justify-center h-screen"><p>Carregando barbearia...</p></div>;
             }
+
+            // If not loading, we can safely check for the barbershop.
+            const shop = barbershops.find(b => b.id === barbershopId);
             
-            // If we are done loading and the shop was not found, then show the error.
-            return (
-                <div className="flex flex-col items-center justify-center h-screen p-4 text-center">
-                    <p className="text-red-500 text-lg mb-4">Barbearia não encontrada.</p>
-                    <a href="#" onClick={() => window.location.hash = ''} className="text-brand-primary hover:underline">Voltar para o início</a>
-                </div>
-            );
+            if (shop) {
+                // If the shop is found, render its public page.
+                return <BarbershopPublicPage barbershop={shop} />;
+            } else {
+                // If loading is finished and the shop is not found, then it truly doesn't exist.
+                return (
+                    <div className="flex flex-col items-center justify-center h-screen p-4 text-center">
+                        <p className="text-red-500 text-lg mb-4">Barbearia não encontrada.</p>
+                        <a href="#" onClick={() => window.location.hash = ''} className="text-brand-primary hover:underline">Voltar para o início</a>
+                    </div>
+                );
+            }
         }
     }
 
