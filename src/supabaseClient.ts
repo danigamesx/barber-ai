@@ -1,16 +1,26 @@
-// FIX: Replaced `import.meta.env` with `process.env` to resolve TypeScript errors
-// related to missing Vite client types. This aligns with the pattern used in
-// other parts of the application for accessing environment variables.
+// FIX: Removed vite/client reference and added manual type definitions for import.meta.env
+// to resolve TypeScript errors when the vite/client types are not automatically discovered.
+interface ImportMetaEnv {
+  readonly VITE_SUPABASE_URL: string;
+  readonly VITE_SUPABASE_ANON_KEY: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Database } from './types/database';
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
+// Acessa as variáveis de ambiente da maneira correta para projetos Vite.
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 let supabase: SupabaseClient<Database> | null = null;
 let supabaseInitializationError: string | null = null;
 
 if (!supabaseUrl || !supabaseAnonKey) {
+  // Não lança um erro, mas define a mensagem de erro para ser exibida pela UI.
   supabaseInitializationError = "As variáveis de ambiente do Supabase (VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY) não estão configuradas. Para que o aplicativo funcione, essas chaves precisam ser definidas no ambiente de execução. Elas não devem ser inseridas diretamente no código.";
 } else {
   try {

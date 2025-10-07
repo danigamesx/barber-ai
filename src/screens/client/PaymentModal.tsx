@@ -13,6 +13,15 @@ declare global {
     }
 }
 
+// FIX: Added manual type declarations for import.meta.env to use Vite environment variables correctly.
+interface ImportMetaEnv {
+    readonly VITE_MERCADOPAGO_PUBLIC_KEY: string;
+}
+
+interface ImportMeta {
+    readonly env: ImportMetaEnv;
+}
+
 type NewAppointmentData = Omit<Appointment, 'id' | 'start_time' | 'end_time' | 'created_at'> & { start_time: Date, end_time: Date };
 
 interface PaymentModalProps {
@@ -28,7 +37,8 @@ const MercadoPagoPayment: React.FC<{
 }> = ({ preferenceId, appointmentData }) => {
 
     useEffect(() => {
-        const mp = new window.MercadoPago(process.env.VITE_MERCADOPAGO_PUBLIC_KEY, {
+        // FIX: Changed process.env to import.meta.env for Vite client-side environment variables.
+        const mp = new window.MercadoPago(import.meta.env.VITE_MERCADOPAGO_PUBLIC_KEY, {
             locale: 'pt-BR'
         });
         const bricksBuilder = mp.bricks();
