@@ -123,13 +123,13 @@ const AnalyticsScreen: React.FC = () => {
         const completed = filteredAppointments.filter(a => a.status === 'completed');
         const cancelledWithFee = filteredAppointments.filter(a => a.status === 'cancelled' && a.cancellation_fee && a.cancellation_fee > 0);
         
-        const revenueFromServices = completed.reduce((sum, app) => sum + (app.price || 0), 0);
-        const revenueFromFees = cancelledWithFee.reduce((sum, app) => sum + (app.cancellation_fee || 0), 0);
-        const totalCommissions = completed.reduce((sum, app) => sum + (app.commission_amount || 0), 0);
+        // FIX: Explicitly set the generic type for reduce to number to ensure correct type inference.
+        const revenueFromServices = completed.reduce<number>((sum, app) => sum + (app.price || 0), 0);
+        const revenueFromFees = cancelledWithFee.reduce<number>((sum, app) => sum + (app.cancellation_fee || 0), 0);
+        const totalCommissions = completed.reduce<number>((sum, app) => sum + (app.commission_amount || 0), 0);
         
         const totalRevenue = revenueFromServices + revenueFromFees;
-        // FIX: Explicitly cast variables to Number to prevent potential type errors in arithmetic operations.
-        const netRevenue = (Number(revenueFromServices) - Number(totalCommissions)) + Number(revenueFromFees);
+        const netRevenue = (revenueFromServices - totalCommissions) + revenueFromFees;
         
         const serviceCounts = completed.reduce((counts, app) => {
             if (app.service_name) {

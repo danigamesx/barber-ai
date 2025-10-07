@@ -45,7 +45,7 @@ const PaymentBrickComponent: React.FC<{
                 callbacks: {
                     onReady: () => { /* Brick pronto */ },
                     onError: (error: any) => { console.error("Erro no Brick de Pagamento:", error); },
-                    // Removido o callback onSubmit para deixar o Brick gerenciar o fluxo automaticamente
+                    // O callback onSubmit é omitido para que o Brick use os `back_urls` da preferência
                 },
             };
             

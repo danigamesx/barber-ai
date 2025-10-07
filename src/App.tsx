@@ -145,15 +145,15 @@ const App: React.FC = () => {
     const hash = window.location.hash;
     if (hash.includes('payment_status=success')) {
         setShowPaymentSuccess(true);
-        // Clean up the URL hash to prevent the modal from reappearing on refresh
-        window.history.replaceState(null, '', hash.split('?')[0]);
+        // Limpa o hash da URL para evitar que o modal reapareça ao atualizar
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
     }
 
     const loadInitialData = async () => {
         setLoading(true);
         setError(null);
         try {
-            // Always fetch public data
+            // Sempre busca dados públicos
             const [barbershopsData, usersData, reviewsData] = await Promise.all([
                 api.getBarbershops(),
                 api.getAllUsers(),
@@ -163,7 +163,7 @@ const App: React.FC = () => {
             setUsers(usersData);
             setReviews(reviewsData);
 
-            // Check session and fetch private data if available
+            // Verifica a sessão e busca dados privados se houver
             const { data: { session: currentSession } } = await api.getSession();
             setSession(currentSession);
 
@@ -175,32 +175,32 @@ const App: React.FC = () => {
                 setAppointments(appointmentsData);
                 setUser(userProfile);
             } else {
-                // Ensure private data is cleared if no session exists
+                // Garante que os dados privados sejam limpos se não houver sessão
                 setUser(null);
                 setAppointments([]);
                 setGoogleToken(null);
             }
         } catch (err: any) {
-            console.error("Failed to load initial data:", err);
-            setError("Could not load data. Please check your connection.");
+            console.error("Falha ao carregar dados iniciais:", err);
+            setError("Não foi possível carregar os dados. Verifique sua conexão.");
         } finally {
             setLoading(false);
         }
     };
     
-    loadInitialData(); // Initial load on component mount
+    loadInitialData(); // Carga inicial na montagem do componente
 
     const { data: authListener } = api.onAuthStateChange((_event, newSession) => {
         const userJustLoggedIn = newSession && !session;
         const userJustLoggedOut = !newSession && session;
         
-        setSession(newSession); // Sync session state immediately
+        setSession(newSession); // Sincroniza o estado da sessão imediatamente
 
         if (userJustLoggedIn) {
-            // If a user just logged in, reload ALL data to ensure a clean state
+            // Se um usuário acabou de fazer login, recarregue TODOS os dados para garantir um estado limpo
             loadInitialData();
         } else if (userJustLoggedOut) {
-            // If a user just logged out, clear ALL states to prevent stale data
+            // Se um usuário acabou de fazer logout, limpe TODOS os estados para evitar dados obsoletos
             setUser(null);
             setAppointments([]);
             setUsers([]);
@@ -297,7 +297,7 @@ const App: React.FC = () => {
   
   const signupAndRefetch = async (name: string, email: string, password: string, accountType: 'client' | 'barbershop', phone: string, birthDate?: string, barbershopName?: string) => {
     await api.signUpUser(name, email, password, accountType, phone, birthDate, barbershopName);
-    // The onAuthStateChange listener will handle reloading data
+    // O listener onAuthStateChange irá lidar com o recarregamento dos dados
   };
   
   const patchUser = (updatedUser: User) => {
@@ -374,15 +374,15 @@ const App: React.FC = () => {
                 patchUser(clientProfile);
             }
         } catch (error) {
-             console.error(`Failed to fetch or update client profile ${appointment.client_id} after status update.`, error);
+             console.error(`Falha ao buscar ou atualizar o perfil do cliente ${appointment.client_id} após a atualização de status.`, error);
         }
     },
     updateBarbershopData: async (id: string, fields: Partial<Omit<Barbershop, 'id'>>) => {
       try {
         await api.updateBarbershop(id, fields);
       } catch (error) {
-        console.error("Failed to update barbershop:", error);
-        alert("An error occurred while saving changes. The interface will be updated to reflect the actual server data.");
+        console.error("Falha ao atualizar barbearia:", error);
+        alert("Ocorreu um erro ao salvar as alterações. A interface será atualizada para refletir os dados reais do servidor.");
       } finally {
         setBarbershops(await api.getBarbershops());
       }
@@ -585,19 +585,19 @@ const App: React.FC = () => {
         const barbershopId = urlParams.get('barbershopId');
 
         if (barbershopId) {
-            // First, check if we are still in a loading state.
+            // Primeiro, verifica se ainda está carregando
             if (loading) {
                 return <div className="flex items-center justify-center h-screen"><p>Carregando barbearia...</p></div>;
             }
 
-            // If not loading, we can safely check for the barbershop.
+            // Se não estiver carregando, podemos verificar a barbearia com segurança
             const shop = barbershops.find(b => b.id === barbershopId);
             
             if (shop) {
-                // If the shop is found, render its public page.
+                // Se a barbearia for encontrada, renderiza sua página pública
                 return <BarbershopPublicPage barbershop={shop} />;
             } else {
-                // If loading is finished and the shop is not found, then it truly doesn't exist.
+                // Se o carregamento terminou e a barbearia não foi encontrada, ela realmente não existe
                 return (
                     <div className="flex flex-col items-center justify-center h-screen p-4 text-center">
                         <h2 className="text-2xl font-bold text-red-500 mb-2">Barbearia não encontrada.</h2>
