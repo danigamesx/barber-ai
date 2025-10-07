@@ -1,10 +1,10 @@
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import mercadopago from 'mercadopago';
+import { MercadoPagoConfig, Payment } from 'mercadopago';
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '../src/types/database';
 import { IntegrationSettings } from '../src/types';
 
-// IMPORTANT: Use environment variables for Supabase credentials on the server-side.
 const supabaseAdmin = createClient<Database>(process.env.VITE_SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -15,21 +15,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { body, query } = req;
     
-    // Respond to Mercado Pago immediately to prevent timeouts and retries.
     res.status(200).send('OK');
 
-    // Process the notification asynchronously after responding.
     if (body.type === 'payment' && body.data?.id) {
         const paymentId = body.data.id as string;
         const barbershopId = query.barbershop_id as string;
 
         if (!barbershopId) {
             console.error('Webhook Error: Missing barbershop_id in notification URL query.');
-            return; // Exit after sending OK
+            return;
         }
 
         try {
-            // 1. Fetch the barbershop's access token using the admin client
             const { data: barbershop, error: fetchError } = await supabaseAdmin
                 .from('barbershops')
                 .select('integrations')
@@ -49,22 +46,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 return;
             }
 
-            // 2. Configure Mercado Pago instance with the correct token
-            mercadopago.configure({ access_token: accessToken });
+            const client = new MercadoPagoConfig({ accessToken });
             
-            // 3. Get payment details from Mercado Pago
-            const payment = await mercadopago.payment.get(paymentId);
+            const paymentClient = new Payment(client);
+            const payment = await paymentClient.get({ id: paymentId });
             
-            if (payment?.body) {
-                const { status, external_reference } = payment.body;
+            if (payment) {
+                const { status, external_reference } = payment;
                 
                 console.log(`Webhook processing: PaymentID=${paymentId}, Status=${status}, Ref=${external_reference}`);
 
-                // 4. If payment is approved, update the appointment in our DB
                 if (status === 'approved' && external_reference) {
                     const appointmentId = external_reference;
 
-                    // 5. Update appointment status to 'paid'
                     const { error: updateError } = await supabaseAdmin
                         .from('appointments')
                         .update({ status: 'paid' })
