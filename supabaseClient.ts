@@ -1,5 +1,5 @@
-// FIX: Removed vite/client reference and added manual type definitions for import.meta.env
-// to resolve TypeScript errors when the vite/client types are not automatically discovered.
+// FIX: Replaced the failing `vite/client` triple-slash directive with manual type definitions for `import.meta.env`.
+// This resolves TypeScript errors when the vite/client types are not automatically discovered.
 interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL: string;
   readonly VITE_SUPABASE_ANON_KEY: string;

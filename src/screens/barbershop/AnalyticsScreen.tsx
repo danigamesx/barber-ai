@@ -128,7 +128,8 @@ const AnalyticsScreen: React.FC = () => {
         const totalCommissions = completed.reduce((sum, app) => sum + (app.commission_amount || 0), 0);
         
         const totalRevenue = revenueFromServices + revenueFromFees;
-        const netRevenue = (revenueFromServices - totalCommissions) + revenueFromFees;
+        // FIX: Explicitly cast variables to Number to prevent potential type errors in arithmetic operations.
+        const netRevenue = (Number(revenueFromServices) - Number(totalCommissions)) + Number(revenueFromFees);
         
         const serviceCounts = completed.reduce((counts, app) => {
             if (app.service_name) {

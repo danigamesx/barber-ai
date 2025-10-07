@@ -10,7 +10,7 @@ import BarbershopSettingsScreen from './screens/barbershop/BarbershopSettingsScr
 import AnalyticsScreen from './screens/barbershop/AnalyticsScreen';
 import ProfessionalsScreen from './screens/barbershop/ProfessionalsScreen';
 import ClientsScreen from './screens/barbershop/ClientsScreen';
-import { HomeIcon, CalendarIcon, BellIcon, UserIcon, ClipboardListIcon, MegaphoneIcon, ChartBarIcon, CogIcon, UsersIcon, MenuIcon, ShareIcon } from './components/icons/OutlineIcons';
+import { HomeIcon, CalendarIcon, BellIcon, UserIcon, ClipboardListIcon, MegaphoneIcon, ChartBarIcon, CogIcon, UsersIcon, MenuIcon, ShareIcon, CheckCircleIcon } from './components/icons/OutlineIcons';
 import BarbershopSetupScreen from './screens/barbershop/BarbershopSetupScreen';
 import ClientNotificationsScreen from './screens/client/ClientNotificationsScreen';
 import CommunicationsScreen from './screens/barbershop/CommunicationsScreen';
@@ -126,6 +126,7 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showLanding, setShowLanding] = useState(true);
   const [loginAccountType, setLoginAccountType] = useState<'client' | 'barbershop' | null>(null);
+  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
 
   const [activeClientScreen, setActiveClientScreen] = useState('home');
   const [activeBarbershopScreen, setActiveBarbershopScreen] = useState('dashboard');
@@ -141,11 +142,18 @@ const App: React.FC = () => {
   }>({ hasAccess: true, isTrial: false, planId: 'BASIC', trialEndDate: null });
 
   useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.includes('payment_status=success')) {
+        setShowPaymentSuccess(true);
+        // Clean up the URL hash to prevent the modal from reappearing on refresh
+        window.history.replaceState(null, '', hash.split('?')[0]);
+    }
+
     const loadInitialData = async () => {
         setLoading(true);
         setError(null);
         try {
-            // Sempre busca dados públicos
+            // Always fetch public data
             const [barbershopsData, usersData, reviewsData] = await Promise.all([
                 api.getBarbershops(),
                 api.getAllUsers(),
@@ -155,7 +163,7 @@ const App: React.FC = () => {
             setUsers(usersData);
             setReviews(reviewsData);
 
-            // Verifica a sessão e busca dados privados se houver
+            // Check session and fetch private data if available
             const { data: { session: currentSession } } = await api.getSession();
             setSession(currentSession);
 
@@ -167,32 +175,32 @@ const App: React.FC = () => {
                 setAppointments(appointmentsData);
                 setUser(userProfile);
             } else {
-                // Garante que os dados privados sejam limpos se não houver sessão
+                // Ensure private data is cleared if no session exists
                 setUser(null);
                 setAppointments([]);
                 setGoogleToken(null);
             }
         } catch (err: any) {
-            console.error("Falha ao carregar dados iniciais:", err);
-            setError("Não foi possível carregar os dados. Verifique sua conexão.");
+            console.error("Failed to load initial data:", err);
+            setError("Could not load data. Please check your connection.");
         } finally {
             setLoading(false);
         }
     };
     
-    loadInitialData(); // Carga inicial na montagem do componente
+    loadInitialData(); // Initial load on component mount
 
     const { data: authListener } = api.onAuthStateChange((_event, newSession) => {
         const userJustLoggedIn = newSession && !session;
         const userJustLoggedOut = !newSession && session;
         
-        setSession(newSession); // Sincroniza o estado da sessão imediatamente
+        setSession(newSession); // Sync session state immediately
 
         if (userJustLoggedIn) {
-            // Se um usuário acabou de fazer login, recarregue TODOS os dados para garantir um estado limpo
+            // If a user just logged in, reload ALL data to ensure a clean state
             loadInitialData();
         } else if (userJustLoggedOut) {
-            // Se um usuário acabou de fazer logout, limpe TODOS os estados para evitar dados obsoletos
+            // If a user just logged out, clear ALL states to prevent stale data
             setUser(null);
             setAppointments([]);
             setUsers([]);
@@ -205,7 +213,7 @@ const App: React.FC = () => {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, []); // O array vazio garante que este efeito seja executado apenas uma vez
+  }, []); 
 
     const barbershopData = useMemo(() => {
         if (user?.user_type === 'BARBERSHOP') {
@@ -289,7 +297,7 @@ const App: React.FC = () => {
   
   const signupAndRefetch = async (name: string, email: string, password: string, accountType: 'client' | 'barbershop', phone: string, birthDate?: string, barbershopName?: string) => {
     await api.signUpUser(name, email, password, accountType, phone, birthDate, barbershopName);
-    // O listener onAuthStateChange irá lidar com o recarregamento dos dados
+    // The onAuthStateChange listener will handle reloading data
   };
   
   const patchUser = (updatedUser: User) => {
@@ -366,15 +374,15 @@ const App: React.FC = () => {
                 patchUser(clientProfile);
             }
         } catch (error) {
-             console.error(`Falha ao buscar ou atualizar o perfil do cliente ${appointment.client_id} após a atualização de status.`, error);
+             console.error(`Failed to fetch or update client profile ${appointment.client_id} after status update.`, error);
         }
     },
     updateBarbershopData: async (id: string, fields: Partial<Omit<Barbershop, 'id'>>) => {
       try {
         await api.updateBarbershop(id, fields);
       } catch (error) {
-        console.error("Falha ao atualizar barbearia:", error);
-        alert("Ocorreu um erro ao salvar as alterações. A interface será atualizada para refletir os dados reais do servidor.");
+        console.error("Failed to update barbershop:", error);
+        alert("An error occurred while saving changes. The interface will be updated to reflect the actual server data.");
       } finally {
         setBarbershops(await api.getBarbershops());
       }
@@ -645,6 +653,21 @@ const App: React.FC = () => {
       <PlanContext.Provider value={planContextValue}>
         <div className="antialiased font-sans bg-brand-dark min-h-screen">
           {renderContent()}
+          {showPaymentSuccess && (
+                <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[100]">
+                    <div className="bg-brand-dark w-full max-w-md rounded-lg shadow-xl p-8 text-center">
+                        <CheckCircleIcon className="w-20 h-20 text-green-500 mx-auto mb-4" />
+                        <h2 className="text-2xl font-bold mb-2">Pagamento Aprovado!</h2>
+                        <p className="text-gray-400 mb-6">Seu agendamento está confirmado. O status será atualizado em breve.</p>
+                        <Button onClick={() => {
+                            setShowPaymentSuccess(false);
+                            setActiveClientScreen('appointments');
+                        }}>
+                            Ver Meus Agendamentos
+                        </Button>
+                    </div>
+                </div>
+            )}
         </div>
       </PlanContext.Provider>
     </AppContext.Provider>

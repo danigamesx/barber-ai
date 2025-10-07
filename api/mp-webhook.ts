@@ -2,8 +2,10 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mercadopago from 'mercadopago';
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '../src/types/database';
+import { IntegrationSettings } from '../src/types';
 
-const supabase = createClient<Database>(process.env.VITE_SUPABASE_URL!, process.env.VITE_SUPABASE_ANON_KEY!);
+// IMPORTANT: Use environment variables for Supabase credentials on the server-side.
+const supabaseAdmin = createClient<Database>(process.env.VITE_SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'POST') {
@@ -11,48 +13,72 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(405).end('Method Not Allowed');
     }
 
-    mercadopago.configure({
-        access_token: process.env.MERCADOPAGO_ACCESS_TOKEN!,
-    });
+    const { body, query } = req;
+    
+    // Respond to Mercado Pago immediately to prevent timeouts and retries.
+    res.status(200).send('OK');
 
-    const { body } = req;
+    // Process the notification asynchronously after responding.
+    if (body.type === 'payment' && body.data?.id) {
+        const paymentId = body.data.id as string;
+        const barbershopId = query.barbershop_id as string;
 
-    if (body && body.type === 'payment' && body.data && body.data.id) {
+        if (!barbershopId) {
+            console.error('Webhook Error: Missing barbershop_id in notification URL query.');
+            return; // Exit after sending OK
+        }
+
         try {
-            const paymentId = body.data.id as string;
+            // 1. Fetch the barbershop's access token using the admin client
+            const { data: barbershop, error: fetchError } = await supabaseAdmin
+                .from('barbershops')
+                .select('integrations')
+                .eq('id', barbershopId)
+                .single();
+
+            if (fetchError || !barbershop) {
+                console.error(`Webhook Error: Cannot find barbershop with ID ${barbershopId}.`, fetchError);
+                return;
+            }
+
+            const integrations = barbershop.integrations as IntegrationSettings;
+            const accessToken = integrations?.mercadopagoAccessToken;
+
+            if (!accessToken) {
+                console.error(`Webhook Error: No Mercado Pago access token for barbershop ${barbershopId}.`);
+                return;
+            }
+
+            // 2. Configure Mercado Pago instance with the correct token
+            mercadopago.configure({ access_token: accessToken });
             
-            // Obter os detalhes do pagamento
+            // 3. Get payment details from Mercado Pago
             const payment = await mercadopago.payment.get(paymentId);
             
-            if (payment && payment.body) {
+            if (payment?.body) {
                 const { status, external_reference } = payment.body;
                 
-                // Se o pagamento for aprovado e tiver nossa referência externa (ID do agendamento)
+                console.log(`Webhook processing: PaymentID=${paymentId}, Status=${status}, Ref=${external_reference}`);
+
+                // 4. If payment is approved, update the appointment in our DB
                 if (status === 'approved' && external_reference) {
                     const appointmentId = external_reference;
 
-                    // Atualiza o status do agendamento para 'pago' no banco de dados
-                    const { error } = await supabase
+                    // 5. Update appointment status to 'paid'
+                    const { error: updateError } = await supabaseAdmin
                         .from('appointments')
                         .update({ status: 'paid' })
                         .eq('id', appointmentId);
                     
-                    if (error) {
-                        console.error(`Webhook: Falha ao atualizar o agendamento ${appointmentId} para 'pago'. Erro:`, error);
+                    if (updateError) {
+                        console.error(`Webhook DB Error: Failed to update appointment ${appointmentId} to 'paid'.`, updateError);
                     } else {
-                        console.log(`Webhook: Agendamento ${appointmentId} atualizado para 'pago' com sucesso.`);
+                        console.log(`Webhook Success: Appointment ${appointmentId} updated to 'paid'.`);
                     }
                 }
             }
-            // Responde ao Mercado Pago que a notificação foi recebida com sucesso
-            return res.status(200).send('OK');
-
         } catch (error: any) {
-            console.error('Erro no webhook do Mercado Pago:', error);
-            return res.status(500).send(error.message || 'Erro interno do servidor.');
+            console.error('Webhook Internal Error:', error.message || error);
         }
     }
-    
-    // Se não for uma notificação de pagamento, apenas confirme o recebimento.
-    return res.status(200).send('OK');
 }
