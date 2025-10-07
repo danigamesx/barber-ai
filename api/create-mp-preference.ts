@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mercadopago from 'mercadopago';
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '../src/types/database';
+import { IntegrationSettings } from '../src/types';
 
 // Esta é uma função serverless, então inicializamos um cliente Supabase aqui
 const supabase = createClient<Database>(process.env.VITE_SUPABASE_URL!, process.env.VITE_SUPABASE_ANON_KEY!);
@@ -14,23 +15,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { appointmentData } = req.body;
     
-    if (!appointmentData) {
-        return res.status(400).send({ error: 'Dados do agendamento são obrigatórios.' });
+    if (!appointmentData || !appointmentData.barbershop_id) {
+        return res.status(400).send({ error: 'Dados do agendamento, incluindo ID da barbearia, são obrigatórios.' });
     }
 
     try {
-        // 1. Configurar o Mercado Pago com o Access Token
+        // 1. Buscar as credenciais do Mercado Pago da barbearia específica
+        const { data: barbershopData, error: fetchError } = await supabase
+            .from('barbershops')
+            .select('integrations')
+            .eq('id', appointmentData.barbershop_id)
+            .single();
+
+        if (fetchError) throw fetchError;
+
+        const integrations = barbershopData.integrations as IntegrationSettings;
+        const accessToken = integrations?.mercadopagoAccessToken;
+
+        if (!accessToken) {
+            return res.status(400).json({ error: 'Esta barbearia não está configurada para receber pagamentos online.' });
+        }
+        
+        // 2. Configurar o Mercado Pago com o Access Token específico da barbearia
         mercadopago.configure({
-            access_token: process.env.MERCADOPAGO_ACCESS_TOKEN!,
+            access_token: accessToken,
         });
 
-        // 2. Antes de criar a preferência, vamos inserir o agendamento no banco com status 'pending'
-        // e um ID de preferência temporário. O webhook irá atualizá-lo para 'paid'.
+        // 3. Inserir o agendamento no banco com status 'pending'
         const { data: newAppointment, error: insertError } = await supabase
             .from('appointments')
             .insert({
                 ...appointmentData,
-                status: 'pending', // Inicia como pendente
+                status: 'pending',
             })
             .select()
             .single();
@@ -40,7 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             throw new Error(`Falha ao criar o agendamento inicial: ${insertError.message}`);
         }
         
-        // 3. Montar o objeto da preferência de pagamento
+        // 4. Montar o objeto da preferência de pagamento
         const preference = {
             items: [
                 {
@@ -55,28 +71,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 name: appointmentData.client_name,
             },
             back_urls: {
-                success: `${req.headers.origin}`, // Redireciona para a home
+                success: `${req.headers.origin}`, 
                 failure: `${req.headers.origin}`,
                 pending: `${req.headers.origin}`,
             },
             auto_return: 'approved',
-            // URL para onde o Mercado Pago enviará a notificação de pagamento
             notification_url: `https://${req.headers.host}/api/mp-webhook`,
-            // Referência externa para ligar o pagamento ao agendamento no nosso banco
             external_reference: newAppointment.id,
         };
 
-        // 4. Criar a preferência no Mercado Pago
+        // 5. Criar a preferência no Mercado Pago
         const mpResponse = await mercadopago.preferences.create(preference);
         const preferenceId = mpResponse.body.id;
         
-        // 5. Atualizar o agendamento no banco com o ID da preferência real
+        // 6. Atualizar o agendamento no banco com o ID da preferência real
         await supabase
             .from('appointments')
             .update({ mp_preference_id: preferenceId })
             .eq('id', newAppointment.id);
 
-        // 6. Enviar o ID da preferência de volta para o frontend
+        // 7. Enviar o ID da preferência de volta para o frontend
         res.status(200).json({ preferenceId });
 
     } catch (error: any) {

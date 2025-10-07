@@ -13,15 +13,6 @@ declare global {
     }
 }
 
-// FIX: Added manual type declarations for import.meta.env to use Vite environment variables correctly.
-interface ImportMetaEnv {
-    readonly VITE_MERCADOPAGO_PUBLIC_KEY: string;
-}
-
-interface ImportMeta {
-    readonly env: ImportMetaEnv;
-}
-
 type NewAppointmentData = Omit<Appointment, 'id' | 'start_time' | 'end_time' | 'created_at'> & { start_time: Date, end_time: Date };
 
 interface PaymentModalProps {
@@ -35,10 +26,18 @@ const MercadoPagoPayment: React.FC<{
     preferenceId: string;
     appointmentData: NewAppointmentData;
 }> = ({ preferenceId, appointmentData }) => {
+    const { barbershops } = useContext(AppContext);
 
     useEffect(() => {
-        // FIX: Changed process.env to import.meta.env for Vite client-side environment variables.
-        const mp = new window.MercadoPago(import.meta.env.VITE_MERCADOPAGO_PUBLIC_KEY, {
+        const barbershop = barbershops.find(b => b.id === appointmentData.barbershop_id);
+        const integrations = barbershop?.integrations as IntegrationSettings | undefined;
+
+        if (!integrations?.mercadopagoPublicKey) {
+            console.error("Public Key do Mercado Pago não encontrada para esta barbearia.");
+            return;
+        }
+
+        const mp = new window.MercadoPago(integrations.mercadopagoPublicKey, {
             locale: 'pt-BR'
         });
         const bricksBuilder = mp.bricks();
@@ -87,7 +86,7 @@ const MercadoPagoPayment: React.FC<{
         };
         
         renderPaymentBrick();
-    }, [preferenceId, appointmentData]);
+    }, [preferenceId, appointmentData, barbershops]);
 
     return <div id="payment-brick-container"></div>;
 };

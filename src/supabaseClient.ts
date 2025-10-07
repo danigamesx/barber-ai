@@ -1,13 +1,7 @@
-// FIX: Removed vite/client reference and added manual type definitions for import.meta.env
-// to resolve TypeScript errors when the vite/client types are not automatically discovered.
-interface ImportMetaEnv {
-  readonly VITE_SUPABASE_URL: string;
-  readonly VITE_SUPABASE_ANON_KEY: string;
-}
-
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
-}
+// FIX: Replaced manual type definitions for `import.meta.env` with a triple-slash directive.
+// This references Vite's client types, which is the standard and more robust way to ensure
+// `import.meta.env` and its properties are correctly typed across the project.
+/// <reference types="vite/client" />
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Database } from './types/database';

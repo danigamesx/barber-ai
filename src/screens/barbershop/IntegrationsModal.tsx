@@ -36,6 +36,12 @@ const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ currentIntegratio
   
   const [isGisLoaded, setIsGisLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  const [isEditingMercadoPago, setIsEditingMercadoPago] = useState(false);
+  const [mpPublicKey, setMpPublicKey] = useState(integrations.mercadopagoPublicKey || '');
+  const [mpAccessToken, setMpAccessToken] = useState(integrations.mercadopagoAccessToken || '');
+
+  const isMercadoPagoConnected = integrations.mercadopagoPublicKey && integrations.mercadopagoAccessToken;
 
   useEffect(() => {
     const script = document.createElement('script');
@@ -97,6 +103,18 @@ const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ currentIntegratio
   const handleSubmit = () => {
     onSave(integrations as Json);
   };
+  
+  const handleSaveMercadoPago = () => {
+    setIntegrations(prev => ({ ...prev, mercadopagoPublicKey: mpPublicKey, mercadopagoAccessToken: mpAccessToken }));
+    setIsEditingMercadoPago(false);
+  };
+
+  const handleDisconnectMercadoPago = () => {
+      setIntegrations(prev => ({ ...prev, mercadopagoPublicKey: undefined, mercadopagoAccessToken: undefined }));
+      setMpPublicKey('');
+      setMpAccessToken('');
+  };
+
 
   const isGoogleConnected = googleToken !== null && integrations.googleCalendar;
 
@@ -110,16 +128,48 @@ const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ currentIntegratio
         <h2 className="text-xl font-bold mb-6 text-center">Gerenciar Integrações</h2>
         
         <div className="space-y-4">
-            <div className={`bg-brand-secondary p-4 rounded-lg space-y-3 ${!features.onlinePayments ? 'opacity-50' : ''}`}>
-                 <div className="flex justify-between items-center">
+            <div className={`bg-brand-secondary p-4 rounded-lg space-y-3`}>
+                <div className="flex justify-between items-center">
                     <label className="font-semibold">Pagamentos Online (Mercado Pago)</label>
-                    <span className={'bg-green-500/20 text-green-400 px-2 py-1 text-xs rounded-full'}>
-                      Ativado
+                    <span className={`px-2 py-1 text-xs rounded-full ${isMercadoPagoConnected ? 'bg-green-500/20 text-green-400' : 'bg-gray-600'}`}>
+                        {isMercadoPagoConnected ? 'Conectado' : 'Desconectado'}
                     </span>
                 </div>
-                 <p className="text-xs text-gray-400">Os pagamentos online são processados pela plataforma via Mercado Pago e já estão habilitados para você.</p>
-            </div>
+                
+                {!isMercadoPagoConnected && !isEditingMercadoPago && (
+                    <>
+                        <p className="text-xs text-gray-400">Receba pagamentos online diretamente na sua conta Mercado Pago.</p>
+                        <Button variant="secondary" onClick={() => setIsEditingMercadoPago(true)}>Conectar Conta</Button>
+                    </>
+                )}
 
+                {isEditingMercadoPago && (
+                    <div className="space-y-3 pt-2 border-t border-gray-700">
+                        <p className="text-xs text-gray-400">
+                            Acesse seu <a href="https://www.mercadopago.com.br/developers/panel/credentials" target="_blank" rel="noopener noreferrer" className="text-brand-primary underline">Painel de Desenvolvedor Mercado Pago</a> para obter suas credenciais.
+                        </p>
+                        <div>
+                            <label htmlFor="mpPublicKey" className="text-sm text-gray-300">Public Key</label>
+                            <input id="mpPublicKey" type="text" value={mpPublicKey} onChange={e => setMpPublicKey(e.target.value)} placeholder="APP_USR-..." className="w-full mt-1 px-3 py-2 bg-brand-dark border border-gray-600 rounded-md text-sm" />
+                        </div>
+                        <div>
+                            <label htmlFor="mpAccessToken" className="text-sm text-gray-300">Access Token</label>
+                            <input id="mpAccessToken" type="password" value={mpAccessToken} onChange={e => setMpAccessToken(e.target.value)} placeholder="APP_USR-..." className="w-full mt-1 px-3 py-2 bg-brand-dark border border-gray-600 rounded-md text-sm" />
+                        </div>
+                        <div className="flex gap-2">
+                            <Button variant="secondary" onClick={() => setIsEditingMercadoPago(false)}>Cancelar</Button>
+                            <Button onClick={handleSaveMercadoPago}>Salvar Credenciais</Button>
+                        </div>
+                    </div>
+                )}
+
+                {isMercadoPagoConnected && !isEditingMercadoPago && (
+                    <>
+                        <p className="text-xs text-gray-400">Sua conta está conectada e pronta para receber pagamentos.</p>
+                        <Button variant="danger" onClick={handleDisconnectMercadoPago}>Desconectar</Button>
+                    </>
+                )}
+            </div>
 
             <div className={`bg-brand-secondary p-4 rounded-lg space-y-3 ${!features.googleCalendar ? 'opacity-50' : ''}`}>
                 <div className="flex justify-between items-center">

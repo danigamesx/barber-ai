@@ -61,7 +61,6 @@ export const signUpUser = async (name: string, email: string, password: string, 
         trialEndDate.setDate(trialEndDate.getDate() + 30);
 
         const initialIntegrations: IntegrationSettings = {
-            plan: 'PREMIUM',
             auto_confirm_appointments: false,
         };
         

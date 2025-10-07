@@ -26,9 +26,18 @@ const MercadoPagoPayment: React.FC<{
     preferenceId: string;
     appointmentData: NewAppointmentData;
 }> = ({ preferenceId, appointmentData }) => {
+    const { barbershops } = useContext(AppContext);
 
     useEffect(() => {
-        const mp = new window.MercadoPago(process.env.VITE_MERCADOPAGO_PUBLIC_KEY, {
+        const barbershop = barbershops.find(b => b.id === appointmentData.barbershop_id);
+        const integrations = barbershop?.integrations as IntegrationSettings | undefined;
+
+        if (!integrations?.mercadopagoPublicKey) {
+            console.error("Public Key do Mercado Pago não encontrada para esta barbearia.");
+            return;
+        }
+
+        const mp = new window.MercadoPago(integrations.mercadopagoPublicKey, {
             locale: 'pt-BR'
         });
         const bricksBuilder = mp.bricks();
@@ -77,7 +86,7 @@ const MercadoPagoPayment: React.FC<{
         };
         
         renderPaymentBrick();
-    }, [preferenceId, appointmentData]);
+    }, [preferenceId, appointmentData, barbershops]);
 
     return <div id="payment-brick-container"></div>;
 };
