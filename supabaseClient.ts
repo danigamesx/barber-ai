@@ -1,12 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
-import { Database } from './types/database'; // We will create this type definition file next
+import { Database } from './types/database';
 
-// TODO: Substitua pelas suas credenciais do Supabase que você obteve na Etapa 1.
-const supabaseUrl = 'https://yrhdmqusjnniyibfbsgf.supabase.co'; // Ex: 'https://xxxxxxxx.supabase.co'
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlyaGRtcXVzam5uaXlpYmZic2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgwNTIxNzQsImV4cCI6MjA3MzYyODE3NH0.b31clXYGeKdXlH1pTZxidDPMmeRDncYCWplTjH2wwYM'; // Ex: 'eyJh...'
+// Acessando as variáveis de ambiente através do process.env.
+// Esta abordagem assume que o ambiente de execução (como Vercel, Netlify, etc.)
+// injeta essas variáveis de forma segura, similar ao que é feito para chaves de API server-side.
+// Isso resolve o erro "Cannot read properties of undefined" que ocorre quando import.meta.env não é populado.
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Supabase URL and Anon Key are required.");
+  throw new Error("As variáveis de ambiente do Supabase (VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY) não estão configuradas.");
 }
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);

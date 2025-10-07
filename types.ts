@@ -63,6 +63,8 @@ export interface IntegrationSettings {
     googleCalendarId?: string;
     stripeAccountId?: string | null;
     stripeAccountOnboarded?: boolean;
+    mercadopagoAccessToken?: string | null;
+    mercadopagoPublicKey?: string | null;
     plan?: 'BASIC' | 'PRO' | 'PREMIUM' | string;
     plan_type?: 'monthly' | 'annual';
     plan_expires_at?: string; // ISO Date String
@@ -230,6 +232,7 @@ export interface Appointment {
   cancellation_fee: number | null;
   commission_amount: number | null;
   google_event_id?: string | null;
+  mp_preference_id?: string | null;
 }
 
 export interface Review {

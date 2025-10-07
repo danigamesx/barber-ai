@@ -23,6 +23,7 @@ export type Database = {
           google_event_id: string | null
           id: string
           is_reward: boolean | null
+          mp_preference_id: string | null
           notes: string | null
           price: number | null
           review_id: string | null
@@ -44,6 +45,7 @@ export type Database = {
           google_event_id?: string | null
           id?: string
           is_reward?: boolean | null
+          mp_preference_id?: string | null
           notes?: string | null
           price?: number | null
           review_id?: string | null
@@ -65,6 +67,7 @@ export type Database = {
           google_event_id?: string | null
           id?: string
           is_reward?: boolean | null
+          mp_preference_id?: string | null
           notes?: string | null
           price?: number | null
           review_id?: string | null

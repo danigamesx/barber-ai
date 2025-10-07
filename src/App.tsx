@@ -23,6 +23,7 @@ import LandingScreen from './screens/LandingScreen';
 import Button from './components/Button';
 import BarbershopPublicPage from './screens/public/BarbershopPublicPage';
 import InactivePlanBanner from './components/InactivePlanBanner';
+import { supabaseInitializationError } from './supabaseClient';
 
 export const AppContext = React.createContext<{
   user: User | null;
@@ -100,6 +101,20 @@ export const PlanContext = React.createContext<{
 });
 
 const App: React.FC = () => {
+  if (supabaseInitializationError) {
+    return (
+        <div className="flex flex-col items-center justify-center h-screen p-6 bg-brand-dark text-center">
+            <div className="w-full max-w-lg bg-brand-secondary p-8 rounded-lg shadow-lg">
+                <h1 className="text-2xl font-bold text-red-500 mb-4">Erro Crítico de Configuração</h1>
+                <p className="text-gray-300">{supabaseInitializationError}</p>
+                <p className="text-gray-400 mt-4 text-sm">
+                    Esta é uma configuração do ambiente da plataforma e não pode ser resolvida alterando o código-fonte diretamente. Por favor, verifique se as variáveis de ambiente estão corretamente configuradas nas configurações do seu projeto.
+                </p>
+            </div>
+        </div>
+    );
+  }
+
   const [user, setUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [barbershops, setBarbershops] = useState<Barbershop[]>([]);

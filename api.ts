@@ -441,37 +441,18 @@ export const setAppointmentGoogleEventId = async (appointmentId: string, googleE
     if (error) throw error;
 };
 
-// === STRIPE PAYMENT INTEGRATION (REAL) ===
+// === MERCADO PAGO PAYMENT INTEGRATION ===
 
-export const getStripeConnectOnboardingLink = async (barbershopId: string, returnUrl: string): Promise<{ accountId: string, onboardingUrl: string }> => {
-    const response = await fetch(`/api/stripe`, {
+export const createMercadoPagoPreference = async (appointmentData: Omit<Appointment, 'id' | 'created_at'> & { start_time: Date, end_time: Date }): Promise<string> => {
+    const response = await fetch(`/api/create-mp-preference`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'create-account-link', barbershopId, returnUrl }),
+        body: JSON.stringify({ appointmentData }),
     });
-    if (!response.ok) throw new Error(await response.text());
-    return response.json();
-};
-
-
-export const completeStripeOnboarding = async (barbershopId: string, accountId: string): Promise<boolean> => {
-    const response = await fetch(`/api/stripe`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'verify-account', barbershopId, accountId }),
-    });
-    if (!response.ok) throw new Error(await response.text());
-    const { onboarded } = await response.json();
-    return onboarded;
-};
-
-export const createPaymentIntent = async (appointmentData: Omit<Appointment, 'id' | 'created_at'> & { start_time: Date, end_time: Date }, barbershopStripeAccountId: string): Promise<string> => {
-    const response = await fetch(`/api/create-payment-intent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appointmentData, barbershopStripeAccountId }),
-    });
-    if (!response.ok) throw new Error(await response.text());
-    const { clientSecret } = await response.json();
-    return clientSecret;
+    if (!response.ok) {
+        const errorBody = await response.json();
+        throw new Error(errorBody.error || 'Falha ao criar preferência de pagamento.');
+    }
+    const { preferenceId } = await response.json();
+    return preferenceId;
 };

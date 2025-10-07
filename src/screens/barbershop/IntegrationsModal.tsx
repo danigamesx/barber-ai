@@ -20,19 +20,17 @@ declare global {
 }
 
 const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ currentIntegrations, onClose, onSave }) => {
-  const { googleToken, setGoogleToken, barbershopData } = useContext(AppContext);
+  const { googleToken, setGoogleToken } = useContext(AppContext);
   const { features } = useContext(PlanContext);
   let tokenClient: any = null;
 
   const [integrations, setIntegrations] = useState<IntegrationSettings>(() => {
     const current = (currentIntegrations as IntegrationSettings) || {};
     return {
-      ...current, // Preserva todas as configurações existentes (plan, etc.)
+      ...current,
       googleCalendar: !!current?.googleCalendar,
       whatsapp: !!current?.whatsapp,
-      whatsapp_reminder_minutes: current?.whatsapp_reminder_minutes ?? 120, // Padrão de 2 horas
-      stripeAccountId: current?.stripeAccountId || null,
-      stripeAccountOnboarded: !!current?.stripeAccountOnboarded,
+      whatsapp_reminder_minutes: current?.whatsapp_reminder_minutes ?? 120,
     };
   });
   
@@ -63,9 +61,6 @@ const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ currentIntegratio
     }
     setError(null);
 
-    // NOTA: Em uma aplicação real, o Client ID é um segredo guardado no backend.
-    // O backend iniciaria o fluxo OAuth e lidaria com os tokens.
-    // Usando um Client ID de demonstração genérico aqui.
     const GOOGLE_CLIENT_ID = '934676693006-8n6s222268j2g00990s83q7s6qj0o9k3.apps.googleusercontent.com';
 
     try {
@@ -95,43 +90,6 @@ const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ currentIntegratio
     setIntegrations(prev => ({ ...prev, googleCalendar: false }));
   };
   
-  const handleStripeConnect = async () => {
-    if (!features.onlinePayments) {
-        alert('Esta funcionalidade requer o plano Pro ou superior.');
-        return;
-    }
-    if (!barbershopData) return;
-    try {
-        // FIX: The stubbed version of getStripeConnectOnboardingLink expects an IntegrationSettings object, not a string. Passing the `integrations` state object.
-        const { accountId, onboardingUrl } = await api.getStripeConnectOnboardingLink(barbershopData.id, window.location.href);
-        setIntegrations(prev => ({...prev, stripeAccountId: accountId, stripeAccountOnboarded: false }));
-        alert("Simulação: Redirecionando para o Stripe para completar o cadastro...");
-        console.log("Stripe Onboarding URL:", onboardingUrl);
-    } catch (err: any) {
-        setError(err.message);
-    }
-  };
-
-  const handleCompleteStripeOnboarding = async () => {
-    if (!barbershopData || !integrations.stripeAccountId) {
-        setError("ID da conta Stripe não encontrado. Tente conectar novamente.");
-        return;
-    }
-    try {
-        // FIX: The stubbed version of completeStripeOnboarding expects an IntegrationSettings object. Also, it returns void, so the result cannot be checked in an if-statement.
-        // The logic is adjusted to assume success as the stub simulates a successful outcome.
-        const onboarded = await api.completeStripeOnboarding(barbershopData.id, integrations.stripeAccountId);
-        if (onboarded) {
-            setIntegrations(prev => ({ ...prev, stripeAccountOnboarded: true }));
-            alert("Onboarding do Stripe concluído com sucesso!");
-        } else {
-            setError("O processo de onboarding ainda não foi concluído. Por favor, complete o cadastro no site do Stripe.");
-        }
-    } catch (err: any) {
-        setError(err.message);
-    }
-  };
-
   const handleChange = (field: keyof IntegrationSettings, value: any) => {
     setIntegrations(prev => ({ ...prev, [field]: value }));
   };
@@ -141,7 +99,6 @@ const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ currentIntegratio
   };
 
   const isGoogleConnected = googleToken !== null && integrations.googleCalendar;
-  const isStripeOnboardingComplete = integrations.stripeAccountId && integrations.stripeAccountOnboarded;
 
   return (
     <>
@@ -155,26 +112,12 @@ const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ currentIntegratio
         <div className="space-y-4">
             <div className={`bg-brand-secondary p-4 rounded-lg space-y-3 ${!features.onlinePayments ? 'opacity-50' : ''}`}>
                  <div className="flex justify-between items-center">
-                    <label className="font-semibold">Pagamentos Online (Stripe)</label>
-                    <span className={`px-2 py-1 text-xs rounded-full ${isStripeOnboardingComplete ? 'bg-green-500/20 text-green-400' : 'bg-gray-600'}`}>
-                      {isStripeOnboardingComplete ? 'Conectado' : 'Desconectado'}
+                    <label className="font-semibold">Pagamentos Online (Mercado Pago)</label>
+                    <span className={'bg-green-500/20 text-green-400 px-2 py-1 text-xs rounded-full'}>
+                      Ativado
                     </span>
                 </div>
-                 <p className="text-xs text-gray-400">Conecte sua conta Stripe para receber pagamentos por cartão de crédito e PIX de forma segura.</p>
-                
-                {!integrations.stripeAccountId && (
-                    <Button variant="secondary" onClick={handleStripeConnect} disabled={!features.onlinePayments}>Conectar com o Stripe</Button>
-                )}
-                {integrations.stripeAccountId && !integrations.stripeAccountOnboarded && (
-                     <div className="text-center p-2 bg-amber-900/50 border border-amber-700 rounded-lg">
-                        <p className="text-amber-300 text-sm font-semibold">Ação necessária!</p>
-                        <p className="text-amber-400 text-xs mb-3">Sua conta foi criada mas precisa finalizar a configuração no site do Stripe.</p>
-                        <Button variant="primary" onClick={handleCompleteStripeOnboarding}>Já completei, verificar status</Button>
-                    </div>
-                )}
-                {isStripeOnboardingComplete && (
-                     <p className="text-sm text-green-400 text-center font-semibold">Sua conta Stripe está conectada e pronta para receber pagamentos.</p>
-                )}
+                 <p className="text-xs text-gray-400">Os pagamentos online são processados pela plataforma via Mercado Pago e já estão habilitados para você.</p>
             </div>
 
 

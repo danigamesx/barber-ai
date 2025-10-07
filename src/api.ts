@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient';
+import { supabase, supabaseInitializationError } from './supabaseClient';
 import { User, Barbershop, Appointment, Review, Barber, FinancialRecord, Promotion, ClientNotification, WaitingListEntry, Json, IntegrationSettings, Address } from './types';
 import { TablesInsert, TablesUpdate } from './types/database';
 
@@ -16,20 +16,29 @@ const reviewFromRow = (row: any): Review => ({
 });
 
 // === AUTH FUNCTIONS ===
-export const getSession = () => supabase.auth.getSession();
-export const onAuthStateChange = (callback: (event: string, session: any) => void) => supabase.auth.onAuthStateChange(callback);
+export const getSession = () => {
+    if (!supabase) return Promise.resolve({ data: { session: null }, error: new Error(supabaseInitializationError!) });
+    return supabase.auth.getSession();
+}
+export const onAuthStateChange = (callback: (event: string, session: any) => void) => {
+    if (!supabase) return { data: { subscription: { unsubscribe: () => {} } } };
+    return supabase.auth.onAuthStateChange(callback);
+}
 
 export const signInUser = async (email: string, password: string) => {
+    if (!supabase) throw new Error(supabaseInitializationError!);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
 };
 
 export const signOutUser = async () => {
+    if (!supabase) throw new Error(supabaseInitializationError!);
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
 };
 
 export const signUpUser = async (name: string, email: string, password: string, accountType: 'client' | 'barbershop', phone: string, birthDate?: string, barbershopName?: string) => {
+    if (!supabase) throw new Error(supabaseInitializationError!);
     const { data: authData, error: authError } = await supabase.auth.signUp({ 
         email, 
         password,
@@ -70,30 +79,35 @@ export const signUpUser = async (name: string, email: string, password: string, 
 
 // === DATA FETCHING FUNCTIONS ===
 export const getUserProfile = async (userId: string): Promise<User | null> => {
+    if (!supabase) return null;
     const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
     if (error) throw error;
     return data as User | null;
 };
 
 export const getAllUsers = async (): Promise<User[]> => {
+    if (!supabase) return [];
     const { data, error } = await supabase.from('profiles').select('*');
     if (error) throw error;
     return data as User[];
 }
 
 export const getBarbershops = async (): Promise<Barbershop[]> => {
+    if (!supabase) return [];
     const { data, error } = await supabase.from('barbershops').select('*');
     if (error) throw error;
     return data;
 };
 
 export const getAppointments = async (): Promise<Appointment[]> => {
+    if (!supabase) return [];
     const { data, error } = await supabase.from('appointments').select('*');
     if (error) throw error;
     return data.map(appointmentFromRow);
 };
 
 export const getReviews = async (): Promise<Review[]> => {
+    if (!supabase) return [];
     const { data, error } = await supabase.from('reviews').select('*');
     if (error) throw error;
     return data.map(reviewFromRow);
@@ -101,6 +115,7 @@ export const getReviews = async (): Promise<Review[]> => {
 
 // === STORAGE FUNCTIONS ===
 export const uploadImage = async (file: File, bucket: string, folder: string): Promise<string> => {
+    if (!supabase) throw new Error(supabaseInitializationError!);
     if (!file) {
         throw new Error("Nenhum arquivo fornecido para upload.");
     }
@@ -130,6 +145,7 @@ export const uploadImage = async (file: File, bucket: string, folder: string): P
 
 // === DATA MUTATION FUNCTIONS ===
 export const addAppointment = async (appointment: Omit<Appointment, 'id' | 'created_at' | 'start_time' | 'end_time'> & { start_time: Date, end_time: Date }): Promise<Appointment> => {
+    if (!supabase) throw new Error(supabaseInitializationError!);
     // Step 1: Always insert as 'pending' for RLS policies, unless it's already 'paid'.
     const initialStatus = appointment.status === 'paid' ? 'paid' : (appointment.status === 'confirmed' ? 'confirmed' : 'pending');
     const appointmentForDb: TablesInsert<'appointments'> = {
@@ -190,6 +206,7 @@ export const addAppointment = async (appointment: Omit<Appointment, 'id' | 'crea
 };
 
 export const updateAppointment = async (appointmentId: string, updates: { start_time: Date, end_time: Date }): Promise<Appointment> => {
+    if (!supabase) throw new Error(supabaseInitializationError!);
     const { data, error } = await supabase
         .from('appointments')
         .update({
@@ -205,6 +222,7 @@ export const updateAppointment = async (appointmentId: string, updates: { start_
 };
 
 export const updateAppointmentStatus = async (appointment: Appointment, status: string, barbershopData: Barbershop | null, googleToken: string | null) => {
+    if (!supabase) throw new Error(supabaseInitializationError!);
     const { error } = await supabase.from('appointments').update({ status }).eq('id', appointment.id);
     if (error) throw error;
 
@@ -231,11 +249,13 @@ export const updateAppointmentStatus = async (appointment: Appointment, status: 
 };
 
 export const updateBarbershop = async (id: string, fields: Partial<Omit<Barbershop, 'id'>>) => {
+    if (!supabase) throw new Error(supabaseInitializationError!);
     const { error } = await supabase.from('barbershops').update(fields as TablesUpdate<'barbershops'>).eq('id', id);
     if (error) throw error;
 };
 
 export const addReview = async (review: Omit<Review, 'id' | 'created_at'>, appointmentId: string) => {
+    if (!supabase) throw new Error(supabaseInitializationError!);
     const { error: reviewError } = await supabase.from('reviews').insert(review);
     if (reviewError) throw reviewError;
 
@@ -249,6 +269,7 @@ export const addReview = async (review: Omit<Review, 'id' | 'created_at'>, appoi
 };
 
 export const toggleFavoriteBarbershop = async (userId: string, currentFavorites: string[], barbershopId: string): Promise<User> => {
+    if (!supabase) throw new Error(supabaseInitializationError!);
     const isFavorite = currentFavorites.includes(barbershopId);
     const updatedFavorites = isFavorite
         ? currentFavorites.filter(id => id !== barbershopId)
@@ -260,6 +281,7 @@ export const toggleFavoriteBarbershop = async (userId: string, currentFavorites:
 };
 
 export const addFinancialRecord = async (barbershopId: string, barberId: string, type: 'advances' | 'consumptions', recordData: Omit<FinancialRecord, 'id' | 'date'>, barbershops: Barbershop[]) => {
+    if (!supabase) throw new Error(supabaseInitializationError!);
     const shop = barbershops.find(b => b.id === barbershopId);
     if (!shop) return;
     const barbers = Array.isArray(shop.barbers) ? shop.barbers as Barber[] : [];
@@ -275,6 +297,7 @@ export const addFinancialRecord = async (barbershopId: string, barberId: string,
 };
 
 export const deleteFinancialRecord = async (barbershopId: string, barberId: string, type: 'advances' | 'consumptions', recordId: string, barbershops: Barbershop[]) => {
+    if (!supabase) throw new Error(supabaseInitializationError!);
     const shop = barbershops.find(b => b.id === barbershopId);
     if (!shop) return;
     const barbers = Array.isArray(shop.barbers) ? shop.barbers as Barber[] : [];
@@ -290,6 +313,7 @@ export const deleteFinancialRecord = async (barbershopId: string, barberId: stri
 };
 
 export const sendPromotion = async (barbershopId: string, title: string, message: string, clients: User[], barbershops: Barbershop[]) => {
+    if (!supabase) throw new Error(supabaseInitializationError!);
     const shop = barbershops.find(b => b.id === barbershopId);
     if (!shop) return;
 
@@ -331,6 +355,7 @@ export const sendPromotion = async (barbershopId: string, title: string, message
 };
 
 export const markNotificationsAsRead = async (userId: string, currentNotifications: ClientNotification[], notificationIds: string[]): Promise<User> => {
+    if (!supabase) throw new Error(supabaseInitializationError!);
     const updatedNotifications = currentNotifications.map(n => 
         notificationIds.includes(n.id) ? { ...n, isRead: true } : n
     );
@@ -340,6 +365,7 @@ export const markNotificationsAsRead = async (userId: string, currentNotificatio
 };
 
 export const addToWaitingList = async (barbershopId: string, date: string, user: User, barbershops: Barbershop[]) => {
+    if (!supabase) throw new Error(supabaseInitializationError!);
     const shop = barbershops.find(b => b.id === barbershopId);
     if (!shop) return;
 
@@ -354,6 +380,7 @@ export const addToWaitingList = async (barbershopId: string, date: string, user:
 };
 
 export const removeFromWaitingList = async (barbershopId: string, date: string, clientId: string, barbershops: Barbershop[]) => {
+    if (!supabase) throw new Error(supabaseInitializationError!);
     const shop = barbershops.find(b => b.id === barbershopId);
     if (!shop) return;
     
@@ -366,6 +393,7 @@ export const removeFromWaitingList = async (barbershopId: string, date: string, 
 };
 
 export const getUsersByIds = async (userIds: string[]): Promise<User[]> => {
+    if (!supabase) return [];
     if (!userIds || userIds.length === 0) {
         return [];
     }
@@ -375,6 +403,7 @@ export const getUsersByIds = async (userIds: string[]): Promise<User[]> => {
 };
 
 export const updateUserProfile = async (userId: string, updates: Partial<User>) => {
+    if (!supabase) throw new Error(supabaseInitializationError!);
     const { data, error } = await supabase
         .from('profiles')
         .update(updates as TablesUpdate<'profiles'>)
@@ -437,41 +466,23 @@ export const deleteGoogleCalendarEvent = async (eventId: string, token: string):
 };
 
 export const setAppointmentGoogleEventId = async (appointmentId: string, googleEventId: string) => {
+    if (!supabase) throw new Error(supabaseInitializationError!);
     const { error } = await supabase.from('appointments').update({ google_event_id: googleEventId }).eq('id', appointmentId);
     if (error) throw error;
 };
 
-// === STRIPE PAYMENT INTEGRATION (REAL) ===
+// === MERCADO PAGO PAYMENT INTEGRATION ===
 
-export const getStripeConnectOnboardingLink = async (barbershopId: string, returnUrl: string): Promise<{ accountId: string, onboardingUrl: string }> => {
-    const response = await fetch(`/api/stripe`, {
+export const createMercadoPagoPreference = async (appointmentData: Omit<Appointment, 'id' | 'created_at'> & { start_time: Date, end_time: Date }): Promise<string> => {
+    const response = await fetch(`/api/create-mp-preference`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'create-account-link', barbershopId, returnUrl }),
+        body: JSON.stringify({ appointmentData }),
     });
-    if (!response.ok) throw new Error(await response.text());
-    return response.json();
-};
-
-
-export const completeStripeOnboarding = async (barbershopId: string, accountId: string): Promise<boolean> => {
-    const response = await fetch(`/api/stripe`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'verify-account', barbershopId, accountId }),
-    });
-    if (!response.ok) throw new Error(await response.text());
-    const { onboarded } = await response.json();
-    return onboarded;
-};
-
-export const createPaymentIntent = async (appointmentData: Omit<Appointment, 'id' | 'created_at'> & { start_time: Date, end_time: Date }, barbershopStripeAccountId: string): Promise<string> => {
-    const response = await fetch(`/api/create-payment-intent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appointmentData, barbershopStripeAccountId }),
-    });
-    if (!response.ok) throw new Error(await response.text());
-    const { clientSecret } = await response.json();
-    return clientSecret;
+    if (!response.ok) {
+        const errorBody = await response.json();
+        throw new Error(errorBody.error || 'Falha ao criar preferência de pagamento.');
+    }
+    const { preferenceId } = await response.json();
+    return preferenceId;
 };
