@@ -40,6 +40,7 @@ const MercadoPagoPayment: React.FC<{
             locale: 'pt-BR'
         });
         const bricksBuilder = mp.bricks();
+        let paymentBrickController: any = null;
 
         const renderPaymentBrick = async () => {
             const settings = {
@@ -63,6 +64,8 @@ const MercadoPagoPayment: React.FC<{
                     onReady: () => {
                         /* Brick pronto para ser usado */
                     },
+                    // REMOVIDO: O onSubmit travava o fluxo de pagamento.
+                    // O redirecionamento é feito pelo back_urls na preferência.
                     onError: (error: any) => {
                         console.error(error);
                     },
@@ -73,17 +76,16 @@ const MercadoPagoPayment: React.FC<{
             if (container) {
                 // Limpa o container para evitar bricks duplicados em re-renderizações
                 container.innerHTML = ''; 
-                await bricksBuilder.create('payment', 'payment-brick-container', settings);
+                paymentBrickController = await bricksBuilder.create('payment', 'payment-brick-container', settings);
             }
         };
         
         renderPaymentBrick();
 
-        // Cleanup function to destroy the brick when the component unmounts
+        // Função de limpeza para desmontar o Brick
         return () => {
-             const container = document.getElementById('payment-brick-container');
-             if(container) {
-                container.innerHTML = '';
+             if (paymentBrickController) {
+                paymentBrickController.unmount();
              }
         }
     }, [preferenceId, appointmentData, barbershops]);
@@ -120,6 +122,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ appointmentData, onClose })
             .finally(() => setIsLoading(false));
 
     }, [appointmentData, isMercadoPagoConnected]);
+
+    // O modal de sucesso foi removido daqui e agora é gerenciado globalmente no App.tsx
+    // com base no redirecionamento da URL após o pagamento.
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">

@@ -2,8 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { AppContext } from '../../App';
 import { Appointment, IntegrationSettings } from '../../types';
 import Button from '../../components/Button';
-import { XCircleIcon, CheckCircleIcon, CalendarIcon } from '../../components/icons/OutlineIcons';
-import { generateGoogleCalendarLink } from '../../utils/calendar';
+import { XCircleIcon } from '../../components/icons/OutlineIcons';
 import * as api from '../../api';
 
 // Declarar o objeto MercadoPago no escopo global para o TypeScript
@@ -41,6 +40,7 @@ const MercadoPagoPayment: React.FC<{
             locale: 'pt-BR'
         });
         const bricksBuilder = mp.bricks();
+        let paymentBrickController: any = null;
 
         const renderPaymentBrick = async () => {
             const settings = {
@@ -64,12 +64,8 @@ const MercadoPagoPayment: React.FC<{
                     onReady: () => {
                         /* Brick pronto para ser usado */
                     },
-                    onSubmit: () => {
-                        // O Brick já lida com a submissão.
-                        // O webhook cuidará da confirmação final.
-                        // Aqui, podemos mostrar um loading para o usuário.
-                        return new Promise(() => {});
-                    },
+                    // REMOVIDO: O onSubmit travava o fluxo de pagamento.
+                    // O redirecionamento é feito pelo back_urls na preferência.
                     onError: (error: any) => {
                         console.error(error);
                     },
@@ -78,14 +74,20 @@ const MercadoPagoPayment: React.FC<{
             
             const container = document.getElementById('payment-brick-container');
             if (container) {
-                container.innerHTML = '';
+                // Limpa o container para evitar bricks duplicados em re-renderizações
+                container.innerHTML = ''; 
+                paymentBrickController = await bricksBuilder.create('payment', 'payment-brick-container', settings);
             }
-            
-            // Await a criação do brick
-            await bricksBuilder.create('payment', 'payment-brick-container', settings);
         };
         
         renderPaymentBrick();
+
+        // Função de limpeza para desmontar o Brick
+        return () => {
+             if (paymentBrickController) {
+                paymentBrickController.unmount();
+             }
+        }
     }, [preferenceId, appointmentData, barbershops]);
 
     return <div id="payment-brick-container"></div>;
@@ -94,7 +96,6 @@ const MercadoPagoPayment: React.FC<{
 const PaymentModal: React.FC<PaymentModalProps> = ({ appointmentData, onClose }) => {
     const { barbershops } = useContext(AppContext);
     const [isLoading, setIsLoading] = useState(true);
-    const [isSuccess, setIsSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [preferenceId, setPreferenceId] = useState<string | null>(null);
 
@@ -102,7 +103,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ appointmentData, onClose })
     const barbershop = barbershops.find(b => b.id === barbershop_id);
     const integrations = barbershop?.integrations as IntegrationSettings;
     
-    // Agora verificamos a conexão do Mercado Pago
     const isMercadoPagoConnected = integrations?.mercadopagoPublicKey && integrations?.mercadopagoAccessToken;
 
     useEffect(() => {
@@ -123,32 +123,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ appointmentData, onClose })
 
     }, [appointmentData, isMercadoPagoConnected]);
 
-    const handleAddToCalendar = () => {
-        if (barbershop) {
-            const url = generateGoogleCalendarLink(appointmentData as Appointment, barbershop);
-            window.open(url, '_blank');
-        }
-    };
-    
-    if (isSuccess) {
-        return (
-            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
-                <div className="bg-brand-dark w-full max-w-md rounded-lg shadow-xl p-8 text-center">
-                    <CheckCircleIcon className="w-20 h-20 text-green-500 mx-auto mb-4" />
-                    <h2 className="text-2xl font-bold mb-2">Pagamento Aprovado!</h2>
-                    <p className="text-gray-400 mb-6">Seu agendamento para {service_name} está confirmado. O status será atualizado em breve.</p>
-                     <div className="space-y-3">
-                        <Button onClick={handleAddToCalendar} variant="secondary" className="flex items-center justify-center gap-2">
-                          <CalendarIcon className="w-5 h-5"/>
-                          Adicionar ao Google Agenda
-                        </Button>
-                        <Button onClick={onClose}>Ver Meus Agendamentos</Button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
+    // O modal de sucesso foi removido daqui e agora é gerenciado globalmente no App.tsx
+    // com base no redirecionamento da URL após o pagamento.
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
