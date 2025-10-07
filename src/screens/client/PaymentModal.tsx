@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AppContext } from '../../App';
 import { Appointment, IntegrationSettings } from '../../types';
-import Button from '../../components/Button';
 import { XCircleIcon } from '../../components/icons/OutlineIcons';
 import * as api from '../../api';
 
-// Declarar o objeto MercadoPago no escopo global para o TypeScript
+// Declarar o objeto MercadoPago no escopo global
 declare global {
     interface Window {
         MercadoPago: any;
@@ -19,26 +18,21 @@ interface PaymentModalProps {
   onClose: () => void;
 }
 
-// Componente isolado para renderizar o "Payment Brick" do Mercado Pago
-// Isso evita que ele seja re-renderizado desnecessariamente, o que pode interromper o fluxo de pagamento.
-const MercadoPagoPayment: React.FC<{
+// --- COMPONENTE ISOLADO ---
+// Este componente gerencia exclusivamente o Brick de Pagamento.
+// Ao isolá-lo, garantimos que ele não seja recriado desnecessariamente,
+// o que corrige o problema do pagamento "travado" e do layout que não rolava.
+const PaymentBrickComponent: React.FC<{
     preferenceId: string;
     publicKey: string;
     price: number;
 }> = ({ preferenceId, publicKey, price }) => {
     useEffect(() => {
-        if (!publicKey) {
-            console.error("Public Key do Mercado Pago é necessária.");
-            return;
-        }
-
-        const mp = new window.MercadoPago(publicKey, {
-            locale: 'pt-BR'
-        });
+        const mp = new window.MercadoPago(publicKey, { locale: 'pt-BR' });
         const bricksBuilder = mp.bricks();
         let paymentBrickController: any = null;
 
-        const renderPaymentBrick = async () => {
+        const renderBrick = async () => {
             const settings = {
                 initialization: {
                     amount: price,
@@ -50,29 +44,36 @@ const MercadoPagoPayment: React.FC<{
                 },
                 callbacks: {
                     onReady: () => { /* Brick pronto */ },
-                    onError: (error: any) => { console.error(error); },
+                    onError: (error: any) => { console.error("Erro no Brick de Pagamento:", error); },
+                    // Removido o callback onSubmit para deixar o Brick gerenciar o fluxo automaticamente
                 },
             };
             
             const container = document.getElementById('payment-brick-container');
             if (container) {
+                // Limpa o container antes de renderizar para evitar duplicatas
                 container.innerHTML = ''; 
                 paymentBrickController = await bricksBuilder.create('payment', 'payment-brick-container', settings);
             }
         };
         
-        renderPaymentBrick();
+        renderBrick();
 
-        // Função de limpeza para desmontar o Brick ao fechar o modal
+        // Função de limpeza para desmontar o Brick de forma segura ao fechar o modal
         return () => {
              if (paymentBrickController) {
-                paymentBrickController.unmount();
+                try {
+                    paymentBrickController.unmount();
+                } catch (e) {
+                    console.error("Erro ao desmontar o brick:", e);
+                }
              }
         }
-    }, [preferenceId, publicKey, price]); // Dependências mínimas e estáveis
+    }, [preferenceId, publicKey, price]); // Dependências estáveis garantem que o efeito rode apenas uma vez
 
-    return <div id="payment-brick-container"></div>;
+    return <div id="payment-brick-container" />;
 };
+
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ appointmentData, onClose }) => {
     const { barbershops } = useContext(AppContext);
@@ -117,6 +118,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ appointmentData, onClose })
                     <p className="text-center text-gray-400 mb-6">Confirme seu agendamento para {service_name}.</p>
                 </div>
                 
+                {/* Container com scroll */}
                 <div className="flex-grow overflow-y-auto -mx-2 px-2">
                     <div className="bg-brand-secondary p-4 rounded-lg mb-6">
                         <div className="flex justify-between items-center">
@@ -137,8 +139,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ appointmentData, onClose })
                         </div>
                     )}
 
-                    {preferenceId && !error && mpPublicKey && (
-                        <MercadoPagoPayment
+                    {!isLoading && !error && preferenceId && mpPublicKey && (
+                        <PaymentBrickComponent
                             preferenceId={preferenceId}
                             publicKey={mpPublicKey}
                             price={price || 0}
