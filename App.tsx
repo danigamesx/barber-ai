@@ -10,7 +10,7 @@ import BarbershopSettingsScreen from './screens/barbershop/BarbershopSettingsScr
 import AnalyticsScreen from './screens/barbershop/AnalyticsScreen';
 import ProfessionalsScreen from './screens/barbershop/ProfessionalsScreen';
 import ClientsScreen from './screens/barbershop/ClientsScreen';
-import { HomeIcon, CalendarIcon, BellIcon, UserIcon, ClipboardListIcon, MegaphoneIcon, ChartBarIcon, CogIcon, UsersIcon, MenuIcon, ShareIcon } from './components/icons/OutlineIcons';
+import { HomeIcon, CalendarIcon, BellIcon, UserIcon, ClipboardListIcon, MegaphoneIcon, ChartBarIcon, CogIcon, UsersIcon, MenuIcon, ShareIcon, CheckCircleIcon } from './components/icons/OutlineIcons';
 import BarbershopSetupScreen from './screens/barbershop/BarbershopSetupScreen';
 import ClientNotificationsScreen from './screens/client/ClientNotificationsScreen';
 import CommunicationsScreen from './screens/barbershop/CommunicationsScreen';
@@ -23,6 +23,7 @@ import LandingScreen from './screens/LandingScreen';
 import Button from './components/Button';
 import BarbershopPublicPage from './screens/public/BarbershopPublicPage';
 import InactivePlanBanner from './components/InactivePlanBanner';
+import { supabaseInitializationError } from './supabaseClient';
 
 export const AppContext = React.createContext<{
   user: User | null;
@@ -100,6 +101,20 @@ export const PlanContext = React.createContext<{
 });
 
 const App: React.FC = () => {
+  if (supabaseInitializationError) {
+    return (
+        <div className="flex flex-col items-center justify-center h-screen p-6 bg-brand-dark text-center">
+            <div className="w-full max-w-lg bg-brand-secondary p-8 rounded-lg shadow-lg">
+                <h1 className="text-2xl font-bold text-red-500 mb-4">Erro Crítico de Configuração</h1>
+                <p className="text-gray-300">{supabaseInitializationError}</p>
+                <p className="text-gray-400 mt-4 text-sm">
+                    Esta é uma configuração do ambiente da plataforma e não pode ser resolvida alterando o código-fonte diretamente. Por favor, verifique se as variáveis de ambiente estão corretamente configuradas nas configurações do seu projeto.
+                </p>
+            </div>
+        </div>
+    );
+  }
+
   const [user, setUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [barbershops, setBarbershops] = useState<Barbershop[]>([]);
@@ -111,6 +126,7 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showLanding, setShowLanding] = useState(true);
   const [loginAccountType, setLoginAccountType] = useState<'client' | 'barbershop' | null>(null);
+  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
 
   const [activeClientScreen, setActiveClientScreen] = useState('home');
   const [activeBarbershopScreen, setActiveBarbershopScreen] = useState('dashboard');
@@ -126,11 +142,16 @@ const App: React.FC = () => {
   }>({ hasAccess: true, isTrial: false, planId: 'BASIC', trialEndDate: null });
 
   useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('payment_status') === 'success') {
+      setShowPaymentSuccess(true);
+      window.history.replaceState(null, '', window.location.pathname + window.location.hash);
+    }
+
     const loadInitialData = async () => {
         setLoading(true);
         setError(null);
         try {
-            // Sempre busca dados públicos
             const [barbershopsData, usersData, reviewsData] = await Promise.all([
                 api.getBarbershops(),
                 api.getAllUsers(),
@@ -140,7 +161,6 @@ const App: React.FC = () => {
             setUsers(usersData);
             setReviews(reviewsData);
 
-            // Verifica a sessão e busca dados privados se houver
             const { data: { session: currentSession } } = await api.getSession();
             setSession(currentSession);
 
@@ -152,7 +172,6 @@ const App: React.FC = () => {
                 setAppointments(appointmentsData);
                 setUser(userProfile);
             } else {
-                // Garante que os dados privados sejam limpos se não houver sessão
                 setUser(null);
                 setAppointments([]);
                 setGoogleToken(null);
@@ -165,19 +184,17 @@ const App: React.FC = () => {
         }
     };
     
-    loadInitialData(); // Carga inicial na montagem do componente
+    loadInitialData();
 
     const { data: authListener } = api.onAuthStateChange((_event, newSession) => {
         const userJustLoggedIn = newSession && !session;
         const userJustLoggedOut = !newSession && session;
         
-        setSession(newSession); // Sincroniza o estado da sessão imediatamente
+        setSession(newSession);
 
         if (userJustLoggedIn) {
-            // Se um usuário acabou de fazer login, recarregue TODOS os dados para garantir um estado limpo
             loadInitialData();
         } else if (userJustLoggedOut) {
-            // Se um usuário acabou de fazer logout, limpe TODOS os estados para evitar dados obsoletos
             setUser(null);
             setAppointments([]);
             setUsers([]);
@@ -190,7 +207,7 @@ const App: React.FC = () => {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, []); // O array vazio garante que este efeito seja executado apenas uma vez
+  }, []); 
 
     const barbershopData = useMemo(() => {
         if (user?.user_type === 'BARBERSHOP') {
@@ -274,7 +291,6 @@ const App: React.FC = () => {
   
   const signupAndRefetch = async (name: string, email: string, password: string, accountType: 'client' | 'barbershop', phone: string, birthDate?: string, barbershopName?: string) => {
     await api.signUpUser(name, email, password, accountType, phone, birthDate, barbershopName);
-    // O listener onAuthStateChange irá lidar com o recarregamento dos dados
   };
   
   const patchUser = (updatedUser: User) => {
@@ -562,19 +578,15 @@ const App: React.FC = () => {
         const barbershopId = urlParams.get('barbershopId');
 
         if (barbershopId) {
-            // First, check if we are still in a loading state.
             if (loading) {
                 return <div className="flex items-center justify-center h-screen"><p>Carregando barbearia...</p></div>;
             }
 
-            // If not loading, we can safely check for the barbershop.
             const shop = barbershops.find(b => b.id === barbershopId);
             
             if (shop) {
-                // If the shop is found, render its public page.
                 return <BarbershopPublicPage barbershop={shop} />;
             } else {
-                // If loading is finished and the shop is not found, then it truly doesn't exist.
                 return (
                     <div className="flex flex-col items-center justify-center h-screen p-4 text-center">
                         <h2 className="text-2xl font-bold text-red-500 mb-2">Barbearia não encontrada.</h2>
@@ -630,6 +642,21 @@ const App: React.FC = () => {
       <PlanContext.Provider value={planContextValue}>
         <div className="antialiased font-sans bg-brand-dark min-h-screen">
           {renderContent()}
+          {showPaymentSuccess && (
+                <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[100]">
+                    <div className="bg-brand-dark w-full max-w-md rounded-lg shadow-xl p-8 text-center">
+                        <CheckCircleIcon className="w-20 h-20 text-green-500 mx-auto mb-4" />
+                        <h2 className="text-2xl font-bold mb-2">Pagamento Aprovado!</h2>
+                        <p className="text-gray-400 mb-6">Seu agendamento está confirmado. O status será atualizado em breve.</p>
+                        <Button onClick={() => {
+                            setShowPaymentSuccess(false);
+                            setActiveClientScreen('appointments');
+                        }}>
+                            Ver Meus Agendamentos
+                        </Button>
+                    </div>
+                </div>
+            )}
         </div>
       </PlanContext.Provider>
     </AppContext.Provider>

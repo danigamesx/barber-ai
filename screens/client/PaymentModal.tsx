@@ -4,7 +4,6 @@ import { Appointment, IntegrationSettings } from '../../types';
 import { XCircleIcon } from '../../components/icons/OutlineIcons';
 import * as api from '../../api';
 
-// Declarar o objeto MercadoPago no escopo global
 declare global {
     interface Window {
         MercadoPago: any;
@@ -18,10 +17,6 @@ interface PaymentModalProps {
   onClose: () => void;
 }
 
-// --- COMPONENTE ISOLADO ---
-// Este componente gerencia exclusivamente o Brick de Pagamento.
-// Ao isolá-lo, garantimos que ele não seja recriado desnecessariamente,
-// o que corrige o problema do pagamento "travado" e do layout que não rolava.
 const PaymentBrickComponent: React.FC<{
     preferenceId: string;
     publicKey: string;
@@ -43,15 +38,13 @@ const PaymentBrickComponent: React.FC<{
                     paymentMethods: { creditCard: 'all', debitCard: 'all', pix: 'all' },
                 },
                 callbacks: {
-                    onReady: () => { /* Brick pronto */ },
+                    onReady: () => {},
                     onError: (error: any) => { console.error("Erro no Brick de Pagamento:", error); },
-                    // O callback onSubmit é omitido para que o Brick use os `back_urls` da preferência
                 },
             };
             
             const container = document.getElementById('payment-brick-container');
             if (container) {
-                // Limpa o container antes de renderizar para evitar duplicatas
                 container.innerHTML = ''; 
                 paymentBrickController = await bricksBuilder.create('payment', 'payment-brick-container', settings);
             }
@@ -59,7 +52,6 @@ const PaymentBrickComponent: React.FC<{
         
         renderBrick();
 
-        // Função de limpeza para desmontar o Brick de forma segura ao fechar o modal
         return () => {
              if (paymentBrickController) {
                 try {
@@ -69,7 +61,7 @@ const PaymentBrickComponent: React.FC<{
                 }
              }
         }
-    }, [preferenceId, publicKey, price]); // Dependências estáveis garantem que o efeito rode apenas uma vez
+    }, [preferenceId, publicKey, price]);
 
     return <div id="payment-brick-container" />;
 };
@@ -118,7 +110,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ appointmentData, onClose })
                     <p className="text-center text-gray-400 mb-6">Confirme seu agendamento para {service_name}.</p>
                 </div>
                 
-                {/* Container com scroll */}
                 <div className="flex-grow overflow-y-auto -mx-2 px-2">
                     <div className="bg-brand-secondary p-4 rounded-lg mb-6">
                         <div className="flex justify-between items-center">

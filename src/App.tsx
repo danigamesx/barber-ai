@@ -142,18 +142,16 @@ const App: React.FC = () => {
   }>({ hasAccess: true, isTrial: false, planId: 'BASIC', trialEndDate: null });
 
   useEffect(() => {
-    const hash = window.location.hash;
-    if (hash.includes('payment_status=success')) {
-        setShowPaymentSuccess(true);
-        // Limpa o hash da URL para evitar que o modal reapareça ao atualizar
-        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('payment_status') === 'success') {
+      setShowPaymentSuccess(true);
+      window.history.replaceState(null, '', window.location.pathname + window.location.hash);
     }
 
     const loadInitialData = async () => {
         setLoading(true);
         setError(null);
         try {
-            // Sempre busca dados públicos
             const [barbershopsData, usersData, reviewsData] = await Promise.all([
                 api.getBarbershops(),
                 api.getAllUsers(),
@@ -163,7 +161,6 @@ const App: React.FC = () => {
             setUsers(usersData);
             setReviews(reviewsData);
 
-            // Verifica a sessão e busca dados privados se houver
             const { data: { session: currentSession } } = await api.getSession();
             setSession(currentSession);
 
@@ -175,7 +172,6 @@ const App: React.FC = () => {
                 setAppointments(appointmentsData);
                 setUser(userProfile);
             } else {
-                // Garante que os dados privados sejam limpos se não houver sessão
                 setUser(null);
                 setAppointments([]);
                 setGoogleToken(null);
@@ -188,19 +184,17 @@ const App: React.FC = () => {
         }
     };
     
-    loadInitialData(); // Carga inicial na montagem do componente
+    loadInitialData();
 
     const { data: authListener } = api.onAuthStateChange((_event, newSession) => {
         const userJustLoggedIn = newSession && !session;
         const userJustLoggedOut = !newSession && session;
         
-        setSession(newSession); // Sincroniza o estado da sessão imediatamente
+        setSession(newSession);
 
         if (userJustLoggedIn) {
-            // Se um usuário acabou de fazer login, recarregue TODOS os dados para garantir um estado limpo
             loadInitialData();
         } else if (userJustLoggedOut) {
-            // Se um usuário acabou de fazer logout, limpe TODOS os estados para evitar dados obsoletos
             setUser(null);
             setAppointments([]);
             setUsers([]);
@@ -297,7 +291,6 @@ const App: React.FC = () => {
   
   const signupAndRefetch = async (name: string, email: string, password: string, accountType: 'client' | 'barbershop', phone: string, birthDate?: string, barbershopName?: string) => {
     await api.signUpUser(name, email, password, accountType, phone, birthDate, barbershopName);
-    // O listener onAuthStateChange irá lidar com o recarregamento dos dados
   };
   
   const patchUser = (updatedUser: User) => {
@@ -585,19 +578,15 @@ const App: React.FC = () => {
         const barbershopId = urlParams.get('barbershopId');
 
         if (barbershopId) {
-            // Primeiro, verifica se ainda está carregando
             if (loading) {
                 return <div className="flex items-center justify-center h-screen"><p>Carregando barbearia...</p></div>;
             }
 
-            // Se não estiver carregando, podemos verificar a barbearia com segurança
             const shop = barbershops.find(b => b.id === barbershopId);
             
             if (shop) {
-                // Se a barbearia for encontrada, renderiza sua página pública
                 return <BarbershopPublicPage barbershop={shop} />;
             } else {
-                // Se o carregamento terminou e a barbearia não foi encontrada, ela realmente não existe
                 return (
                     <div className="flex flex-col items-center justify-center h-screen p-4 text-center">
                         <h2 className="text-2xl font-bold text-red-500 mb-2">Barbearia não encontrada.</h2>
