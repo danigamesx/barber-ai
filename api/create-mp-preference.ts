@@ -1,14 +1,23 @@
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mercadopago from 'mercadopago';
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '../src/types/database';
 import { IntegrationSettings } from '../src/types';
 
-// IMPORTANT: Use environment variables for Supabase credentials on the server-side.
-// The SERVICE_ROLE_KEY is required to bypass RLS policies.
-const supabaseAdmin = createClient<Database>(process.env.VITE_SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+    // Adicionando verificação de variáveis de ambiente no início
+    const supabaseUrl = process.env.VITE_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+        console.error('Supabase environment variables are not set on the server.');
+        return res.status(500).json({ error: 'Configuração do servidor incompleta. Variáveis de ambiente do Supabase ausentes.' });
+    }
+
+    // Inicializa o cliente Supabase Admin com as chaves verificadas
+    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+
     if (req.method !== 'POST') {
         res.setHeader('Allow', 'POST');
         return res.status(405).end('Method Not Allowed');

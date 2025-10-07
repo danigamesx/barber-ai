@@ -1,12 +1,13 @@
-// FIX: Replaced the failing `vite/client` triple-slash directive with manual type definitions for `import.meta.env`.
-// This resolves TypeScript errors when the vite/client types are not automatically discovered.
-interface ImportMetaEnv {
-  readonly VITE_SUPABASE_URL: string;
-  readonly VITE_SUPABASE_ANON_KEY: string;
-}
-
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
+// FIX: Correctly augmented the global ImportMeta type to include Vite's environment variables.
+// The previous interface declarations were local to the module and did not modify the global type.
+// This resolves TypeScript errors when the `vite/client` types are not automatically discovered.
+declare global {
+  interface ImportMeta {
+    readonly env: {
+      readonly VITE_SUPABASE_URL: string;
+      readonly VITE_SUPABASE_ANON_KEY: string;
+    };
+  }
 }
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
