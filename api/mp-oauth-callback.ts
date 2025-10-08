@@ -1,15 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-// FIX: Imported Json type to handle database update typing
 import { Database, Json } from '../src/types/database';
 import { IntegrationSettings } from '../src/types';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+    // FIX: Correctly determine redirect URI based on environment
+    const baseUrl = process.env.VERCEL_URL ? `https:// ${process.env.VERCEL_URL}` : 'http://localhost:5173';
+    const redirectUri = `${baseUrl}/api/mp-oauth-callback`;
+    
     const supabaseUrl = process.env.VITE_SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
     const appId = process.env.MERCADO_PAGO_APP_ID;
     const clientSecret = process.env.MERCADO_PAGO_CLIENT_SECRET;
-    const redirectUri = `${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:5173'}/api/mp-oauth-callback`;
 
     if (!supabaseUrl || !supabaseServiceKey || !appId || !clientSecret) {
         console.error('Server environment variables are not fully set for Mercado Pago OAuth.');
@@ -31,10 +33,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': `Bearer ${clientSecret}`
             },
             body: new URLSearchParams({
                 'grant_type': 'authorization_code',
+                'client_id': appId,
+                'client_secret': clientSecret,
                 'code': code as string,
                 'redirect_uri': redirectUri,
             })
@@ -71,7 +74,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Save tokens to the database
         const { error: updateError } = await supabaseAdmin
             .from('barbershops')
-            // FIX: Cast updatedIntegrations to Json to match the expected type for the database column.
             .update({ integrations: updatedIntegrations as Json })
             .eq('id', barbershopId);
 
@@ -81,7 +83,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         // Redirect user back to the settings page
-        const appUrl = process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:5173';
+        const appUrl = baseUrl;
         res.redirect(302, appUrl);
 
     } catch (error: any) {
