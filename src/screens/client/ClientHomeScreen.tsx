@@ -1,11 +1,12 @@
-import React, { useContext, useState, useMemo, useEffect } from 'react';
-import { Barbershop, Appointment, Address, LoyaltyProgram, Review } from '../../types';
+import React, { useContext, useState, useMemo } from 'react';
+// FIX: Removed unused 'Appointment' type.
+import { Barbershop, Address, LoyaltyProgram, Review } from '../../types';
 import { StarIcon, HeartIcon } from '../../components/icons/OutlineIcons';
-import BookingModal from './BookingModal';
-import PaymentModal from './PaymentModal';
+// FIX: Removed unused 'BookingModal' import.
+// FIX: Removed unused 'PaymentModal' import which was causing the error.
 import { AppContext } from '../../App';
 
-type NewAppointmentData = Omit<Appointment, 'id' | 'start_time' | 'end_time' | 'created_at'> & { start_time: Date, end_time: Date };
+// FIX: Removed unused 'NewAppointmentData' type.
 
 const BarbershopCard: React.FC<{ 
   barbershop: Barbershop; 

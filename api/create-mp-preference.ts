@@ -20,14 +20,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(405).end('Method Not Allowed');
     }
 
-    const { appointmentData, sandbox } = req.body;
+    const { appointmentData } = req.body;
 
     if (!appointmentData || !appointmentData.barbershop_id) {
         return res.status(400).json({ error: 'Dados do agendamento, incluindo ID da barbearia, são obrigatórios.' });
     }
 
     try {
-        // Busca dados da barbearia
         const { data: barbershop, error: fetchError } = await supabaseAdmin
             .from('barbershops')
             .select('integrations, name')
@@ -46,26 +45,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(400).json({ error: 'Esta barbearia não está configurada para receber pagamentos online.' });
         }
 
-        // Inicializa o SDK do Mercado Pago
-        const client = new MercadoPagoConfig({ accessToken, sandbox: !!sandbox });
+        const client = new MercadoPagoConfig({ accessToken });
         const preferenceClient = new Preference(client);
 
-        // Cria o agendamento no banco
         const { data: newAppointment, error: insertError } = await supabaseAdmin
             .from('appointments')
             .insert({
                 ...appointmentData,
-                status: 'pending',
+                status: 'pending', 
             })
             .select('id')
             .single();
 
         if (insertError) {
             console.error('Supabase insert error:', insertError);
-            throw new Error(`Falha ao criar o agendamento: ${insertError.message}`);
+            throw new Error(`Falha ao criar o agendamento no banco de dados: ${insertError.message}`);
         }
 
-        // Monta a preferência de pagamento
         const preferenceBody = {
             items: [
                 {
@@ -77,41 +73,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     unit_price: Number(appointmentData.price),
                 },
             ],
-            payment_methods: {
-                excluded_payment_types: [{ id: 'boleto' }],
-                installments: 1,
-            },
             payer: {
                 name: appointmentData.client_name,
-                email: appointmentData.client_email || '',
-                identification: appointmentData.client_cpf ? { type: 'CPF', number: appointmentData.client_cpf } : undefined,
+                email: appointmentData.client_email || '', 
             },
             back_urls: {
-                success: `${req.headers.origin}/?payment_status=success`,
-                failure: `${req.headers.origin}/?payment_status=failure`,
-                pending: `${req.headers.origin}/?payment_status=pending`,
+                success: `${req.headers.origin}/#/?barbershopId=${appointmentData.barbershop_id}&payment_status=success`,
+                failure: `${req.headers.origin}/#/?barbershopId=${appointmentData.barbershop_id}&payment_status=failure`,
+                pending: `${req.headers.origin}/#/?barbershopId=${appointmentData.barbershop_id}&payment_status=pending`,
             },
-            auto_return: 'approved',
+            auto_return: 'approved' as 'approved',
             notification_url: `https://${req.headers.host}/api/mp-webhook?barbershop_id=${appointmentData.barbershop_id}`,
             external_reference: newAppointment.id,
         };
 
-        // Cria a preferência no Mercado Pago
         const mpResponse = await preferenceClient.create({ body: preferenceBody });
-        const preferenceId = mpResponse.id;
-
-        // Salva preferenceId no banco
+        
+        const redirectUrl = mpResponse.init_point;
+        if (!redirectUrl) {
+            throw new Error('Não foi possível obter a URL de checkout do Mercado Pago.');
+        }
+        
         await supabaseAdmin
             .from('appointments')
-            .update({ mp_preference_id: preferenceId })
+            .update({ mp_preference_id: mpResponse.id })
             .eq('id', newAppointment.id);
 
-        console.log('Preference criada com sucesso:', preferenceId);
-
-        res.status(200).json({ preferenceId });
+        res.status(200).json({ redirectUrl });
 
     } catch (error: any) {
-        console.error('Erro ao criar preferência no Mercado Pago:', error);
+        console.error('Erro ao criar preferência no Mercado Pago:', error.cause || error.message);
         res.status(500).json({ error: error.message || 'Erro interno do servidor.' });
     }
 }

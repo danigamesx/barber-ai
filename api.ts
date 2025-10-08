@@ -360,7 +360,7 @@ export const setAppointmentGoogleEventId = async (appointmentId: string, googleE
 };
 
 // === MERCADO PAGO PAYMENT INTEGRATION ===
-export const createMercadoPagoPreference = async (appointmentData: Omit<Appointment, 'id' | 'created_at'> & { start_time: Date, end_time: Date }): Promise<string> => {
+export const createMercadoPagoPreference = async (appointmentData: Omit<Appointment, 'id' | 'created_at'> & { start_time: Date, end_time: Date }): Promise<{ redirectUrl: string }> => {
     const response = await fetch(`/api/create-mp-preference`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -370,10 +370,11 @@ export const createMercadoPagoPreference = async (appointmentData: Omit<Appointm
         const errorBody = await response.json();
         throw new Error(errorBody.error || 'Falha ao criar preferência de pagamento.');
     }
-    const { preferenceId } = await response.json();
-    return preferenceId;
+    const data = await response.json();
+    return data;
 };
 
+// FIX: Added function to call the disconnect API endpoint.
 export const disconnectMercadoPago = async (barbershopId: string): Promise<void> => {
     const response = await fetch('/api/mp-oauth-disconnect', {
         method: 'POST',
@@ -385,4 +386,4 @@ export const disconnectMercadoPago = async (barbershopId: string): Promise<void>
         const errorBody = await response.json();
         throw new Error(errorBody.error || 'Falha ao desconectar conta do Mercado Pago.');
     }
-}
+};

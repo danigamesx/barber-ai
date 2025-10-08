@@ -4,15 +4,15 @@ import { AppContext } from '../../App';
 import Button from '../../components/Button';
 import { StarIcon, PhoneIcon, InstagramIcon, FacebookIcon, GlobeAltIcon, XCircleIcon, ArrowLeftIcon } from '../../components/icons/OutlineIcons';
 import BookingModal from '../client/BookingModal';
-import PaymentModal from '../client/PaymentModal';
 import { Appointment } from '../../types';
+import * as api from '../../api';
 
 type NewAppointmentData = Omit<Appointment, 'id' | 'start_time' | 'end_time' | 'created_at'> & { start_time: Date, end_time: Date };
 
 const BarbershopPublicPage: React.FC<{ barbershop: Barbershop }> = ({ barbershop }) => {
     const { reviews, user } = useContext(AppContext);
     const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-    const [appointmentToPay, setAppointmentToPay] = useState<NewAppointmentData | null>(null);
+    const [isRedirecting, setIsRedirecting] = useState(false);
     const [showLoginPrompt, setShowLoginPrompt] = useState(false);
     
     useEffect(() => {
@@ -20,7 +20,6 @@ const BarbershopPublicPage: React.FC<{ barbershop: Barbershop }> = ({ barbershop
         if (hash.includes('openBooking=true') && user) {
             const urlParams = new URLSearchParams(hash.substring(hash.indexOf('?')));
             setIsBookingModalOpen(true);
-            // Limpa a URL para não reabrir o modal ao atualizar a página
             urlParams.delete('openBooking');
             const newHash = `#/?${urlParams.toString()}`;
             window.history.replaceState(null, '', newHash);
@@ -62,7 +61,6 @@ const BarbershopPublicPage: React.FC<{ barbershop: Barbershop }> = ({ barbershop
     
     const redirectToLogin = () => {
         sessionStorage.setItem('bookingIntentBarbershopId', barbershop.id);
-        // Limpar o hash redireciona para a tela de login/landing
         window.location.hash = '';
     };
 
@@ -82,9 +80,22 @@ const BarbershopPublicPage: React.FC<{ barbershop: Barbershop }> = ({ barbershop
         return (sum / barbershopReviews.length).toFixed(1);
     }, [barbershopReviews]);
 
-    const handleInitiatePayment = (appointmentData: NewAppointmentData) => {
-        setAppointmentToPay(appointmentData);
+    const handleInitiatePayment = async (appointmentData: NewAppointmentData) => {
         setIsBookingModalOpen(false);
+        setIsRedirecting(true);
+        try {
+            const { redirectUrl } = await api.createMercadoPagoPreference(appointmentData);
+            if (redirectUrl) {
+                window.location.href = redirectUrl;
+            } else {
+                alert('Não foi possível obter a URL de pagamento. Tente novamente.');
+                setIsRedirecting(false);
+            }
+        } catch (error: any) {
+            console.error('Falha ao iniciar pagamento:', error);
+            alert(`Erro ao iniciar pagamento: ${error.message}`);
+            setIsRedirecting(false);
+        }
     };
 
     return (
@@ -216,6 +227,16 @@ const BarbershopPublicPage: React.FC<{ barbershop: Barbershop }> = ({ barbershop
                 </main>
             </div>
 
+            {isRedirecting && (
+                <div className="fixed inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center p-4 z-[100]">
+                    <svg className="animate-spin h-8 w-8 text-white mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p className="text-white text-lg">Redirecionando para o pagamento...</p>
+                </div>
+            )}
+
             {showLoginPrompt && (
                 <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[70]">
                     <div className="bg-brand-dark w-full max-w-sm rounded-lg shadow-xl p-6 text-center relative">
@@ -234,12 +255,6 @@ const BarbershopPublicPage: React.FC<{ barbershop: Barbershop }> = ({ barbershop
                     barbershop={barbershop}
                     onClose={() => setIsBookingModalOpen(false)}
                     onInitiatePayment={handleInitiatePayment}
-                />
-            )}
-             {appointmentToPay && (
-                <PaymentModal
-                appointmentData={appointmentToPay}
-                onClose={() => setAppointmentToPay(null)}
                 />
             )}
         </>
