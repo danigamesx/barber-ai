@@ -65,6 +65,9 @@ export interface IntegrationSettings {
     stripeAccountOnboarded?: boolean;
     mercadopagoAccessToken?: string | null;
     mercadopagoPublicKey?: string | null;
+    // FIX: Added missing fields for Mercado Pago OAuth
+    mercadopagoRefreshToken?: string | null;
+    mercadopagoUserId?: number | null;
     plan?: 'BASIC' | 'PRO' | 'PREMIUM' | string;
     plan_type?: 'monthly' | 'annual';
     plan_expires_at?: string; // ISO Date String
