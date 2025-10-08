@@ -373,3 +373,16 @@ export const createMercadoPagoPreference = async (appointmentData: Omit<Appointm
     const { preferenceId } = await response.json();
     return preferenceId;
 };
+
+export const disconnectMercadoPago = async (barbershopId: string): Promise<void> => {
+    const response = await fetch('/api/mp-oauth-disconnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ barbershopId }),
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.json();
+        throw new Error(errorBody.error || 'Falha ao desconectar conta do Mercado Pago.');
+    }
+}

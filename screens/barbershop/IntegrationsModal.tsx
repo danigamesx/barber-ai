@@ -20,7 +20,7 @@ declare global {
 }
 
 const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ currentIntegrations, onClose, onSave }) => {
-  const { googleToken, setGoogleToken } = useContext(AppContext);
+  const { googleToken, setGoogleToken, barbershopData } = useContext(AppContext);
   const { features } = useContext(PlanContext);
   let tokenClient: any = null;
 
@@ -36,10 +36,6 @@ const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ currentIntegratio
   
   const [isGisLoaded, setIsGisLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  const [isEditingMercadoPago, setIsEditingMercadoPago] = useState(false);
-  const [mpPublicKey, setMpPublicKey] = useState(integrations.mercadopagoPublicKey || '');
-  const [mpAccessToken, setMpAccessToken] = useState(integrations.mercadopagoAccessToken || '');
 
   const isMercadoPagoConnected = integrations.mercadopagoPublicKey && integrations.mercadopagoAccessToken;
 
@@ -104,15 +100,31 @@ const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ currentIntegratio
     onSave(integrations as Json);
   };
   
-  const handleSaveMercadoPago = () => {
-    setIntegrations(prev => ({ ...prev, mercadopagoPublicKey: mpPublicKey, mercadopagoAccessToken: mpAccessToken }));
-    setIsEditingMercadoPago(false);
+  const handleConnectMercadoPago = () => {
+    if (!barbershopData) return;
+    // As variáveis de ambiente do VITE precisam ser expostas com o prefixo VITE_
+    const appId = import.meta.env.VITE_MERCADO_PAGO_APP_ID; 
+    if (!appId) {
+        setError("A configuração para conectar ao Mercado Pago está incompleta no servidor. (APP_ID ausente)");
+        return;
+    }
+    const redirectUri = `${window.location.origin}/api/mp-oauth-callback`;
+    const state = barbershopData.id;
+    const oauthUrl = `https://auth.mercadopago.com.br/authorization?client_id=${appId}&response_type=code&platform_id=mp&state=${state}&redirect_uri=${redirectUri}`;
+    window.location.href = oauthUrl;
   };
 
-  const handleDisconnectMercadoPago = () => {
-      setIntegrations(prev => ({ ...prev, mercadopagoPublicKey: undefined, mercadopagoAccessToken: undefined }));
-      setMpPublicKey('');
-      setMpAccessToken('');
+
+  const handleDisconnectMercadoPago = async () => {
+      if (!barbershopData) return;
+      if (!window.confirm("Tem certeza que deseja desconectar sua conta do Mercado Pago?")) return;
+      
+      try {
+        await api.disconnectMercadoPago(barbershopData.id);
+        setIntegrations(prev => ({ ...prev, mercadopagoPublicKey: undefined, mercadopagoAccessToken: undefined }));
+      } catch (err: any) {
+          setError(err.message || 'Falha ao desconectar. Tente novamente.');
+      }
   };
 
 
@@ -136,37 +148,15 @@ const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ currentIntegratio
                     </span>
                 </div>
                 
-                {!isMercadoPagoConnected && !isEditingMercadoPago && (
-                    <>
-                        <p className="text-xs text-gray-400">Receba pagamentos online diretamente na sua conta Mercado Pago.</p>
-                        <Button variant="secondary" onClick={() => setIsEditingMercadoPago(true)}>Conectar Conta</Button>
-                    </>
-                )}
-
-                {isEditingMercadoPago && (
-                    <div className="space-y-3 pt-2 border-t border-gray-700">
-                        <p className="text-xs text-gray-400">
-                            Acesse seu <a href="https://www.mercadopago.com.br/developers/panel/credentials" target="_blank" rel="noopener noreferrer" className="text-brand-primary underline">Painel de Desenvolvedor Mercado Pago</a> para obter suas credenciais.
-                        </p>
-                        <div>
-                            <label htmlFor="mpPublicKey" className="text-sm text-gray-300">Public Key</label>
-                            <input id="mpPublicKey" type="text" value={mpPublicKey} onChange={e => setMpPublicKey(e.target.value)} placeholder="APP_USR-..." className="w-full mt-1 px-3 py-2 bg-brand-dark border border-gray-600 rounded-md text-sm" />
-                        </div>
-                        <div>
-                            <label htmlFor="mpAccessToken" className="text-sm text-gray-300">Access Token</label>
-                            <input id="mpAccessToken" type="password" value={mpAccessToken} onChange={e => setMpAccessToken(e.target.value)} placeholder="APP_USR-..." className="w-full mt-1 px-3 py-2 bg-brand-dark border border-gray-600 rounded-md text-sm" />
-                        </div>
-                        <div className="flex gap-2">
-                            <Button variant="secondary" onClick={() => setIsEditingMercadoPago(false)}>Cancelar</Button>
-                            <Button onClick={handleSaveMercadoPago}>Salvar Credenciais</Button>
-                        </div>
-                    </div>
-                )}
-
-                {isMercadoPagoConnected && !isEditingMercadoPago && (
-                    <>
+                {isMercadoPagoConnected ? (
+                     <>
                         <p className="text-xs text-gray-400">Sua conta está conectada e pronta para receber pagamentos.</p>
-                        <Button variant="danger" onClick={handleDisconnectMercadoPago}>Desconectar</Button>
+                        <Button variant="danger" onClick={handleDisconnectMercadoPago}>Desconectar Conta</Button>
+                    </>
+                ) : (
+                    <>
+                        <p className="text-xs text-gray-400">Receba pagamentos online. O cliente é redirecionado para o Mercado Pago para autorizar a conexão de forma segura.</p>
+                        <Button variant="secondary" onClick={handleConnectMercadoPago}>Conectar com Mercado Pago</Button>
                     </>
                 )}
             </div>
