@@ -20,8 +20,7 @@ interface PaymentModalProps {
 const PaymentBrickComponent: React.FC<{
     preferenceId: string;
     publicKey: string;
-    price: number;
-}> = ({ preferenceId, publicKey, price }) => {
+}> = ({ preferenceId, publicKey }) => {
     useEffect(() => {
         const mp = new window.MercadoPago(publicKey, { locale: 'pt-BR' });
         const bricksBuilder = mp.bricks();
@@ -30,7 +29,6 @@ const PaymentBrickComponent: React.FC<{
         const renderBrick = async () => {
             const settings = {
                 initialization: {
-                    amount: price,
                     preferenceId: preferenceId,
                 },
                 customization: {
@@ -61,7 +59,7 @@ const PaymentBrickComponent: React.FC<{
                 }
              }
         }
-    }, [preferenceId, publicKey, price]);
+    }, [preferenceId, publicKey]);
 
     return <div id="payment-brick-container" />;
 };
@@ -134,7 +132,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ appointmentData, onClose })
                         <PaymentBrickComponent
                             preferenceId={preferenceId}
                             publicKey={mpPublicKey}
-                            price={price || 0}
                         />
                     )}
                 </div>
