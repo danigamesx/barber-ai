@@ -65,6 +65,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const preferenceBody = {
             items: [
                 {
+                    // FIX: Added the 'id' property, which is required by the Mercado Pago SDK's 'Items' type.
+                    id: appointmentData.service_id,
                     title: `Serviço: ${appointmentData.service_name}`,
                     description: `Agendamento na ${barbershop.name} com ${appointmentData.barber_name}`,
                     quantity: 1,
@@ -72,6 +74,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     unit_price: appointmentData.price,
                 },
             ],
+            payment_methods: {
+                excluded_payment_types: [
+                    { id: 'boleto' }
+                ],
+                installments: 1
+            },
             payer: {
                 name: appointmentData.client_name,
             },
