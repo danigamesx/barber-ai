@@ -1,11 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { Database, Json } from '../src/types/database';
+import { Database } from '../src/types/database';
+import { Json } from '../src/types/database';
 import { IntegrationSettings } from '../src/types';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-    // FIX: Removed extra space in the protocol to correctly determine the redirect URI.
-    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:5173';
+    // FIX: Dynamically construct the redirect URI based on request headers to ensure it matches the original URI,
+    // especially when using custom domains on platforms like Vercel.
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    const proto = req.headers['x-forwarded-proto'] || 'http';
+    const baseUrl = `${proto}://${host}`;
     const redirectUri = `${baseUrl}/api/mp-oauth-callback`;
     
     const supabaseUrl = process.env.VITE_SUPABASE_URL;
@@ -45,8 +49,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (!tokenResponse.ok) {
             const errorBody = await tokenResponse.json();
+            const errorMessage = errorBody.message || JSON.stringify(errorBody);
             console.error('Mercado Pago token exchange failed:', errorBody);
-            throw new Error(`Failed to get access token: ${errorBody.message || JSON.stringify(errorBody)}`);
+            throw new Error(`Failed to get access token: ${errorMessage}`);
         }
 
         const tokenData = await tokenResponse.json();
@@ -83,8 +88,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         // Redirect user back to the settings page
-        const appUrl = baseUrl;
-        res.redirect(302, appUrl);
+        // Use the same dynamic base URL to ensure redirection works correctly.
+        res.redirect(302, baseUrl);
 
     } catch (error: any) {
         console.error('OAuth Callback Error:', error);
