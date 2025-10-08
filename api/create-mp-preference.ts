@@ -76,9 +76,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 name: appointmentData.client_name,
             },
             back_urls: {
-                success: `${req.headers.origin}/#/?payment_status=success`, 
-                failure: `${req.headers.origin}/#/?payment_status=failure`,
-                pending: `${req.headers.origin}/#/?payment_status=pending`,
+                success: `${req.headers.origin}/?payment_status=success`, 
+                failure: `${req.headers.origin}/?payment_status=failure`,
+                pending: `${req.headers.origin}/?payment_status=pending`,
             },
             auto_return: 'approved',
             notification_url: `https://${req.headers.host}/api/mp-webhook?barbershop_id=${appointmentData.barbershop_id}`,

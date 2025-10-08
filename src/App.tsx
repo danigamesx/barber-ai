@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { User, Appointment, Barbershop, Review, ClientNotification, Session, Barber, FinancialRecord, Json, IntegrationSettings, CancellationPolicy } from './types';
 import LoginScreen from './screens/LoginScreen';
@@ -145,7 +146,7 @@ const App: React.FC = () => {
     const searchParams = new URLSearchParams(window.location.search);
     if (searchParams.get('payment_status') === 'success') {
       setShowPaymentSuccess(true);
-      window.history.replaceState(null, '', window.location.pathname + window.location.hash);
+      window.history.replaceState(null, '', window.location.pathname);
     }
 
     const loadInitialData = async () => {

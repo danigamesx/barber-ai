@@ -1,3 +1,4 @@
+
 import React, { useContext, useMemo, useState } from 'react';
 import { AppContext } from '../../App';
 import { Appointment, Barber, Service } from '../../types';
@@ -130,12 +131,13 @@ const AnalyticsScreen: React.FC = () => {
         const totalRevenue = revenueFromServices + revenueFromFees;
         const netRevenue = (revenueFromServices - totalCommissions) + revenueFromFees;
         
-        const serviceCounts = completed.reduce((counts, app) => {
+        // FIX: Explicitly typed the accumulator in the reduce function to ensure correct type inference for serviceCounts.
+        const serviceCounts = completed.reduce<{[key: string]: number}>((counts, app) => {
             if (app.service_name) {
                 counts[app.service_name] = (counts[app.service_name] || 0) + 1;
             }
             return counts;
-        }, {} as {[key: string]: number});
+        }, {});
         
         const mostPopularService = Object.entries(serviceCounts).sort((a,b) => b[1] - a[1])[0]?.[0] || 'N/A';
 
