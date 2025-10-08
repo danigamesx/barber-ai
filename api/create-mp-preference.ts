@@ -1,4 +1,3 @@
-
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { createClient } from '@supabase/supabase-js';
@@ -10,8 +9,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
     if (!supabaseUrl || !supabaseServiceKey) {
-        console.error('Supabase environment variables are not set on the server.');
-        return res.status(500).json({ error: 'Configuração do servidor incompleta. Variáveis de ambiente do Supabase ausentes.' });
+        console.error('Supabase environment variables are missing.');
+        return res.status(500).json({ error: 'Configuração do servidor incompleta. Variáveis do Supabase ausentes.' });
     }
 
     const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
@@ -21,13 +20,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(405).end('Method Not Allowed');
     }
 
-    const { appointmentData } = req.body;
-    
+    const { appointmentData, sandbox } = req.body;
+
     if (!appointmentData || !appointmentData.barbershop_id) {
         return res.status(400).json({ error: 'Dados do agendamento, incluindo ID da barbearia, são obrigatórios.' });
     }
 
     try {
+        // Busca dados da barbearia
         const { data: barbershop, error: fetchError } = await supabaseAdmin
             .from('barbershops')
             .select('integrations, name')
@@ -45,9 +45,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!accessToken) {
             return res.status(400).json({ error: 'Esta barbearia não está configurada para receber pagamentos online.' });
         }
-        
-        const client = new MercadoPagoConfig({ accessToken });
 
+        // Inicializa o SDK do Mercado Pago
+        const client = new MercadoPagoConfig({ accessToken, sandbox: !!sandbox });
+        const preferenceClient = new Preference(client);
+
+        // Cria o agendamento no banco
         const { data: newAppointment, error: insertError } = await supabaseAdmin
             .from('appointments')
             .insert({
@@ -59,32 +62,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (insertError) {
             console.error('Supabase insert error:', insertError);
-            throw new Error(`Falha ao criar o agendamento inicial: ${insertError.message}`);
+            throw new Error(`Falha ao criar o agendamento: ${insertError.message}`);
         }
-        
+
+        // Monta a preferência de pagamento
         const preferenceBody = {
             items: [
                 {
-                    // FIX: Added the 'id' property, which is required by the Mercado Pago SDK's 'Items' type.
                     id: appointmentData.service_id,
                     title: `Serviço: ${appointmentData.service_name}`,
                     description: `Agendamento na ${barbershop.name} com ${appointmentData.barber_name}`,
                     quantity: 1,
                     currency_id: 'BRL',
-                    unit_price: appointmentData.price,
+                    unit_price: Number(appointmentData.price),
                 },
             ],
             payment_methods: {
-                excluded_payment_types: [
-                    { id: 'boleto' }
-                ],
-                installments: 1
+                excluded_payment_types: [{ id: 'boleto' }],
+                installments: 1,
             },
             payer: {
                 name: appointmentData.client_name,
+                email: appointmentData.client_email || '',
+                identification: appointmentData.client_cpf ? { type: 'CPF', number: appointmentData.client_cpf } : undefined,
             },
             back_urls: {
-                success: `${req.headers.origin}/?payment_status=success`, 
+                success: `${req.headers.origin}/?payment_status=success`,
                 failure: `${req.headers.origin}/?payment_status=failure`,
                 pending: `${req.headers.origin}/?payment_status=pending`,
             },
@@ -93,14 +96,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             external_reference: newAppointment.id,
         };
 
-        const preferenceClient = new Preference(client);
+        // Cria a preferência no Mercado Pago
         const mpResponse = await preferenceClient.create({ body: preferenceBody });
         const preferenceId = mpResponse.id;
-        
+
+        // Salva preferenceId no banco
         await supabaseAdmin
             .from('appointments')
             .update({ mp_preference_id: preferenceId })
             .eq('id', newAppointment.id);
+
+        console.log('Preference criada com sucesso:', preferenceId);
 
         res.status(200).json({ preferenceId });
 

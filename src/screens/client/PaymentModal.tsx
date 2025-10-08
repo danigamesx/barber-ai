@@ -22,48 +22,50 @@ const PaymentBrickComponent: React.FC<{
     publicKey: string;
 }> = ({ preferenceId, publicKey }) => {
     useEffect(() => {
+        if (!preferenceId || !publicKey) return;
+
         const mp = new window.MercadoPago(publicKey, { locale: 'pt-BR' });
         const bricksBuilder = mp.bricks();
         let paymentBrickController: any = null;
 
         const renderBrick = async () => {
+            const container = document.getElementById('payment-brick-container');
+            if (!container) return;
+
+            container.innerHTML = ''; // limpa qualquer brick anterior
+
             const settings = {
-                initialization: {
-                    preferenceId: preferenceId,
-                },
+                initialization: { preferenceId },
                 customization: {
                     visual: { style: { theme: 'dark' } },
                     paymentMethods: { creditCard: 'all', debitCard: 'all', pix: 'all' },
                 },
                 callbacks: {
-                    onReady: () => {},
-                    onError: (error: any) => { console.error("Erro no Brick de Pagamento:", error); },
+                    onReady: () => console.log('Brick pronto'),
+                    onError: (error: any) => console.error('Erro no Brick de Pagamento:', error),
+                    onSubmit: (formData: any) => console.log('Dados submetidos:', formData),
+                    onPaymentApproved: (paymentInfo: any) => {
+                        console.log('Pagamento aprovado:', paymentInfo);
+                        alert('Pagamento aprovado com sucesso!');
+                    },
                 },
             };
-            
-            const container = document.getElementById('payment-brick-container');
-            if (container) {
-                container.innerHTML = ''; 
-                paymentBrickController = await bricksBuilder.create('payment', 'payment-brick-container', settings);
-            }
+
+            paymentBrickController = await bricksBuilder.create('payment', 'payment-brick-container', settings);
         };
-        
+
         renderBrick();
 
         return () => {
-             if (paymentBrickController) {
-                try {
-                    paymentBrickController.unmount();
-                } catch (e) {
-                    console.error("Erro ao desmontar o brick:", e);
-                }
-             }
-        }
+            if (paymentBrickController) {
+                try { paymentBrickController.unmount(); } 
+                catch (e) { console.error('Erro ao desmontar o brick:', e); }
+            }
+        };
     }, [preferenceId, publicKey]);
 
     return <div id="payment-brick-container" />;
 };
-
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ appointmentData, onClose }) => {
     const { barbershops } = useContext(AppContext);
@@ -74,27 +76,34 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ appointmentData, onClose })
     const { service_name, price, barbershop_id } = appointmentData;
     const barbershop = barbershops.find(b => b.id === barbershop_id);
     const integrations = barbershop?.integrations as IntegrationSettings | undefined;
-    
+
     const mpPublicKey = integrations?.mercadopagoPublicKey;
-    const isMercadoPagoConnected = mpPublicKey && integrations?.mercadopagoAccessToken;
+    const mpAccessToken = integrations?.mercadopagoAccessToken; // token do barbeiro
+    const isMercadoPagoConnected = mpPublicKey && mpAccessToken;
 
     useEffect(() => {
         if (!isMercadoPagoConnected) {
-            setError("Esta barbearia não está configurada para receber pagamentos online.");
+            setError('Esta barbearia não está configurada para receber pagamentos online.');
             setIsLoading(false);
             return;
         }
 
-        api.createMercadoPagoPreference(appointmentData)
-            .then(id => {
+        const fetchPreference = async () => {
+            try {
+                const id = await api.createMercadoPagoPreference(appointmentData, mpAccessToken); 
+                // OBS: a função createMercadoPagoPreference agora recebe o access token do barbeiro
+                console.log('Preference criada:', id);
                 setPreferenceId(id);
-            })
-            .catch(err => {
-                setError(err.message || "Falha ao criar a preferência de pagamento.");
-            })
-            .finally(() => setIsLoading(false));
+            } catch (err: any) {
+                console.error('Erro ao criar preferência:', err);
+                setError(err.message || 'Falha ao criar a preferência de pagamento.');
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
-    }, [appointmentData, isMercadoPagoConnected]);
+        fetchPreference();
+    }, [appointmentData, mpAccessToken, isMercadoPagoConnected]);
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
@@ -102,12 +111,14 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ appointmentData, onClose })
                 <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white z-10">
                     <XCircleIcon className="w-8 h-8" />
                 </button>
-                
+
                 <div className="flex-shrink-0">
                     <h2 className="text-xl font-bold mb-2 text-center">Pagamento Seguro</h2>
-                    <p className="text-center text-gray-400 mb-6">Confirme seu agendamento para {service_name}.</p>
+                    <p className="text-center text-gray-400 mb-6">
+                        Confirme seu agendamento para {service_name}.
+                    </p>
                 </div>
-                
+
                 <div className="flex-grow overflow-y-auto -mx-2 px-2">
                     <div className="bg-brand-secondary p-4 rounded-lg mb-6">
                         <div className="flex justify-between items-center">
@@ -115,9 +126,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ appointmentData, onClose })
                             <span className="font-bold text-lg">R$ {(price || 0).toFixed(2)}</span>
                         </div>
                     </div>
-                    
+
                     {error && <p className="text-red-500 text-sm text-center my-4">{error}</p>}
-                    
+
                     {isLoading && !error && (
                         <div className="text-center text-gray-400 my-4 flex items-center justify-center">
                             <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -129,14 +140,11 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ appointmentData, onClose })
                     )}
 
                     {!isLoading && !error && preferenceId && mpPublicKey && (
-                        <PaymentBrickComponent
-                            preferenceId={preferenceId}
-                            publicKey={mpPublicKey}
-                        />
+                        <PaymentBrickComponent preferenceId={preferenceId} publicKey={mpPublicKey} />
                     )}
                 </div>
 
-                 <p className="text-xs text-gray-500 text-center flex items-center justify-center gap-2 mt-4 flex-shrink-0">
+                <p className="text-xs text-gray-500 text-center flex items-center justify-center gap-2 mt-4 flex-shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
                     </svg>
