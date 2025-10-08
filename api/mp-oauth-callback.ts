@@ -4,8 +4,8 @@ import { Database, Json } from '../src/types/database';
 import { IntegrationSettings } from '../src/types';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-    // FIX: Correctly determine redirect URI based on environment
-    const baseUrl = process.env.VERCEL_URL ? `https:// ${process.env.VERCEL_URL}` : 'http://localhost:5173';
+    // FIX: Removed extra space in the protocol to correctly determine the redirect URI.
+    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:5173';
     const redirectUri = `${baseUrl}/api/mp-oauth-callback`;
     
     const supabaseUrl = process.env.VITE_SUPABASE_URL;
@@ -46,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!tokenResponse.ok) {
             const errorBody = await tokenResponse.json();
             console.error('Mercado Pago token exchange failed:', errorBody);
-            throw new Error(`Failed to get access token: ${errorBody.message}`);
+            throw new Error(`Failed to get access token: ${errorBody.message || JSON.stringify(errorBody)}`);
         }
 
         const tokenData = await tokenResponse.json();
