@@ -90,16 +90,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const mpResponse = await preferenceClient.create({ body: preferenceBody });
         
         const redirectUrl = mpResponse.init_point;
-        if (!redirectUrl) {
-            throw new Error('Não foi possível obter a URL de checkout do Mercado Pago.');
+        // FIX: The Payment Brick component requires the preference ID to render.
+        // We now return both the redirectUrl (for redirect-based checkouts) and the preferenceId (for embedded checkouts).
+        const preferenceId = mpResponse.id;
+
+        if (!redirectUrl || !preferenceId) {
+            throw new Error('Não foi possível obter a URL de checkout e o ID da preferência do Mercado Pago.');
         }
         
         await supabaseAdmin
             .from('appointments')
-            .update({ mp_preference_id: mpResponse.id })
+            .update({ mp_preference_id: preferenceId })
             .eq('id', newAppointment.id);
 
-        res.status(200).json({ redirectUrl });
+        res.status(200).json({ redirectUrl, preferenceId });
 
     } catch (error: any) {
         console.error('Erro ao criar preferência no Mercado Pago:', error.cause || error.message);

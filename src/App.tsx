@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { User, Appointment, Barbershop, Review, ClientNotification, Session, Barber, FinancialRecord, Json, IntegrationSettings, CancellationPolicy } from './types';
 import LoginScreen from './screens/LoginScreen';
@@ -11,7 +12,7 @@ import BarbershopSettingsScreen from './screens/barbershop/BarbershopSettingsScr
 import AnalyticsScreen from './screens/barbershop/AnalyticsScreen';
 import ProfessionalsScreen from './screens/barbershop/ProfessionalsScreen';
 import ClientsScreen from './screens/barbershop/ClientsScreen';
-import { HomeIcon, CalendarIcon, BellIcon, UserIcon, ClipboardListIcon, MegaphoneIcon, ChartBarIcon, CogIcon, UsersIcon, MenuIcon, ShareIcon, CheckCircleIcon } from './components/icons/OutlineIcons';
+import { HomeIcon, CalendarIcon, BellIcon, UserIcon, ClipboardListIcon, MegaphoneIcon, ChartBarIcon, CogIcon, UsersIcon, MenuIcon, ShareIcon, CheckCircleIcon, XCircleIcon, ClockIcon } from './components/icons/OutlineIcons';
 import BarbershopSetupScreen from './screens/barbershop/BarbershopSetupScreen';
 import ClientNotificationsScreen from './screens/client/ClientNotificationsScreen';
 import CommunicationsScreen from './screens/barbershop/CommunicationsScreen';
@@ -127,7 +128,7 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showLanding, setShowLanding] = useState(true);
   const [loginAccountType, setLoginAccountType] = useState<'client' | 'barbershop' | null>(null);
-  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<'success' | 'failure' | 'pending' | null>(null);
 
   const [activeClientScreen, setActiveClientScreen] = useState('home');
   const [activeBarbershopScreen, setActiveBarbershopScreen] = useState('dashboard');
@@ -143,11 +144,27 @@ const App: React.FC = () => {
   }>({ hasAccess: true, isTrial: false, planId: 'BASIC', trialEndDate: null });
 
   useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    if (searchParams.get('payment_status') === 'success') {
-      setShowPaymentSuccess(true);
-      window.history.replaceState(null, '', window.location.pathname);
-    }
+    const handleHashChange = () => {
+      if (window.location.hash.includes('payment_status')) {
+        const hash = window.location.hash;
+        const paramsString = hash.includes('?') ? hash.substring(hash.indexOf('?')) : '';
+        const params = new URLSearchParams(paramsString);
+        const status = params.get('payment_status') as 'success' | 'failure' | 'pending' | null;
+
+        if (status && ['success', 'failure', 'pending'].includes(status)) {
+          setPaymentStatus(status);
+        }
+
+        params.delete('payment_status');
+        const path = hash.split('?')[0];
+        const newParamsString = params.toString();
+        const newHash = newParamsString ? `${path}?${newParamsString}` : path;
+        window.history.replaceState(null, '', newHash);
+      }
+    };
+    
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
 
     const loadInitialData = async () => {
         setLoading(true);
@@ -207,6 +224,7 @@ const App: React.FC = () => {
 
     return () => {
       authListener.subscription.unsubscribe();
+      window.removeEventListener('hashchange', handleHashChange);
     };
   }, []); 
 
@@ -643,21 +661,52 @@ const App: React.FC = () => {
       <PlanContext.Provider value={planContextValue}>
         <div className="antialiased font-sans bg-brand-dark min-h-screen">
           {renderContent()}
-          {showPaymentSuccess && (
-                <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[100]">
-                    <div className="bg-brand-dark w-full max-w-md rounded-lg shadow-xl p-8 text-center">
-                        <CheckCircleIcon className="w-20 h-20 text-green-500 mx-auto mb-4" />
-                        <h2 className="text-2xl font-bold mb-2">Pagamento Aprovado!</h2>
-                        <p className="text-gray-400 mb-6">Seu agendamento está confirmado. O status será atualizado em breve.</p>
-                        <Button onClick={() => {
-                            setShowPaymentSuccess(false);
-                            setActiveClientScreen('appointments');
-                        }}>
-                            Ver Meus Agendamentos
-                        </Button>
-                    </div>
-                </div>
-            )}
+          {paymentStatus && (
+              <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[100]">
+                  <div className="bg-brand-dark w-full max-w-md rounded-lg shadow-xl p-8 text-center">
+                      {paymentStatus === 'success' && (
+                          <>
+                              <CheckCircleIcon className="w-20 h-20 text-green-500 mx-auto mb-4" />
+                              <h2 className="text-2xl font-bold mb-2">Pagamento Aprovado!</h2>
+                              <p className="text-gray-400 mb-6">Seu agendamento está confirmado. O status será atualizado em breve para "Pago".</p>
+                              <Button onClick={() => {
+                                  setPaymentStatus(null);
+                                  if (user?.user_type === 'CLIENT') {
+                                     setActiveClientScreen('appointments');
+                                  }
+                              }}>
+                                  Ver Meus Agendamentos
+                              </Button>
+                          </>
+                      )}
+                      {paymentStatus === 'failure' && (
+                          <>
+                              <XCircleIcon className="w-20 h-20 text-red-500 mx-auto mb-4" />
+                              <h2 className="text-2xl font-bold mb-2">Pagamento Recusado</h2>
+                              <p className="text-gray-400 mb-6">Não foi possível processar seu pagamento. Nenhum valor foi cobrado. Por favor, tente novamente ou escolha outro método de pagamento.</p>
+                              <Button variant="secondary" onClick={() => setPaymentStatus(null)}>
+                                  Tentar Novamente
+                              </Button>
+                          </>
+                      )}
+                      {paymentStatus === 'pending' && (
+                          <>
+                              <ClockIcon className="w-20 h-20 text-amber-500 mx-auto mb-4" />
+                              <h2 className="text-2xl font-bold mb-2">Pagamento Pendente</h2>
+                              <p className="text-gray-400 mb-6">Seu pagamento está sendo processado. Seu agendamento será confirmado assim que o pagamento for aprovado.</p>
+                               <Button variant="secondary" onClick={() => {
+                                  setPaymentStatus(null);
+                                  if (user?.user_type === 'CLIENT') {
+                                     setActiveClientScreen('appointments');
+                                  }
+                              }}>
+                                  Ver Meus Agendamentos
+                              </Button>
+                          </>
+                      )}
+                  </div>
+              </div>
+          )}
         </div>
       </PlanContext.Provider>
     </AppContext.Provider>

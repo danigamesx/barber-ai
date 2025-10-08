@@ -360,7 +360,8 @@ export const setAppointmentGoogleEventId = async (appointmentId: string, googleE
 };
 
 // === MERCADO PAGO PAYMENT INTEGRATION ===
-export const createMercadoPagoPreference = async (appointmentData: Omit<Appointment, 'id' | 'created_at'> & { start_time: Date, end_time: Date }): Promise<{ redirectUrl: string }> => {
+// FIX: Updated the return type to include `preferenceId`, which is necessary for the Mercado Pago Payment Brick.
+export const createMercadoPagoPreference = async (appointmentData: Omit<Appointment, 'id' | 'created_at'> & { start_time: Date, end_time: Date }): Promise<{ redirectUrl: string, preferenceId: string }> => {
     const response = await fetch(`/api/create-mp-preference`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
