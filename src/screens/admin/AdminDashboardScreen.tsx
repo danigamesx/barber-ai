@@ -1,12 +1,45 @@
-import React, { useState, useContext, useMemo } from 'react';
+import React, { useState, useContext, useMemo, useEffect } from 'react';
 import { AppContext } from '../../App';
 import { Barbershop, IntegrationSettings } from '../../types';
 import ManagePlanModal from './ManagePlanModal';
+import * as api from '../../api';
+import Button from '../../components/Button';
 
 const AdminDashboardScreen: React.FC = () => {
     const { barbershops, users, logout } = useContext(AppContext);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedBarbershop, setSelectedBarbershop] = useState<Barbershop | null>(null);
+    const [platformMpStatus, setPlatformMpStatus] = useState({ loading: true, connected: false });
+
+    useEffect(() => {
+        api.getPlatformMpStatus().then(status => {
+            setPlatformMpStatus({ loading: false, connected: status.connected });
+        });
+    }, []);
+
+    const handleConnectPlatformMercadoPago = () => {
+        const appId = import.meta.env.VITE_MERCADO_PAGO_APP_ID;
+        if (!appId) {
+            alert("Erro: O ID da aplicação do Mercado Pago não está configurado no ambiente.");
+            return;
+        }
+        const redirectUri = `${window.location.origin}/api/mp-platform-oauth-callback`;
+        const state = 'platform_connect';
+        const oauthUrl = `https://auth.mercadopago.com.br/authorization?client_id=${appId}&response_type=code&platform_id=mp&state=${state}&redirect_uri=${redirectUri}`;
+        window.location.href = oauthUrl;
+    };
+
+    const handleDisconnectPlatformMercadoPago = async () => {
+        if (window.confirm("Tem certeza que deseja desconectar a conta de pagamento da plataforma? Os barbeiros não poderão mais comprar planos.")) {
+            try {
+                await api.disconnectPlatformMercadoPago();
+                setPlatformMpStatus({ loading: false, connected: false });
+                alert("Conta desconectada com sucesso.");
+            } catch (error: any) {
+                alert(`Falha ao desconectar: ${error.message}`);
+            }
+        }
+    };
 
     const filteredBarbershops = barbershops.filter(shop => 
         shop.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -82,18 +115,34 @@ const AdminDashboardScreen: React.FC = () => {
                     </button>
                 </header>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <div className="bg-brand-secondary p-6 rounded-lg">
-                        <h3 className="text-gray-400 text-sm font-medium">Contas Ativas (Pagas + Teste)</h3>
+                        <h3 className="text-gray-400 text-sm font-medium">Contas Ativas</h3>
                         <p className="text-3xl font-bold text-white">{stats.totalActive}</p>
                     </div>
                     <div className="bg-brand-secondary p-6 rounded-lg">
-                        <h3 className="text-gray-400 text-sm font-medium">Em Período de Teste</h3>
+                        <h3 className="text-gray-400 text-sm font-medium">Em Teste</h3>
                         <p className="text-3xl font-bold text-white">{stats.activeTrials}</p>
                     </div>
                     <div className="bg-brand-secondary p-6 rounded-lg">
                         <h3 className="text-gray-400 text-sm font-medium">Expirados / Inativos</h3>
                         <p className="text-3xl font-bold text-white">{stats.inactiveOrExpired}</p>
+                    </div>
+                    <div className="bg-brand-secondary p-6 rounded-lg">
+                        <h3 className="text-gray-400 text-sm font-medium mb-2">Pagamento dos Planos</h3>
+                        {platformMpStatus.loading ? <p className="text-sm text-gray-400">Verificando...</p> : (
+                            platformMpStatus.connected ? (
+                                <div className="space-y-2">
+                                    <p className="text-lg font-bold text-green-400">Conectado</p>
+                                    <Button onClick={handleDisconnectPlatformMercadoPago} variant="danger" className="py-1 px-3 text-xs w-auto">Desconectar</Button>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    <p className="text-lg font-bold text-red-400">Desconectado</p>
+                                    <Button onClick={handleConnectPlatformMercadoPago} variant="secondary" className="py-1 px-3 text-xs w-auto">Conectar MP</Button>
+                                </div>
+                            )
+                        )}
                     </div>
                 </div>
 

@@ -188,6 +188,24 @@ export type Database = {
           },
         ]
       }
+      platform_settings: {
+        Row: {
+          id: number
+          config: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: number
+          config?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: number
+          config?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           birth_date: string | null

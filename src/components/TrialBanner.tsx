@@ -6,11 +6,23 @@ interface TrialBannerProps {
   trialEndDate: Date;
 }
 
+// The App component now controls the plan purchase flow
+declare global {
+  interface Window {
+    setPurchaseIntent: (planId: string, billingCycle: 'monthly' | 'annual') => void;
+  }
+}
+
 const TrialBanner: React.FC<TrialBannerProps> = ({ trialEndDate }) => {
   const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
   const now = new Date();
   const remainingMilliseconds = trialEndDate.getTime() - now.getTime();
   const remainingDays = Math.max(0, Math.ceil(remainingMilliseconds / (1000 * 60 * 60 * 24)));
+
+  const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
+    setIsPlansModalOpen(false);
+    window.setPurchaseIntent(planId, billingCycle);
+  };
 
   return (
     <>
@@ -21,11 +33,11 @@ const TrialBanner: React.FC<TrialBannerProps> = ({ trialEndDate }) => {
             <p className="text-sm text-center md:text-left">Restam {remainingDays} dia(s). Aproveite todos os recursos do plano Premium.</p>
           </div>
           <div className="ml-auto mt-2 md:mt-0 flex-shrink-0">
-            <Button onClick={() => setIsPlansModalOpen(true)} className="py-2 px-4 text-sm w-auto">Ver Planos</Button>
+            <Button onClick={() => setIsPlansModalOpen(true)} className="py-2 px-4 text-sm w-auto">Contratar Plano</Button>
           </div>
         </div>
       </div>
-      {isPlansModalOpen && <PlansModal onClose={() => setIsPlansModalOpen(false)} />}
+      {isPlansModalOpen && <PlansModal onClose={() => setIsPlansModalOpen(false)} onInitiatePurchase={handleInitiatePurchase} />}
     </>
   );
 };

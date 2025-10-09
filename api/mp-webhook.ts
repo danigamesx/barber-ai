@@ -52,7 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             
             if (payment) {
                 // FIX: Property 'preference_id' may not exist on the type 'PaymentResponse' depending on the SDK version.
-                // Destructuring the known properties and accessing preference_id dynamically provides a safe workaround.
+                // Accessing it as a dynamic property provides a safe workaround.
                 const { status, external_reference, metadata } = payment;
                 const preference_id = (payment as any).preference_id;
                 

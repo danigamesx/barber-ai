@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { AppContext } from '../../App';
-import { Appointment, IntegrationSettings } from '../../types';
 import { XCircleIcon } from '../../components/icons/OutlineIcons';
 import * as api from '../../api';
+import { PLANS } from '../../constants';
+import { AppContext } from '../../App';
 
 declare global {
     interface Window {
@@ -10,10 +10,9 @@ declare global {
     }
 }
 
-type NewAppointmentData = Omit<Appointment, 'id' | 'start_time' | 'end_time' | 'created_at'> & { start_time: Date, end_time: Date };
-
-interface PaymentModalProps {
-  appointmentData: NewAppointmentData;
+interface PlanPaymentModalProps {
+  planId: string;
+  billingCycle: 'monthly' | 'annual';
   onClose: () => void;
 }
 
@@ -65,38 +64,41 @@ const PaymentBrickComponent: React.FC<{
 };
 
 
-const PaymentModal: React.FC<PaymentModalProps> = ({ appointmentData, onClose }) => {
-    const { barbershops } = useContext(AppContext);
+const PlanPaymentModal: React.FC<PlanPaymentModalProps> = ({ planId, billingCycle, onClose }) => {
+    const { barbershopData } = useContext(AppContext);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [preferenceId, setPreferenceId] = useState<string | null>(null);
 
-    const { service_name, price, barbershop_id } = appointmentData;
-    const barbershop = barbershops.find(b => b.id === barbershop_id);
-    const integrations = barbershop?.integrations as IntegrationSettings | undefined;
+    const plan = PLANS.find(p => p.id === planId);
+    const price = billingCycle === 'annual' ? plan?.priceAnnual : plan?.priceMonthly;
+    const mpPublicKey = import.meta.env.VITE_MERCADO_PAGO_PLATFORM_PUBLIC_KEY;
     
-    const mpPublicKey = integrations?.mercadopagoPublicKey;
-    const isMercadoPagoConnected = mpPublicKey && integrations?.mercadopagoAccessToken;
-
     useEffect(() => {
-        if (!isMercadoPagoConnected) {
-            setError("Esta barbearia não está configurada para receber pagamentos online.");
+        if (!mpPublicKey) {
+            setError("A chave de pagamentos da plataforma não está configurada.");
             setIsLoading(false);
             return;
         }
 
-        api.createMercadoPagoPreference(appointmentData)
-            // FIX: The API response is an object. Destructure `preferenceId` from it.
-            // The original code passed the entire response object to `setPreferenceId`, causing a type error.
-            .then(({ preferenceId }) => {
-                setPreferenceId(preferenceId);
+        if (!plan || !barbershopData) {
+            setError("Não foi possível carregar os detalhes do plano ou da barbearia.");
+            setIsLoading(false);
+            return;
+        }
+
+        api.createPlanPreference(planId, billingCycle, barbershopData.id)
+            .then(data => {
+                setPreferenceId(data.preferenceId);
             })
             .catch(err => {
-                setError(err.message || "Falha ao criar a preferência de pagamento.");
+                setError(err.message || "Falha ao criar a preferência de pagamento do plano.");
             })
             .finally(() => setIsLoading(false));
 
-    }, [appointmentData, isMercadoPagoConnected]);
+    }, [planId, billingCycle, barbershopData, mpPublicKey, plan]);
+
+    if (!plan) return null;
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
@@ -106,15 +108,15 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ appointmentData, onClose })
                 </button>
                 
                 <div className="flex-shrink-0">
-                    <h2 className="text-xl font-bold mb-2 text-center">Pagamento Seguro</h2>
-                    <p className="text-center text-gray-400 mb-6">Confirme seu agendamento para {service_name}.</p>
+                    <h2 className="text-xl font-bold mb-2 text-center">Pagamento da Assinatura</h2>
+                    <p className="text-center text-gray-400 mb-6">Você está contratando o Plano {plan.name}.</p>
                 </div>
                 
                 <div className="flex-grow overflow-y-auto -mx-2 px-2">
                     <div className="bg-brand-secondary p-4 rounded-lg mb-6">
                         <div className="flex justify-between items-center">
-                            <span className="text-gray-300">Valor Total</span>
-                            <span className="font-bold text-lg">R$ {(price || 0).toFixed(2)}</span>
+                            <span className="text-gray-300">Plano {plan.name} ({billingCycle === 'annual' ? 'Anual' : 'Mensal'})</span>
+                            <span className="font-bold text-lg">R$ {(price || 0).toFixed(2).replace('.',',')}</span>
                         </div>
                     </div>
                     
@@ -149,4 +151,4 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ appointmentData, onClose })
     );
 };
 
-export default PaymentModal;
+export default PlanPaymentModal;

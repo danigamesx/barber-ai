@@ -14,7 +14,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     const supabaseUrl = process.env.VITE_SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
-    const appId = process.env.MERCADO_PAGO_APP_ID;
+    const appId = process.env.VITE_MERCADO_PAGO_APP_ID;
     const clientSecret = process.env.MERCADO_PAGO_CLIENT_SECRET;
 
     if (!supabaseUrl || !supabaseServiceKey || !appId || !clientSecret) {
@@ -89,7 +89,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         // Redirect user back to the settings page
         // Use the same dynamic base URL to ensure redirection works correctly.
-        res.redirect(302, baseUrl);
+        res.redirect(302, `${baseUrl}/#settings`);
 
     } catch (error: any) {
         console.error('OAuth Callback Error:', error);
