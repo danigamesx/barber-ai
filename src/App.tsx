@@ -1,5 +1,4 @@
 
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { User, Appointment, Barbershop, Review, ClientNotification, Session, Barber, FinancialRecord, Json, IntegrationSettings, CancellationPolicy } from './types';
 import LoginScreen from './screens/LoginScreen';
@@ -330,7 +329,11 @@ const App: React.FC = () => {
 
   const contextFunctions = {
     login: api.signInUser,
-    logout: api.signOutUser,
+    logout: async () => {
+      await api.signOutUser();
+      setShowLanding(true);
+      setLoginAccountType(null);
+    },
     signup: signupAndRefetch,
     addAppointment: async (data: Omit<Appointment, 'id' | 'start_time' | 'end_time' | 'created_at'> & { start_time: Date, end_time: Date }): Promise<Appointment> => {
         const newAppointment = await api.addAppointment(data);
