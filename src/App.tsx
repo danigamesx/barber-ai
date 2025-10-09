@@ -1,6 +1,8 @@
 
 
 
+
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { User, Appointment, Barbershop, Review, ClientNotification, Session, Barber, FinancialRecord, Json, IntegrationSettings, CancellationPolicy } from './types';
 import LoginScreen from './screens/LoginScreen';
