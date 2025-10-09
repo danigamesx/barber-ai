@@ -14,10 +14,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { body, query } = req;
     
-    // Respond immediately to Mercado Pago to avoid timeouts
     res.status(200).send('OK');
-
-    console.log('Webhook received:', JSON.stringify(body, null, 2));
 
     if (body.type === 'payment' && body.data?.id) {
         const paymentId = body.data.id as string;
@@ -25,7 +22,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (!barbershopId) {
             console.error('Webhook Error: Missing barbershop_id in notification URL query.');
-            return; // Stop execution
+            return;
         }
 
         try {
@@ -53,16 +50,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const paymentClient = new Payment(client);
             const payment = await paymentClient.get({ id: paymentId });
             
-            console.log('Payment details fetched:', JSON.stringify(payment, null, 2));
-
             if (payment) {
+                // FIX: Property 'preference_id' may not exist on the type 'PaymentResponse' depending on the SDK version.
+                // Destructuring the known properties and accessing preference_id dynamically provides a safe workaround.
                 const { status, external_reference, metadata } = payment;
                 const preference_id = (payment as any).preference_id;
                 
                 console.log(`Webhook processing: PaymentID=${paymentId}, Status=${status}, Ref=${external_reference}`);
 
                 if (status === 'approved' && external_reference) {
-                    // Check if an appointment for this payment already exists
                     const { data: existingAppointment, error: checkError } = await supabaseAdmin
                         .from('appointments')
                         .select('id')
@@ -71,12 +67,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                     if (checkError) {
                         console.error(`Webhook DB Check Error: Failed to check for existing appointment with preference_id ${preference_id}.`, checkError);
-                        return; // Stop on DB error
+                        return;
                     }
 
                     if (existingAppointment && existingAppointment.length > 0) {
                         console.log(`Webhook Info: Appointment for preference_id ${preference_id} already exists. Skipping creation.`);
-                        return; // Appointment already created, do nothing.
+                        return;
                     }
                     
                     const appointmentData = metadata as any;
@@ -97,7 +93,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         start_time: appointmentData.start_time,
                         end_time: appointmentData.end_time,
                         notes: appointmentData.notes,
-                        status: 'paid', // Directly set as 'paid'
+                        status: 'paid',
                         is_reward: appointmentData.is_reward,
                         mp_preference_id: preference_id,
                         cancellation_fee: null,
