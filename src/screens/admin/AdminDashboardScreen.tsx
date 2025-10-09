@@ -12,9 +12,14 @@ const AdminDashboardScreen: React.FC = () => {
     const [platformMpStatus, setPlatformMpStatus] = useState({ loading: true, connected: false });
 
     useEffect(() => {
-        api.getPlatformMpStatus().then(status => {
-            setPlatformMpStatus({ loading: false, connected: status.connected });
-        });
+        api.getPlatformMpStatus()
+            .then(status => {
+                setPlatformMpStatus({ loading: false, connected: status.connected });
+            })
+            .catch(error => {
+                console.error("Failed to fetch platform MP status", error);
+                setPlatformMpStatus({ loading: false, connected: false }); // Ensure loading is false on error
+            });
     }, []);
 
     const handleConnectPlatformMercadoPago = () => {

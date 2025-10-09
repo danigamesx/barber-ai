@@ -38,6 +38,7 @@ const ClientProfileScreen: React.FC = () => {
     };
 
     const expenseHistory = useMemo(() => {
+        // FIX: Replaced 'any[]' with a specific type to help TypeScript infer types correctly down the line.
         const history: {
             id: string;
             date: Date;
@@ -174,7 +175,7 @@ const ClientProfileScreen: React.FC = () => {
                          <select name="barbershopId" value={filters.barbershopId} onChange={handleFilterChange} className="bg-brand-dark p-2 rounded-md border border-gray-600">
                             <option value="all">Todas as Barbearias</option>
                             {[...new Set(expenseHistory.map(e => e.barbershopId))].map(id => (
-                                // FIX: Explicitly cast 'id' to string to satisfy TypeScript's strict type checking.
+                                // FIX: Explicitly cast 'id' to string to satisfy TypeScript's strict type checking for key, value, and function arguments.
                                 <option key={id as string} value={id as string}>{getBarbershopName(id as string)}</option>
                             ))}
                         </select>

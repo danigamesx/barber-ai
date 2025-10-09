@@ -1,27 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import Button from './Button';
 import PlansModal from '../screens/barbershop/PlansModal';
+import { AppContext } from '../App';
 
 interface TrialBannerProps {
   trialEndDate: Date;
 }
 
-// The App component now controls the plan purchase flow
-declare global {
-  interface Window {
-    setPurchaseIntent: (planId: string, billingCycle: 'monthly' | 'annual') => void;
-  }
-}
-
 const TrialBanner: React.FC<TrialBannerProps> = ({ trialEndDate }) => {
+  const { setPurchaseIntent } = useContext(AppContext);
   const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
   const now = new Date();
   const remainingMilliseconds = trialEndDate.getTime() - now.getTime();
   const remainingDays = Math.max(0, Math.ceil(remainingMilliseconds / (1000 * 60 * 60 * 24)));
 
   const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
+    setPurchaseIntent({ planId, billingCycle });
     setIsPlansModalOpen(false);
-    window.setPurchaseIntent(planId, billingCycle);
   };
 
   return (
@@ -37,6 +32,7 @@ const TrialBanner: React.FC<TrialBannerProps> = ({ trialEndDate }) => {
           </div>
         </div>
       </div>
+      {/* FIX: Passed the required onInitiatePurchase prop to PlansModal */}
       {isPlansModalOpen && <PlansModal onClose={() => setIsPlansModalOpen(false)} onInitiatePurchase={handleInitiatePurchase} />}
     </>
   );

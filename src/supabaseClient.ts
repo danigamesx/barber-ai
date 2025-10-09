@@ -1,14 +1,15 @@
-// FIX: Correctly augmented the global ImportMeta type to include Vite's environment variables.
-// The previous interface declarations were local to the module and did not modify the global type.
-// This resolves TypeScript errors when the `vite/client` types are not automatically discovered.
+// FIX: Correctly augmented the global ImportMetaEnv interface to include all Vite's environment variables.
+// This avoids conflicts with Vite's default typings by augmenting the correct interface.
 declare global {
+  interface ImportMetaEnv {
+    readonly VITE_SUPABASE_URL: string;
+    readonly VITE_SUPABASE_ANON_KEY: string;
+    readonly VITE_MERCADO_PAGO_APP_ID: string;
+    readonly VITE_MERCADO_PAGO_PLATFORM_PUBLIC_KEY: string;
+  }
+
   interface ImportMeta {
-    readonly env: {
-      readonly VITE_SUPABASE_URL: string;
-      readonly VITE_SUPABASE_ANON_KEY: string;
-      readonly VITE_MERCADO_PAGO_APP_ID: string;
-      readonly VITE_MERCADO_PAGO_PLATFORM_PUBLIC_KEY: string;
-    };
+    readonly env: ImportMetaEnv;
   }
 }
 

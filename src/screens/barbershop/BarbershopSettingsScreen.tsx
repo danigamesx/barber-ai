@@ -39,13 +39,6 @@ type ModalState =
   | { type: 'upgrade', feature: string, plan: string }
   | null;
 
-// The App component now controls the plan purchase flow
-declare global {
-  interface Window {
-    setPurchaseIntent: (planId: string, billingCycle: 'monthly' | 'annual') => void;
-  }
-}
-
 const BarbershopSettingsScreen: React.FC = () => {
   const { barbershopData, updateBarbershopData, logout, accessStatus } = useContext(AppContext);
   const { plan, features } = useContext(PlanContext);
@@ -270,11 +263,6 @@ const BarbershopSettingsScreen: React.FC = () => {
       } else {
           setModalState({ type: feature });
       }
-  };
-  
-  const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
-    setIsPlansModalOpen(false);
-    window.setPurchaseIntent(planId, billingCycle);
   };
 
   return (
@@ -631,7 +619,7 @@ const BarbershopSettingsScreen: React.FC = () => {
             onClose={() => setModalState(null)}
         />
       )}
-      {isPlansModalOpen && <PlansModal onClose={() => setIsPlansModalOpen(false)} onInitiatePurchase={handleInitiatePurchase} />}
+      {isPlansModalOpen && <PlansModal onClose={() => setIsPlansModalOpen(false)} />}
     </>
   );
 };

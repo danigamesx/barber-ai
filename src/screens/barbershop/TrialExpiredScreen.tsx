@@ -3,25 +3,13 @@ import Button from '../../components/Button';
 import { AppContext } from '../../App';
 import PlansModal from './PlansModal';
 
-// The App component now controls the plan purchase flow
-declare global {
-  interface Window {
-    setPurchaseIntent: (planId: string, billingCycle: 'monthly' | 'annual') => void;
-  }
-}
-
 const TrialExpiredScreen: React.FC = () => {
-    const { logout } = useContext(AppContext);
+    const { logout, setPurchaseIntent } = useContext(AppContext);
     const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
 
-    // FIX: Added handler for the onInitiatePurchase prop required by PlansModal.
     const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
+        setPurchaseIntent({ planId, billingCycle });
         setIsPlansModalOpen(false);
-        if (window.setPurchaseIntent) {
-            window.setPurchaseIntent(planId, billingCycle);
-        } else {
-            alert(`Iniciando compra do plano ${planId} (${billingCycle}). Esta função deve ser implementada no componente pai.`);
-        }
     };
 
     return (
@@ -36,6 +24,7 @@ const TrialExpiredScreen: React.FC = () => {
                     <Button variant="secondary" onClick={logout}>Sair</Button>
                 </div>
             </div>
+            {/* FIX: Passed the required onInitiatePurchase prop to PlansModal */}
             {isPlansModalOpen && <PlansModal onClose={() => setIsPlansModalOpen(false)} onInitiatePurchase={handleInitiatePurchase} />}
         </>
     );

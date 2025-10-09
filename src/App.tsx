@@ -1,5 +1,4 @@
 
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { User, Appointment, Barbershop, Review, ClientNotification, Session, Barber, FinancialRecord, Json, IntegrationSettings, CancellationPolicy } from './types';
 import LoginScreen from './screens/LoginScreen';
@@ -26,6 +25,9 @@ import Button from './components/Button';
 import BarbershopPublicPage from './screens/public/BarbershopPublicPage';
 import InactivePlanBanner from './components/InactivePlanBanner';
 import { supabaseInitializationError } from './supabaseClient';
+import PlanPaymentModal from './screens/barbershop/PlanPaymentModal';
+
+type PurchaseIntent = { planId: string; billingCycle: 'monthly' | 'annual' };
 
 export const AppContext = React.createContext<{
   user: User | null;
@@ -43,6 +45,8 @@ export const AppContext = React.createContext<{
     planId: string;
     trialEndDate: Date | null;
   };
+  // FIX: Added setPurchaseIntent to AppContext to allow child components to trigger plan purchases.
+  setPurchaseIntent: React.Dispatch<React.SetStateAction<PurchaseIntent | null>>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   signup: (name: string, email: string, password: string, accountType: 'client' | 'barbershop', phone: string, birthDate?: string, barbershopName?: string) => Promise<void>;
@@ -73,6 +77,7 @@ export const AppContext = React.createContext<{
   googleToken: null,
   isSuperAdmin: false,
   accessStatus: { hasAccess: false, isTrial: false, planId: 'BASIC', trialEndDate: null },
+  setPurchaseIntent: () => {},
   login: async () => {},
   logout: async () => {},
   signup: async () => {},
@@ -130,6 +135,8 @@ const App: React.FC = () => {
   const [loginAccountType, setLoginAccountType] = useState<'client' | 'barbershop' | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'failure' | 'pending' | null>(null);
   const [currentHash, setCurrentHash] = useState(window.location.hash);
+  const [purchaseIntent, setPurchaseIntent] = useState<PurchaseIntent | null>(null);
+
 
   const [activeClientScreen, setActiveClientScreen] = useState('home');
   const [activeBarbershopScreen, setActiveBarbershopScreen] = useState('dashboard');
@@ -213,6 +220,17 @@ const App: React.FC = () => {
         setSession(newSession);
 
         if (userJustLoggedIn) {
+            const storedIntent = sessionStorage.getItem('purchaseIntent');
+            if (storedIntent) {
+                try {
+                    const intent = JSON.parse(storedIntent);
+                    setPurchaseIntent(intent);
+                    sessionStorage.removeItem('purchaseIntent');
+                } catch (e) {
+                    console.error("Failed to parse purchase intent", e);
+                    sessionStorage.removeItem('purchaseIntent');
+                }
+            }
             loadInitialData();
         } else if (userJustLoggedOut) {
             setUser(null);
@@ -221,6 +239,9 @@ const App: React.FC = () => {
             setBarbershops([]);
             setReviews([]);
             setGoogleToken(null);
+            setPurchaseIntent(null);
+            setShowLanding(true); 
+            setLoginAccountType(null);
         }
     });
 
@@ -345,6 +366,7 @@ const App: React.FC = () => {
       setBarbershops([]);
       setReviews([]);
       setGoogleToken(null);
+      setPurchaseIntent(null);
       setShowLanding(true); 
       setLoginAccountType(null);
     },
@@ -474,7 +496,7 @@ const App: React.FC = () => {
   };
 
   const appContextValue = { 
-      user, users, barbershops, barbershopData, appointments, allAppointments: appointments, reviews, googleToken, isSuperAdmin, accessStatus,
+      user, users, barbershops, barbershopData, appointments, allAppointments: appointments, reviews, googleToken, isSuperAdmin, accessStatus, setPurchaseIntent,
       ...contextFunctions
   };
   
@@ -609,6 +631,15 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
+    if (user && purchaseIntent && barbershopData) {
+        return (
+            <PlanPaymentModal
+                planId={purchaseIntent.planId}
+                billingCycle={purchaseIntent.billingCycle}
+                onClose={() => setPurchaseIntent(null)}
+            />
+        );
+    }
     const hash = currentHash;
     if (hash.includes('barbershopId')) {
         const queryString = hash.substring(hash.indexOf('?'));

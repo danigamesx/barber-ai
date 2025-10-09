@@ -1,20 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import Button from './Button';
 import PlansModal from '../screens/barbershop/PlansModal';
-
-// The App component now controls the plan purchase flow
-declare global {
-  interface Window {
-    setPurchaseIntent: (planId: string, billingCycle: 'monthly' | 'annual') => void;
-  }
-}
+import { AppContext } from '../App';
 
 const InactivePlanBanner: React.FC = () => {
+    const { setPurchaseIntent } = useContext(AppContext);
     const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
 
     const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
+        setPurchaseIntent({ planId, billingCycle });
         setIsPlansModalOpen(false);
-        window.setPurchaseIntent(planId, billingCycle);
     };
     
     return (
@@ -26,10 +21,11 @@ const InactivePlanBanner: React.FC = () => {
                         <p className="text-sm text-center md:text-left">Seu acesso está limitado. Renove seu plano para reativar todas as funcionalidades.</p>
                     </div>
                     <div className="ml-auto mt-2 md:mt-0 flex-shrink-0">
-                        <Button onClick={() => setIsPlansModalOpen(true)} className="py-2 px-4 text-sm w-auto bg-red-600 hover:bg-red-700 text-white">Renovar Plano</Button>
+                        <Button onClick={() => setIsPlansModalOpen(true)} className="py-2 px-4 text-sm w-auto bg-red-600 hover:bg-red-700 text-white">Ver Planos</Button>
                     </div>
                 </div>
             </div>
+            {/* FIX: Passed the required onInitiatePurchase prop to PlansModal */}
             {isPlansModalOpen && <PlansModal onClose={() => setIsPlansModalOpen(false)} onInitiatePurchase={handleInitiatePurchase} />}
         </>
     )

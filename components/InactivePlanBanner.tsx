@@ -1,9 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import Button from './Button';
 import PlansModal from '../screens/barbershop/PlansModal';
+import { AppContext } from '../App';
 
 const InactivePlanBanner: React.FC = () => {
+    const { setPurchaseIntent } = useContext(AppContext);
     const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
+
+    const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
+        setPurchaseIntent({ planId, billingCycle });
+        setIsPlansModalOpen(false);
+    };
     
     return (
         <>
@@ -18,7 +25,8 @@ const InactivePlanBanner: React.FC = () => {
                     </div>
                 </div>
             </div>
-            {isPlansModalOpen && <PlansModal onClose={() => setIsPlansModalOpen(false)} />}
+            {/* FIX: Passed the required onInitiatePurchase prop to PlansModal */}
+            {isPlansModalOpen && <PlansModal onClose={() => setIsPlansModalOpen(false)} onInitiatePurchase={handleInitiatePurchase} />}
         </>
     )
 }

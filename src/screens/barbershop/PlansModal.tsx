@@ -1,18 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import Button from '../../components/Button';
 import { XCircleIcon } from '../../components/icons/OutlineIcons';
 import { PLANS } from '../../constants';
-import PlanPaymentModal from './PlanPaymentModal'; // Import the new payment modal
-import { SubscriptionPlanDetails } from '../../types';
+import { AppContext } from '../../App';
 
 interface PlansModalProps {
   onClose: () => void;
-  // This prop will be used to set the purchase intent in the App component
+  // FIX: Added required onInitiatePurchase prop to handle purchase logic in the parent component.
   onInitiatePurchase: (planId: string, billingCycle: 'monthly' | 'annual') => void;
 }
 
 const PlansModal: React.FC<PlansModalProps> = ({ onClose, onInitiatePurchase }) => {
+  const { setPurchaseIntent } = useContext(AppContext);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+
+  const handlePurchase = (planId: string, cycle: 'monthly' | 'annual') => {
+    // FIX: Call the onInitiatePurchase prop instead of setting state directly.
+    onInitiatePurchase(planId, cycle);
+    onClose();
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
@@ -67,7 +73,7 @@ const PlansModal: React.FC<PlansModalProps> = ({ onClose, onInitiatePurchase }) 
                   </li>
                   <li className={`flex items-start gap-2 ${plan.features.packagesAndSubscriptions ? '' : 'text-gray-500 line-through'}`}><span>{plan.features.packagesAndSubscriptions ? '✓' : '✕'}</span> <span>Pacotes e Assinaturas</span></li>
                 </ul>
-                 <Button onClick={() => onInitiatePurchase(plan.id, billingCycle)} variant={plan.id === 'PRO' ? 'primary' : 'secondary'} className="mt-auto">Contratar Plano</Button>
+                 <Button onClick={() => handlePurchase(plan.id, billingCycle)} variant={plan.id === 'PRO' ? 'primary' : 'secondary'} className="mt-auto">Contratar Plano</Button>
               </div>
             );
           })}
