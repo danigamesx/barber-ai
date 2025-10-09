@@ -60,8 +60,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const { error: updateError } = await supabaseAdmin
             .from('platform_settings')
-            .update({ config: mpConfig })
-            .eq('id', 1);
+            .upsert({ id: 1, config: mpConfig }, { onConflict: 'id' });
+
 
         if (updateError) {
             console.error('Platform OAuth Supabase update error:', updateError);

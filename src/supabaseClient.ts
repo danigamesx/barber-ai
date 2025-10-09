@@ -7,10 +7,6 @@ declare global {
     readonly VITE_MERCADO_PAGO_APP_ID: string;
     readonly VITE_MERCADO_PAGO_PLATFORM_PUBLIC_KEY: string;
   }
-
-  interface ImportMeta {
-    readonly env: ImportMetaEnv;
-  }
 }
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
