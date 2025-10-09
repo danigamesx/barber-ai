@@ -50,6 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const preferenceClient = new Preference(client);
         
         const transactionId = randomUUID();
+        const origin = req.headers.origin || `https://${req.headers.host}`;
 
         const preferenceBody = {
             items: [
@@ -67,9 +68,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 email: '',
             },
             back_urls: {
-                success: `${req.headers.origin}/#/?barbershopId=${appointmentData.barbershop_id}&payment_status=success`,
-                failure: `${req.headers.origin}/#/?barbershopId=${appointmentData.barbershop_id}&payment_status=failure`,
-                pending: `${req.headers.origin}/#/?barbershopId=${appointmentData.barbershop_id}&payment_status=pending`,
+                success: `${origin}/`,
+                failure: `${origin}/`,
+                pending: `${origin}/`,
             },
             auto_return: 'approved' as 'approved',
             notification_url: `https://${req.headers.host}/api/mp-webhook?barbershop_id=${appointmentData.barbershop_id}`,

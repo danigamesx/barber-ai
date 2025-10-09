@@ -360,8 +360,10 @@ export const setAppointmentGoogleEventId = async (appointmentId: string, googleE
 };
 
 // === MERCADO PAGO PAYMENT INTEGRATION ===
-// FIX: Updated the return type to include `preferenceId`, which is necessary for the Mercado Pago Payment Brick.
 export const createMercadoPagoPreference = async (appointmentData: Omit<Appointment, 'id' | 'created_at'> & { start_time: Date, end_time: Date }): Promise<{ redirectUrl: string, preferenceId: string }> => {
+    // Store barbershop_id in session storage to retrieve it on the callback page.
+    sessionStorage.setItem('pendingBarbershopId', appointmentData.barbershop_id);
+
     const response = await fetch(`/api/create-mp-preference`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -375,7 +377,6 @@ export const createMercadoPagoPreference = async (appointmentData: Omit<Appointm
     return data;
 };
 
-// FIX: Added function to call the disconnect API endpoint.
 export const disconnectMercadoPago = async (barbershopId: string): Promise<void> => {
     const response = await fetch('/api/mp-oauth-disconnect', {
         method: 'POST',
@@ -387,4 +388,17 @@ export const disconnectMercadoPago = async (barbershopId: string): Promise<void>
         const errorBody = await response.json();
         throw new Error(errorBody.error || 'Falha ao desconectar conta do Mercado Pago.');
     }
+};
+
+export const verifyPayment = async (preferenceId: string, barbershopId: string): Promise<{ status: 'approved' | 'pending' }> => {
+    const response = await fetch(`/api/verify-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preferenceId, barbershopId }),
+    });
+    if (!response.ok) {
+        const errorBody = await response.json();
+        throw new Error(errorBody.error || 'Falha ao verificar pagamento.');
+    }
+    return response.json();
 };

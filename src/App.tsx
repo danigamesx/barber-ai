@@ -1,5 +1,3 @@
-
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { User, Appointment, Barbershop, Review, ClientNotification, Session, Barber, FinancialRecord, Json, IntegrationSettings, CancellationPolicy } from './types';
 import LoginScreen from './screens/LoginScreen';
@@ -62,6 +60,7 @@ export const AppContext = React.createContext<{
   removeFromWaitingList: (barbershopId: string, date: string, clientId: string) => Promise<void>;
   setGoogleToken: (token: string | null) => void;
   patchUser: (user: User) => void;
+  fetchAppointments: () => Promise<void>;
 }>({
   user: null,
   users: [],
@@ -92,6 +91,7 @@ export const AppContext = React.createContext<{
   removeFromWaitingList: async () => {},
   setGoogleToken: () => {},
   patchUser: () => {},
+  fetchAppointments: async () => {},
 });
 
 export const PlanContext = React.createContext<{
@@ -128,7 +128,7 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showLanding, setShowLanding] = useState(true);
   const [loginAccountType, setLoginAccountType] = useState<'client' | 'barbershop' | null>(null);
-  const [paymentStatus, setPaymentStatus] = useState<'success' | 'failure' | 'pending' | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<'success' | 'failure' | 'pending' | 'verifying' | 'verify_error' | null>(null);
 
   const [activeClientScreen, setActiveClientScreen] = useState('home');
   const [activeBarbershopScreen, setActiveBarbershopScreen] = useState('dashboard');
@@ -142,29 +142,57 @@ const App: React.FC = () => {
     planId: string;
     trialEndDate: Date | null;
   }>({ hasAccess: true, isTrial: false, planId: 'BASIC', trialEndDate: null });
+  
+  const fetchAppointments = async () => {
+    const appointmentsData = await api.getAppointments();
+    setAppointments(appointmentsData);
+  }
 
   useEffect(() => {
-    const handleHashChange = () => {
-      if (window.location.hash.includes('payment_status')) {
-        const hash = window.location.hash;
-        const paramsString = hash.includes('?') ? hash.substring(hash.indexOf('?')) : '';
-        const params = new URLSearchParams(paramsString);
-        const status = params.get('payment_status') as 'success' | 'failure' | 'pending' | null;
+    const handlePaymentRedirect = async () => {
+        const params = new URLSearchParams(window.location.search);
+        const status = params.get('status');
+        const preferenceId = params.get('preference_id');
+        const barbershopId = sessionStorage.getItem('pendingBarbershopId');
 
-        if (status && ['success', 'failure', 'pending'].includes(status)) {
-          setPaymentStatus(status);
+        // Handling Mercado Pago redirect which includes query parameters
+        if (status === 'approved' && preferenceId && barbershopId) {
+            setPaymentStatus('verifying');
+            try {
+                const verification = await api.verifyPayment(preferenceId, barbershopId);
+                if (verification.status === 'approved') {
+                    await fetchAppointments();
+                    setPaymentStatus('success');
+                } else {
+                    setPaymentStatus('pending');
+                }
+            } catch (err) {
+                console.error("Verification failed:", err);
+                setPaymentStatus('verify_error');
+            } finally {
+                sessionStorage.removeItem('pendingBarbershopId');
+                // Clean up URL
+                window.history.replaceState(null, '', window.location.pathname + window.location.hash);
+            }
         }
+        // Handling the previous hash-based system for backward compatibility if needed
+        else {
+            const hash = window.location.hash;
+            const hashParams = new URLSearchParams(hash.substring(hash.indexOf('?')));
+            const paymentStatus = hashParams.get('payment_status') as 'success' | 'failure' | 'pending' | null;
 
-        params.delete('payment_status');
-        const path = hash.split('?')[0];
-        const newParamsString = params.toString();
-        const newHash = newParamsString ? `${path}?${newParamsString}` : path;
-        window.history.replaceState(null, '', newHash);
-      }
+            if (paymentStatus && ['success', 'failure', 'pending'].includes(paymentStatus)) {
+                setPaymentStatus(paymentStatus);
+                hashParams.delete('payment_status');
+                const path = hash.split('?')[0];
+                const newParamsString = hashParams.toString();
+                const newHash = newParamsString ? `${path}?${newParamsString}` : path;
+                window.history.replaceState(null, '', newHash);
+            }
+        }
     };
     
-    handleHashChange();
-    window.addEventListener('hashchange', handleHashChange);
+    handlePaymentRedirect();
 
     const loadInitialData = async () => {
         setLoading(true);
@@ -224,7 +252,6 @@ const App: React.FC = () => {
 
     return () => {
       authListener.subscription.unsubscribe();
-      window.removeEventListener('hashchange', handleHashChange);
     };
   }, []); 
 
@@ -332,18 +359,17 @@ const App: React.FC = () => {
     signup: signupAndRefetch,
     addAppointment: async (data: Omit<Appointment, 'id' | 'start_time' | 'end_time' | 'created_at'> & { start_time: Date, end_time: Date }): Promise<Appointment> => {
         const newAppointment = await api.addAppointment(data);
-        setAppointments(await api.getAppointments());
+        await fetchAppointments();
         return newAppointment;
     },
      updateAppointment: async (appointmentId: string, updates: { start_time: Date, end_time: Date }): Promise<Appointment> => {
         const updatedAppointment = await api.updateAppointment(appointmentId, updates);
-        setAppointments(await api.getAppointments());
+        await fetchAppointments();
         return updatedAppointment;
     },
     updateAppointmentStatus: async (appointment: Appointment, status: 'confirmed' | 'cancelled' | 'declined' | 'completed') => {
         await api.updateAppointmentStatus(appointment, status, barbershopData, googleToken);
-        const updatedAppointments = await api.getAppointments();
-        setAppointments(updatedAppointments);
+        await fetchAppointments();
     
         try {
             let clientProfile = await api.getUserProfile(appointment.client_id);
@@ -409,7 +435,7 @@ const App: React.FC = () => {
     addReview: async (review: Omit<Review, 'id' | 'created_at'>, appointmentId: string) => {
         await api.addReview(review, appointmentId);
         setReviews(await api.getReviews());
-        setAppointments(await api.getAppointments());
+        await fetchAppointments();
     },
     toggleFavoriteBarbershop: async (barbershopId: string) => {
         if (!user) return;
@@ -452,6 +478,7 @@ const App: React.FC = () => {
     },
     setGoogleToken,
     patchUser,
+    fetchAppointments,
   };
 
   const appContextValue = { 
@@ -656,57 +683,62 @@ const App: React.FC = () => {
 
   const finalAppContextValue = { ...appContextValue };
 
+  const renderPaymentStatusModal = () => {
+    if (!paymentStatus) return null;
+
+    const statusConfig = {
+      verifying: {
+        icon: <svg className="animate-spin h-20 w-20 text-blue-500 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>,
+        title: "Verificando Pagamento...",
+        message: "Aguarde um instante, estamos confirmando seu pagamento com o Mercado Pago.",
+        button: null
+      },
+      success: {
+        icon: <CheckCircleIcon className="w-20 h-20 text-green-500 mx-auto mb-4" />,
+        title: "Pagamento Aprovado!",
+        message: "Seu agendamento está confirmado e já aparece na sua lista de agendamentos.",
+        button: <Button onClick={() => { setPaymentStatus(null); if (user?.user_type === 'CLIENT') { setActiveClientScreen('appointments'); }}}>Ver Meus Agendamentos</Button>
+      },
+      failure: {
+        icon: <XCircleIcon className="w-20 h-20 text-red-500 mx-auto mb-4" />,
+        title: "Pagamento Recusado",
+        message: "Não foi possível processar seu pagamento. Nenhum valor foi cobrado. Por favor, tente novamente.",
+        button: <Button variant="secondary" onClick={() => setPaymentStatus(null)}>Tentar Novamente</Button>
+      },
+      pending: {
+        icon: <ClockIcon className="w-20 h-20 text-amber-500 mx-auto mb-4" />,
+        title: "Pagamento Pendente",
+        message: "Aguardando confirmação. Seu agendamento será criado assim que o pagamento for aprovado.",
+        button: <Button variant="secondary" onClick={() => { setPaymentStatus(null); if (user?.user_type === 'CLIENT') { setActiveClientScreen('appointments'); }}}>Entendido</Button>
+      },
+      verify_error: {
+        icon: <XCircleIcon className="w-20 h-20 text-red-500 mx-auto mb-4" />,
+        title: "Erro na Verificação",
+        message: "Não conseguimos confirmar seu pagamento automaticamente. Por favor, verifique seus agendamentos ou entre em contato com a barbearia. O webhook ainda pode confirmar seu agendamento em breve.",
+        button: <Button variant="secondary" onClick={() => setPaymentStatus(null)}>Fechar</Button>
+      }
+    };
+  
+    const currentStatus = statusConfig[paymentStatus];
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[100]">
+        <div className="bg-brand-dark w-full max-w-md rounded-lg shadow-xl p-8 text-center">
+          {currentStatus.icon}
+          <h2 className="text-2xl font-bold mb-2">{currentStatus.title}</h2>
+          <p className="text-gray-400 mb-6">{currentStatus.message}</p>
+          {currentStatus.button}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <AppContext.Provider value={finalAppContextValue}>
       <PlanContext.Provider value={planContextValue}>
         <div className="antialiased font-sans bg-brand-dark min-h-screen">
           {renderContent()}
-          {paymentStatus && (
-              <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[100]">
-                  <div className="bg-brand-dark w-full max-w-md rounded-lg shadow-xl p-8 text-center">
-                      {paymentStatus === 'success' && (
-                          <>
-                              <CheckCircleIcon className="w-20 h-20 text-green-500 mx-auto mb-4" />
-                              <h2 className="text-2xl font-bold mb-2">Pagamento Aprovado!</h2>
-                              <p className="text-gray-400 mb-6">Seu agendamento está confirmado. O status será atualizado em breve para "Pago".</p>
-                              <Button onClick={() => {
-                                  setPaymentStatus(null);
-                                  if (user?.user_type === 'CLIENT') {
-                                     setActiveClientScreen('appointments');
-                                  }
-                              }}>
-                                  Ver Meus Agendamentos
-                              </Button>
-                          </>
-                      )}
-                      {paymentStatus === 'failure' && (
-                          <>
-                              <XCircleIcon className="w-20 h-20 text-red-500 mx-auto mb-4" />
-                              <h2 className="text-2xl font-bold mb-2">Pagamento Recusado</h2>
-                              <p className="text-gray-400 mb-6">Não foi possível processar seu pagamento. Nenhum valor foi cobrado. Por favor, tente novamente ou escolha outro método de pagamento.</p>
-                              <Button variant="secondary" onClick={() => setPaymentStatus(null)}>
-                                  Tentar Novamente
-                              </Button>
-                          </>
-                      )}
-                      {paymentStatus === 'pending' && (
-                          <>
-                              <ClockIcon className="w-20 h-20 text-amber-500 mx-auto mb-4" />
-                              <h2 className="text-2xl font-bold mb-2">Pagamento Pendente</h2>
-                              <p className="text-gray-400 mb-6">Seu pagamento está sendo processado. Seu agendamento será confirmado assim que o pagamento for aprovado.</p>
-                               <Button variant="secondary" onClick={() => {
-                                  setPaymentStatus(null);
-                                  if (user?.user_type === 'CLIENT') {
-                                     setActiveClientScreen('appointments');
-                                  }
-                              }}>
-                                  Ver Meus Agendamentos
-                              </Button>
-                          </>
-                      )}
-                  </div>
-              </div>
-          )}
+          {renderPaymentStatusModal()}
         </div>
       </PlanContext.Provider>
     </AppContext.Provider>
