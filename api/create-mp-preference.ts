@@ -3,6 +3,7 @@ import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '../src/types/database';
 import { IntegrationSettings } from '../src/types';
+import { randomUUID } from 'crypto';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const supabaseUrl = process.env.VITE_SUPABASE_URL;
@@ -47,20 +48,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const client = new MercadoPagoConfig({ accessToken });
         const preferenceClient = new Preference(client);
-
-        const { data: newAppointment, error: insertError } = await supabaseAdmin
-            .from('appointments')
-            .insert({
-                ...appointmentData,
-                status: 'pending', 
-            })
-            .select('id')
-            .single();
-
-        if (insertError) {
-            console.error('Supabase insert error:', insertError);
-            throw new Error(`Falha ao criar o agendamento no banco de dados: ${insertError.message}`);
-        }
+        
+        const transactionId = randomUUID();
 
         const preferenceBody = {
             items: [
@@ -75,7 +64,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             ],
             payer: {
                 name: appointmentData.client_name,
-                email: appointmentData.client_email || '', 
+                email: '',
             },
             back_urls: {
                 success: `${req.headers.origin}/#/?barbershopId=${appointmentData.barbershop_id}&payment_status=success`,
@@ -84,25 +73,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             },
             auto_return: 'approved' as 'approved',
             notification_url: `https://${req.headers.host}/api/mp-webhook?barbershop_id=${appointmentData.barbershop_id}`,
-            external_reference: newAppointment.id,
+            external_reference: transactionId,
+            metadata: appointmentData,
         };
 
         const mpResponse = await preferenceClient.create({ body: preferenceBody });
         
         const redirectUrl = mpResponse.init_point;
-        // FIX: The Payment Brick component requires the preference ID to render.
-        // We now return both the redirectUrl (for redirect-based checkouts) and the preferenceId (for embedded checkouts).
         const preferenceId = mpResponse.id;
 
         if (!redirectUrl || !preferenceId) {
             throw new Error('Não foi possível obter a URL de checkout e o ID da preferência do Mercado Pago.');
         }
         
-        await supabaseAdmin
-            .from('appointments')
-            .update({ mp_preference_id: preferenceId })
-            .eq('id', newAppointment.id);
-
         res.status(200).json({ redirectUrl, preferenceId });
 
     } catch (error: any) {
