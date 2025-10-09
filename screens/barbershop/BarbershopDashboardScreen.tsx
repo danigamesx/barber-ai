@@ -349,8 +349,10 @@ const BarbershopDashboardScreen: React.FC = () => {
                                     <div>
                                         <p className="text-white">
                                             <span className="font-bold">{app.client_name}</span> agendou <span className="font-semibold">{app.service_name}</span>.
-                                            {(app.status === 'paid' || app.status === 'completed') && <span className="ml-2 text-xs font-bold px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">Pago</span>}
-                                            {(app.status === 'confirmed' || app.status === 'pending') && <span className="ml-2 text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">A Pagar</span>}
+                                            {app.status === 'paid' && <span className="ml-2 text-xs font-bold px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">Confirmado e Pago</span>}
+                                            {app.status === 'completed' && <span className="ml-2 text-xs font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400">Concluído</span>}
+                                            {app.status === 'confirmed' && <span className="ml-2 text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">Confirmado (a pagar)</span>}
+                                            {app.status === 'pending' && <span className="ml-2 text-xs font-bold px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">Pendente</span>}
                                         </p>
                                         <p className="text-xs text-gray-400">
                                             {app.created_at ? new Date(app.created_at).toLocaleString('pt-BR') : 'Data indisponível'}

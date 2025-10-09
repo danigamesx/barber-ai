@@ -1,8 +1,8 @@
-import React, { useContext, useMemo, useState, useEffect } from 'react';
+import React, { useContext, useMemo, useState, useEffect, useCallback } from 'react';
 import { AppContext } from '../../App';
 import Button from '../../components/Button';
 import { Appointment, IntegrationSettings, User, Service, Barber, OpeningHours, DayOpeningHours } from '../../types';
-import { XCircleIcon } from '../../components/icons/OutlineIcons';
+import { XCircleIcon, PencilIcon, CheckCircleIcon, TrashIcon, ClockIcon } from '../../components/icons/OutlineIcons';
 import EditAppointmentModal from './EditAppointmentModal';
 import * as api from '../../api';
 
@@ -502,8 +502,8 @@ const BarbershopAppointmentsScreen: React.FC = () => {
                                         <div className="border-l-4 border-brand-accent pl-3">
                                             <div className="flex items-center gap-2">
                                                 <p className="font-semibold text-white">{app.client_name}</p>
-                                                {app.status === 'paid' && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">Pago</span>}
-                                                {app.status === 'confirmed' && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">A Pagar</span>}
+                                                {app.status === 'paid' && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">Confirmado e Pago</span>}
+                                                {app.status === 'confirmed' && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">Confirmado (a pagar)</span>}
                                             </div>
                                             <p className="text-xs text-gray-300">{app.service_name} com {app.barber_name}</p>
                                         </div>

@@ -10,11 +10,11 @@ import * as api from '../../api';
 
 const statusTranslations: { [key in Appointment['status']]: string } = {
   pending: 'Pendente',
-  confirmed: 'Confirmado',
+  confirmed: 'Confirmado (a pagar)',
   completed: 'Concluído',
   cancelled: 'Cancelado',
   declined: 'Recusado',
-  paid: 'Pago',
+  paid: 'Confirmado e Pago',
 };
 
 type NewAppointmentData = Omit<Appointment, 'id' | 'start_time' | 'end_time' | 'created_at'> & { start_time: Date, end_time: Date };
