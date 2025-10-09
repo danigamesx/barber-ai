@@ -43,7 +43,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
               BarberAI
             </a>
           </div>
-          <div className="hidden lg:flex lg:gap-x-12">
+          <div className="hidden lg:flex lg:gap-x-8">
             <a href="#inicio" className="text-sm font-semibold leading-6 text-white hover:text-brand-primary transition-colors">Início</a>
             <a href="#sobre" className="text-sm font-semibold leading-6 text-white hover:text-brand-primary transition-colors">Sobre</a>
             <a href="#funcoes" className="text-sm font-semibold leading-6 text-white hover:text-brand-primary transition-colors">Funções</a>
@@ -78,7 +78,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
                     </div>
                      <div className="mt-16 flow-root sm:mt-24">
                         <div className="-m-2 rounded-xl bg-gray-900/5 p-2 ring-1 ring-inset ring-gray-900/10 lg:-m-4 lg:rounded-2xl lg:p-4">
-                            <img src="https://i.ibb.co/5Wx8kCMs/Gemini-Generated-Image-j8j3xej8j3xej8j3.png" alt="Painel de controle do BarberAI em um laptop dentro de uma barbearia moderna" width={2432} height={1442} className="rounded-md shadow-2xl ring-1 ring-white/10" />
+                            <img src="https://i.ibb.co/5Wx8kCM/Gemini-Generated-Image-j8j3xej8j3xej8j3.png" alt="Painel de controle do BarberAI em um laptop dentro de uma barbearia moderna" width={2432} height={1442} className="rounded-md shadow-2xl ring-1 ring-white/10" />
                         </div>
                     </div>
                 </div>
@@ -94,7 +94,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
                         <p className="mt-6 text-lg leading-8 text-gray-300">Nascemos da correria e da paixão do dia a dia da barbearia. Cansados de agendamentos em papel e mensagens perdidas, criamos uma ferramenta que realmente entende suas necessidades. Com o BarberAI, você ganha um assistente digital que cuida da parte chata para você poder focar na sua arte.</p>
                     </div>
                     <div className="flex justify-center">
-                        <img src="https://i.ibb.co/v4PTHhkM/Gemini-Generated-Image-kxvv7skxvv7skxvv.png" alt="Barbeiro sorrindo enquanto atende um cliente" className="w-[30rem] max-w-none rounded-xl shadow-xl ring-1 ring-white/10 sm:w-[36rem]" />
+                        <img src="https://i.ibb.co/v4PTHhk/Gemini-Generated-Image-kxvv7skxvv7skxvv.png" alt="Barbeiro sorrindo enquanto atende um cliente" className="w-[30rem] max-w-none rounded-xl shadow-xl ring-1 ring-white/10 sm:w-[36rem]" />
                     </div>
                 </div>
             </div>
@@ -133,9 +133,14 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
                 <div className="flex justify-center my-10">
                     <div className="bg-brand-dark rounded-lg p-1 flex">
                         <button onClick={() => setBillingCycle('monthly')} className={`px-6 py-2 rounded-md font-semibold transition text-sm ${billingCycle === 'monthly' ? 'bg-brand-primary text-brand-dark' : 'text-gray-300'}`}>Mensal</button>
-                        <button onClick={() => setBillingCycle('annual')} className={`relative px-6 py-2 rounded-md font-semibold transition text-sm ${billingCycle === 'annual' ? 'bg-brand-primary text-brand-dark' : 'text-gray-300'}`}>
+                        <button
+                            onClick={() => setBillingCycle('annual')}
+                            className={`relative px-6 py-2 rounded-md font-semibold transition text-sm ${billingCycle === 'annual' ? 'bg-brand-primary text-brand-dark' : 'text-gray-300'}`}
+                        >
                             Anual
-                            <span className="absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">ECONOMIZE</span>
+                            <span className="absolute top-0 right-0 transform translate-x-1/4 -translate-y-1/2 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
+                                30% OFF
+                            </span>
                         </button>
                     </div>
                 </div>
