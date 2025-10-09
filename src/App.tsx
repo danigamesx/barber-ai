@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { User, Appointment, Barbershop, Review, ClientNotification, Session, Barber, FinancialRecord, Json, IntegrationSettings, CancellationPolicy } from './types';
 import LoginScreen from './screens/LoginScreen';
@@ -143,6 +144,42 @@ const App: React.FC = () => {
     trialEndDate: Date | null;
   }>({ hasAccess: true, isTrial: false, planId: 'BASIC', trialEndDate: null });
   
+  const loadInitialData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+          const [barbershopsData, usersData, reviewsData] = await Promise.all([
+              api.getBarbershops(),
+              api.getAllUsers(),
+              api.getReviews(),
+          ]);
+          setBarbershops(barbershopsData);
+          setUsers(usersData);
+          setReviews(reviewsData);
+
+          const { data: { session: currentSession } } = await api.getSession();
+          setSession(currentSession);
+
+          if (currentSession?.user) {
+              const [appointmentsData, userProfile] = await Promise.all([
+                  api.getAppointments(),
+                  api.getUserProfile(currentSession.user.id),
+              ]);
+              setAppointments(appointmentsData);
+              setUser(userProfile);
+          } else {
+              setUser(null);
+              setAppointments([]);
+              setGoogleToken(null);
+          }
+      } catch (err: any) {
+          console.error("Falha ao carregar dados iniciais:", err);
+          setError("Não foi possível carregar os dados. Verifique sua conexão.");
+      } finally {
+          setLoading(false);
+      }
+  };
+
   useEffect(() => {
     if (currentHash.includes('payment_status')) {
       const paramsString = currentHash.includes('?') ? currentHash.substring(currentHash.indexOf('?')) : '';
@@ -166,42 +203,6 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleHashChange = () => setCurrentHash(window.location.hash);
     window.addEventListener('hashchange', handleHashChange);
-
-    const loadInitialData = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const [barbershopsData, usersData, reviewsData] = await Promise.all([
-                api.getBarbershops(),
-                api.getAllUsers(),
-                api.getReviews(),
-            ]);
-            setBarbershops(barbershopsData);
-            setUsers(usersData);
-            setReviews(reviewsData);
-
-            const { data: { session: currentSession } } = await api.getSession();
-            setSession(currentSession);
-
-            if (currentSession?.user) {
-                const [appointmentsData, userProfile] = await Promise.all([
-                    api.getAppointments(),
-                    api.getUserProfile(currentSession.user.id),
-                ]);
-                setAppointments(appointmentsData);
-                setUser(userProfile);
-            } else {
-                setUser(null);
-                setAppointments([]);
-                setGoogleToken(null);
-            }
-        } catch (err: any) {
-            console.error("Falha ao carregar dados iniciais:", err);
-            setError("Não foi possível carregar os dados. Verifique sua conexão.");
-        } finally {
-            setLoading(false);
-        }
-    };
     
     loadInitialData();
 
@@ -311,6 +312,10 @@ const App: React.FC = () => {
   
   const signupAndRefetch = async (name: string, email: string, password: string, accountType: 'client' | 'barbershop', phone: string, birthDate?: string, barbershopName?: string) => {
     await api.signUpUser(name, email, password, accountType, phone, birthDate, barbershopName);
+    // After signup, the user is authenticated. The onAuthStateChange listener might race
+    // against the DB record creation. Explicitly reloading data here ensures we get the
+    // latest state, including the new barbershop for setup.
+    await loadInitialData();
   };
   
   const patchUser = (updatedUser: User) => {
@@ -328,19 +333,18 @@ const App: React.FC = () => {
   };
 
   const contextFunctions = {
-    login: api.signInUser,
+    login: async (email: string, password: string) => {
+        await api.signInUser(email, password);
+        await loadInitialData();
+    },
     logout: async () => {
       await api.signOutUser();
-      // Manually clear state to ensure an immediate and clean logout,
-      // preventing race conditions where old user data might persist temporarily.
       setUser(null);
       setAppointments([]);
       setUsers([]);
       setBarbershops([]);
       setReviews([]);
       setGoogleToken(null);
-      
-      // Reset UI state to show the initial landing page.
       setShowLanding(true); 
       setLoginAccountType(null);
     },
