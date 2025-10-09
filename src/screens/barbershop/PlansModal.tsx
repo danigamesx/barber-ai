@@ -1,8 +1,7 @@
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import Button from '../../components/Button';
 import { XCircleIcon } from '../../components/icons/OutlineIcons';
 import { PLANS } from '../../constants';
-import { AppContext } from '../../App';
 
 interface PlansModalProps {
   onClose: () => void;
@@ -11,7 +10,6 @@ interface PlansModalProps {
 }
 
 const PlansModal: React.FC<PlansModalProps> = ({ onClose, onInitiatePurchase }) => {
-  const { setPurchaseIntent } = useContext(AppContext);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
 
   const handlePurchase = (planId: string, cycle: 'monthly' | 'annual') => {
