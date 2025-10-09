@@ -78,7 +78,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
                     </div>
                      <div className="mt-16 flow-root sm:mt-24">
                         <div className="-m-2 rounded-xl bg-gray-900/5 p-2 ring-1 ring-inset ring-gray-900/10 lg:-m-4 lg:rounded-2xl lg:p-4">
-                            <img src="https://images.unsplash.com/photo-1622288390747-a53b42876a43?q=80&w=2574&auto=format&fit=crop" alt="Painel de controle do BarberAI em um laptop dentro de uma barbearia moderna" width={2432} height={1442} className="rounded-md shadow-2xl ring-1 ring-white/10" />
+                            <img src="https://i.ibb.co/5Wx8kCMs/Gemini-Generated-Image-j8j3xej8j3xej8j3.png" alt="Painel de controle do BarberAI em um laptop dentro de uma barbearia moderna" width={2432} height={1442} className="rounded-md shadow-2xl ring-1 ring-white/10" />
                         </div>
                     </div>
                 </div>
@@ -94,7 +94,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
                         <p className="mt-6 text-lg leading-8 text-gray-300">Nascemos da correria e da paixão do dia a dia da barbearia. Cansados de agendamentos em papel e mensagens perdidas, criamos uma ferramenta que realmente entende suas necessidades. Com o BarberAI, você ganha um assistente digital que cuida da parte chata para você poder focar na sua arte.</p>
                     </div>
                     <div className="flex justify-center">
-                        <img src="https://images.unsplash.com/photo-1599351431202-1810c26b48cb?q=80&w=2670&auto=format&fit=crop" alt="Barbeiro sorrindo enquanto atende um cliente" className="w-[30rem] max-w-none rounded-xl shadow-xl ring-1 ring-white/10 sm:w-[36rem]" />
+                        <img src="https://i.ibb.co/v4PTHhkM/Gemini-Generated-Image-kxvv7skxvv7skxvv.png" alt="Barbeiro sorrindo enquanto atende um cliente" className="w-[30rem] max-w-none rounded-xl shadow-xl ring-1 ring-white/10 sm:w-[36rem]" />
                     </div>
                 </div>
             </div>
