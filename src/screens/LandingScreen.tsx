@@ -36,35 +36,72 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
 
   return (
     <div className="bg-brand-dark text-brand-light">
-      <header className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${isScrolled ? 'bg-brand-secondary/80 backdrop-blur-lg' : 'bg-transparent'}`}>
-  <nav className="flex items-center justify-between p-4 lg:px-8 max-w-7xl mx-auto" aria-label="Global">
-    {/* LOGO */}
-    <div className="flex items-center">
-      <a href="#inicio" className="-m-1.5 p-1.5 text-2xl font-black text-brand-primary">
+<header
+  className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
+    isScrolled ? 'bg-brand-secondary/80 backdrop-blur-lg' : 'bg-transparent'
+  }`}
+>
+  <nav
+    className="flex items-center justify-between p-4 lg:px-8 max-w-7xl mx-auto"
+    aria-label="Global"
+  >
+    {/* LOGO - canto esquerdo */}
+    <div className="flex items-center flex-shrink-0">
+      <a
+        href="#inicio"
+        className="-m-1.5 p-1.5 text-2xl font-black text-brand-primary"
+      >
         BarberAI
       </a>
     </div>
 
-    {/* MENU */}
-    <div className="hidden lg:flex items-center gap-x-8 ml-12">
-      <a href="#inicio" className="text-sm font-semibold leading-6 text-white hover:text-brand-primary transition-colors">Início</a>
-      <a href="#sobre" className="text-sm font-semibold leading-6 text-white hover:text-brand-primary transition-colors">Sobre</a>
-      <a href="#funcoes" className="text-sm font-semibold leading-6 text-white hover:text-brand-primary transition-colors">Funções</a>
-      <a href="#planos" className="text-sm font-semibold leading-6 text-white hover:text-brand-primary transition-colors">Planos</a>
+    {/* MENU CENTRALIZADO */}
+    <div className="hidden lg:flex items-center justify-center flex-1 space-x-8">
+      <a
+        href="#inicio"
+        className="text-sm font-semibold leading-6 text-white hover:text-brand-primary transition-colors"
+      >
+        Início
+      </a>
+      <a
+        href="#sobre"
+        className="text-sm font-semibold leading-6 text-white hover:text-brand-primary transition-colors"
+      >
+        Sobre
+      </a>
+      <a
+        href="#funcoes"
+        className="text-sm font-semibold leading-6 text-white hover:text-brand-primary transition-colors"
+      >
+        Funções
+      </a>
+      <a
+        href="#planos"
+        className="text-sm font-semibold leading-6 text-white hover:text-brand-primary transition-colors"
+      >
+        Planos
+      </a>
     </div>
 
-    {/* BOTÕES */}
-    <div className="hidden lg:flex items-center gap-x-4 ml-auto">
-      <Button onClick={() => onEnter('client')} variant="secondary" className="py-2 px-4 text-sm w-auto">
+    {/* BOTÕES - canto direito */}
+    <div className="hidden lg:flex items-center gap-x-4 flex-shrink-0">
+      <Button
+        onClick={() => onEnter('client')}
+        variant="secondary"
+        className="py-2 px-4 text-sm w-auto"
+      >
         Sou Cliente
       </Button>
-      <Button onClick={() => onEnter('barbershop')} variant="primary" className="py-2 px-4 text-sm w-auto">
+      <Button
+        onClick={() => onEnter('barbershop')}
+        variant="primary"
+        className="py-2 px-4 text-sm w-auto"
+      >
         Teste Grátis
       </Button>
     </div>
   </nav>
 </header>
-
 
       <main className="isolate">
         <section id="inicio" className="relative pt-14">
