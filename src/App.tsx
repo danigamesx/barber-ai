@@ -129,6 +129,7 @@ const App: React.FC = () => {
   const [showLanding, setShowLanding] = useState(true);
   const [loginAccountType, setLoginAccountType] = useState<'client' | 'barbershop' | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'failure' | 'pending' | null>(null);
+  const [currentHash, setCurrentHash] = useState(window.location.hash);
 
   const [activeClientScreen, setActiveClientScreen] = useState('home');
   const [activeBarbershopScreen, setActiveBarbershopScreen] = useState('dashboard');
@@ -142,28 +143,29 @@ const App: React.FC = () => {
     planId: string;
     trialEndDate: Date | null;
   }>({ hasAccess: true, isTrial: false, planId: 'BASIC', trialEndDate: null });
+  
+  useEffect(() => {
+    if (currentHash.includes('payment_status')) {
+      const paramsString = currentHash.includes('?') ? currentHash.substring(currentHash.indexOf('?')) : '';
+      const params = new URLSearchParams(paramsString);
+      const status = params.get('payment_status') as 'success' | 'failure' | 'pending' | null;
+
+      if (status && ['success', 'failure', 'pending'].includes(status)) {
+        setPaymentStatus(status);
+      }
+
+      // Clean the hash
+      params.delete('payment_status');
+      const path = currentHash.split('?')[0];
+      const newParamsString = params.toString();
+      const newHash = newParamsString ? `${path}?${newParamsString}` : path;
+      window.history.replaceState(null, '', newHash);
+      setCurrentHash(newHash); // Update state to reflect the cleaned URL
+    }
+  }, [currentHash]);
 
   useEffect(() => {
-    const handleHashChange = () => {
-      if (window.location.hash.includes('payment_status')) {
-        const hash = window.location.hash;
-        const paramsString = hash.includes('?') ? hash.substring(hash.indexOf('?')) : '';
-        const params = new URLSearchParams(paramsString);
-        const status = params.get('payment_status') as 'success' | 'failure' | 'pending' | null;
-
-        if (status && ['success', 'failure', 'pending'].includes(status)) {
-          setPaymentStatus(status);
-        }
-
-        params.delete('payment_status');
-        const path = hash.split('?')[0];
-        const newParamsString = params.toString();
-        const newHash = newParamsString ? `${path}?${newParamsString}` : path;
-        window.history.replaceState(null, '', newHash);
-      }
-    };
-    
-    handleHashChange();
+    const handleHashChange = () => setCurrentHash(window.location.hash);
     window.addEventListener('hashchange', handleHashChange);
 
     const loadInitialData = async () => {
@@ -590,7 +592,7 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
-    const hash = window.location.hash;
+    const hash = currentHash;
     if (hash.includes('barbershopId')) {
         const queryString = hash.substring(hash.indexOf('?'));
         const urlParams = new URLSearchParams(queryString);
@@ -610,7 +612,7 @@ const App: React.FC = () => {
                     <div className="flex flex-col items-center justify-center h-screen p-4 text-center">
                         <h2 className="text-2xl font-bold text-red-500 mb-2">Barbearia não encontrada.</h2>
                         <p className="text-gray-400 mb-6">O link que você acessou pode estar quebrado ou a barbearia pode ter sido removida.</p>
-                        <a href="#" onClick={() => window.location.hash = ''} className="text-brand-primary hover:underline">Voltar para o início</a>
+                        <a href="#" onClick={() => setCurrentHash('')} className="text-brand-primary hover:underline">Voltar para o início</a>
                     </div>
                 );
             }
