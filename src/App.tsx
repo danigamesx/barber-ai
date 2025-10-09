@@ -331,7 +331,17 @@ const App: React.FC = () => {
     login: api.signInUser,
     logout: async () => {
       await api.signOutUser();
-      setShowLanding(true);
+      // Manually clear state to ensure an immediate and clean logout,
+      // preventing race conditions where old user data might persist temporarily.
+      setUser(null);
+      setAppointments([]);
+      setUsers([]);
+      setBarbershops([]);
+      setReviews([]);
+      setGoogleToken(null);
+      
+      // Reset UI state to show the initial landing page.
+      setShowLanding(true); 
       setLoginAccountType(null);
     },
     signup: signupAndRefetch,
