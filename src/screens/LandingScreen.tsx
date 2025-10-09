@@ -83,23 +83,23 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
       </a>
     </div>
 
-    {/* BOTÕES - canto direito */}
-    <div className="hidden lg:flex items-center gap-x-4 flex-shrink-0">
-      <Button
-        onClick={() => onEnter('client')}
-        variant="secondary"
-        className="py-2 px-4 text-sm w-auto"
-      >
-        Sou Cliente
-      </Button>
-      <Button
-        onClick={() => onEnter('barbershop')}
-        variant="primary"
-        className="py-2 px-4 text-sm w-auto"
-      >
-        Teste Grátis
-      </Button>
-    </div>
+{/* BOTÕES - canto direito */}
+<div className="hidden lg:flex items-center gap-x-4 flex-shrink-0 whitespace-nowrap">
+  <Button
+    onClick={() => onEnter('client')}
+    variant="secondary"
+    className="py-2 px-4 text-sm min-w-[120px] w-auto whitespace-nowrap"
+  >
+    Sou Cliente
+  </Button>
+  <Button
+    onClick={() => onEnter('barbershop')}
+    variant="primary"
+    className="py-2 px-4 text-sm min-w-[120px] w-auto whitespace-nowrap"
+  >
+    Teste Grátis
+  </Button>
+</div>
   </nav>
 </header>
 
