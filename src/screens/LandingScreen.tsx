@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import Button from '../components/Button';
-import { CalendarDaysIcon, UsersIcon, MegaphoneIcon, ChartBarIcon, CurrencyDollarIcon, CreditCardIcon, CheckIcon } from '../components/icons/OutlineIcons';
+import { CalendarDaysIcon, UsersIcon, MegaphoneIcon, ChartBarIcon, CurrencyDollarIcon, CreditCardIcon, CheckIcon, MenuIcon, XCircleIcon } from '../components/icons/OutlineIcons';
 
 interface LandingScreenProps {
   onEnter: (type: 'client' | 'barbershop') => void;
@@ -25,6 +26,7 @@ const plans = [
 const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -36,72 +38,79 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
 
   return (
     <div className="bg-brand-dark text-brand-light">
-<header
-  className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
-    isScrolled ? 'bg-brand-secondary/80 backdrop-blur-lg' : 'bg-transparent'
-  }`}
->
-  <nav
-    className="flex items-center justify-between p-4 lg:px-8 max-w-7xl mx-auto"
-    aria-label="Global"
-  >
-    {/* LOGO - canto esquerdo */}
-    <div className="flex items-center flex-shrink-0">
-      <a
-        href="#inicio"
-        className="-m-1.5 p-1.5 text-2xl font-black text-brand-primary"
+      <header
+        className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
+          isScrolled ? 'bg-brand-secondary/80 backdrop-blur-lg' : 'bg-transparent'
+        }`}
       >
-        BarberAI
-      </a>
-    </div>
+        <nav
+          className="flex items-center justify-between p-4 lg:px-8 max-w-7xl mx-auto"
+          aria-label="Global"
+        >
+          <div className="flex lg:flex-1">
+            <a href="#inicio" className="-m-1.5 p-1.5 text-2xl font-black text-brand-primary">
+              BarberAI
+            </a>
+          </div>
 
-    {/* MENU CENTRALIZADO */}
-    <div className="hidden lg:flex items-center justify-center flex-1 space-x-8">
-      <a
-        href="#inicio"
-        className="text-sm font-semibold leading-6 text-white hover:text-brand-primary transition-colors"
-      >
-        Início
-      </a>
-      <a
-        href="#sobre"
-        className="text-sm font-semibold leading-6 text-white hover:text-brand-primary transition-colors"
-      >
-        Sobre
-      </a>
-      <a
-        href="#funcoes"
-        className="text-sm font-semibold leading-6 text-white hover:text-brand-primary transition-colors"
-      >
-        Funções
-      </a>
-      <a
-        href="#planos"
-        className="text-sm font-semibold leading-6 text-white hover:text-brand-primary transition-colors"
-      >
-        Planos
-      </a>
-    </div>
+          <div className="flex lg:hidden">
+            <button
+              type="button"
+              className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-gray-400"
+              onClick={() => setMobileMenuOpen(true)}
+            >
+              <span className="sr-only">Abrir menu</span>
+              <MenuIcon className="h-6 w-6" aria-hidden="true" />
+            </button>
+          </div>
 
-{/* BOTÕES - canto direito */}
-<div className="hidden lg:flex items-center gap-x-4 flex-shrink-0 whitespace-nowrap">
-  <Button
-    onClick={() => onEnter('client')}
-    variant="secondary"
-    className="py-2 px-4 text-sm min-w-[120px] w-auto whitespace-nowrap"
-  >
-    Sou Cliente
-  </Button>
-  <Button
-    onClick={() => onEnter('barbershop')}
-    variant="primary"
-    className="py-2 px-4 text-sm min-w-[120px] w-auto whitespace-nowrap"
-  >
-    Teste Grátis
-  </Button>
-</div>
-  </nav>
-</header>
+          <div className="hidden lg:flex lg:gap-x-12">
+            <a href="#inicio" className="text-sm font-semibold leading-6 text-white hover:text-brand-primary transition-colors"> Início </a>
+            <a href="#sobre" className="text-sm font-semibold leading-6 text-white hover:text-brand-primary transition-colors"> Sobre </a>
+            <a href="#funcoes" className="text-sm font-semibold leading-6 text-white hover:text-brand-primary transition-colors"> Funções </a>
+            <a href="#planos" className="text-sm font-semibold leading-6 text-white hover:text-brand-primary transition-colors"> Planos </a>
+          </div>
+
+          <div className="hidden lg:flex lg:flex-1 lg:justify-end items-center gap-x-4">
+            <Button onClick={() => onEnter('client')} variant="secondary" className="py-2 px-4 text-sm w-auto whitespace-nowrap"> Sou Cliente </Button>
+            <Button onClick={() => onEnter('barbershop')} variant="primary" className="py-2 px-4 text-sm w-auto whitespace-nowrap"> Teste Grátis </Button>
+          </div>
+        </nav>
+
+        {mobileMenuOpen && (
+          <div className="lg:hidden" role="dialog" aria-modal="true">
+            <div className="fixed inset-0 z-50" />
+            <div className="fixed inset-y-0 right-0 z-50 w-full overflow-y-auto bg-brand-dark px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-white/10">
+              <div className="flex items-center justify-between">
+                <a href="#inicio" className="-m-1.5 p-1.5 text-2xl font-black text-brand-primary">BarberAI</a>
+                <button
+                  type="button"
+                  className="-m-2.5 rounded-md p-2.5 text-gray-400"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <span className="sr-only">Fechar menu</span>
+                  <XCircleIcon className="h-6 w-6" aria-hidden="true" />
+                </button>
+              </div>
+              <div className="mt-6 flow-root">
+                <div className="-my-6 divide-y divide-gray-500/25">
+                  <div className="space-y-2 py-6">
+                    <a href="#inicio" onClick={() => setMobileMenuOpen(false)} className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-white hover:bg-brand-secondary"> Início </a>
+                    <a href="#sobre" onClick={() => setMobileMenuOpen(false)} className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-white hover:bg-brand-secondary"> Sobre </a>
+                    <a href="#funcoes" onClick={() => setMobileMenuOpen(false)} className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-white hover:bg-brand-secondary"> Funções </a>
+                    <a href="#planos" onClick={() => setMobileMenuOpen(false)} className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-white hover:bg-brand-secondary"> Planos </a>
+                  </div>
+                  <div className="py-6 space-y-4">
+                    <Button onClick={() => onEnter('client')} variant="secondary" className="w-full"> Sou Cliente </Button>
+                    <Button onClick={() => onEnter('barbershop')} variant="primary" className="w-full"> Teste Grátis </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </header>
+
 
       <main className="isolate">
         <section id="inicio" className="relative pt-14">
@@ -121,7 +130,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
                     </div>
                      <div className="mt-16 flow-root sm:mt-24">
                         <div className="-m-2 rounded-xl bg-gray-900/5 p-2 ring-1 ring-inset ring-gray-900/10 lg:-m-4 lg:rounded-2xl lg:p-4">
-                            <img src="https://i.ibb.co/TBq81JvP/Gemini-Generated-Image-j8j3xej8j3xej8j3.png" alt="Painel de controle do BarberAI em um laptop dentro de uma barbearia moderna" width={2432} height={1442} className="rounded-md shadow-2xl ring-1 ring-white/10" />
+                            <img src="https://i.ibb.co/TBq81Jv/Gemini-Generated-Image-j8j3xej8j3xej8j3.png" alt="Painel de controle do BarberAI em um laptop dentro de uma barbearia moderna" width={2432} height={1442} className="rounded-md shadow-2xl ring-1 ring-white/10" />
                         </div>
                     </div>
                 </div>
@@ -137,7 +146,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
                         <p className="mt-6 text-lg leading-8 text-gray-300">Nascemos da correria e da paixão do dia a dia da barbearia. Cansados de agendamentos em papel e mensagens perdidas, criamos uma ferramenta que realmente entende suas necessidades. Com o BarberAI, você ganha um assistente digital que cuida da parte chata para você poder focar na sua arte.</p>
                     </div>
                     <div className="flex justify-center">
-                        <img src="https://i.ibb.co/v4PTHhkM/Gemini-Generated-Image-kxvv7skxvv7skxvv.png" alt="Barbeiro sorrindo enquanto atende um cliente" className="w-[30rem] max-w-none rounded-xl shadow-xl ring-1 ring-white/10 sm:w-[36rem]" />
+                        <img src="https://i.ibb.co/v4PTHhk/Gemini-Generated-Image-kxvv7skxvv7skxvv.png" alt="Barbeiro sorrindo enquanto atende um cliente" className="w-full max-w-sm sm:max-w-md md:max-w-lg rounded-xl shadow-xl ring-1 ring-white/10" />
                     </div>
                 </div>
             </div>
