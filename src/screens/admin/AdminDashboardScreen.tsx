@@ -10,22 +10,48 @@ const AdminDashboardScreen: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedBarbershop, setSelectedBarbershop] = useState<Barbershop | null>(null);
     const [platformMpStatus, setPlatformMpStatus] = useState({ loading: true, connected: false });
+    const [isConnecting, setIsConnecting] = useState(false);
+    const [isVerifying, setIsVerifying] = useState(false);
 
     useEffect(() => {
-        api.getPlatformMpStatus()
-            .then(status => {
-                setPlatformMpStatus({ loading: false, connected: status.connected });
-            })
-            .catch(error => {
-                console.error("Failed to fetch platform MP status", error);
-                setPlatformMpStatus({ loading: false, connected: false }); // Ensure loading is false on error
-            });
+        const params = new URLSearchParams(window.location.hash.split('?')[1]);
+        if (params.get('mp_connect_status') === 'success') {
+            setIsVerifying(true);
+            // Wait a few seconds for the DB to update from the serverless function
+            setTimeout(() => {
+                api.getPlatformMpStatus()
+                    .then(status => {
+                        setPlatformMpStatus({ loading: false, connected: status.connected });
+                    })
+                    .catch(error => {
+                        console.error("Failed to fetch platform MP status after redirect", error);
+                        setPlatformMpStatus({ loading: false, connected: false });
+                    })
+                    .finally(() => {
+                        setIsVerifying(false);
+                        // Clean up the URL
+                        const newUrl = window.location.pathname + window.location.hash.split('?')[0];
+                        window.history.replaceState({}, '', newUrl);
+                    });
+            }, 3000); // 3-second delay
+        } else {
+            api.getPlatformMpStatus()
+                .then(status => {
+                    setPlatformMpStatus({ loading: false, connected: status.connected });
+                })
+                .catch(error => {
+                    console.error("Failed to fetch platform MP status", error);
+                    setPlatformMpStatus({ loading: false, connected: false });
+                });
+        }
     }, []);
 
     const handleConnectPlatformMercadoPago = () => {
+        setIsConnecting(true);
         const appId = import.meta.env.VITE_MERCADO_PAGO_APP_ID;
         if (!appId) {
             alert("Erro: O ID da aplicação do Mercado Pago não está configurado no ambiente.");
+            setIsConnecting(false);
             return;
         }
         const redirectUri = `${window.location.origin}/api/mp-platform-oauth-callback`;
@@ -110,6 +136,31 @@ const AdminDashboardScreen: React.FC = () => {
         return { totalActive, activeTrials, inactiveOrExpired };
     }, [barbershops]);
 
+    const renderPlatformPaymentStatus = () => {
+        if (isVerifying) {
+            return <p className="text-sm text-amber-400">Verificando conexão com o Mercado Pago...</p>;
+        }
+        if (platformMpStatus.loading) {
+            return <p className="text-sm text-gray-400">Verificando...</p>;
+        }
+        if (platformMpStatus.connected) {
+            return (
+                <div className="space-y-2">
+                    <p className="text-lg font-bold text-green-400">Conectado</p>
+                    <Button onClick={handleDisconnectPlatformMercadoPago} variant="danger" className="py-1 px-3 text-xs w-auto">Desconectar</Button>
+                </div>
+            );
+        }
+        return (
+            <div className="space-y-2">
+                <p className="text-lg font-bold text-red-400">Desconectado</p>
+                <Button onClick={handleConnectPlatformMercadoPago} variant="secondary" className="py-1 px-3 text-xs w-auto" disabled={isConnecting}>
+                    {isConnecting ? 'Redirecionando...' : 'Conectar MP'}
+                </Button>
+            </div>
+        );
+    };
+
     return (
         <>
             <div className="p-4 md:p-8 min-h-screen bg-brand-dark">
@@ -135,19 +186,7 @@ const AdminDashboardScreen: React.FC = () => {
                     </div>
                     <div className="bg-brand-secondary p-6 rounded-lg">
                         <h3 className="text-gray-400 text-sm font-medium mb-2">Pagamento dos Planos</h3>
-                        {platformMpStatus.loading ? <p className="text-sm text-gray-400">Verificando...</p> : (
-                            platformMpStatus.connected ? (
-                                <div className="space-y-2">
-                                    <p className="text-lg font-bold text-green-400">Conectado</p>
-                                    <Button onClick={handleDisconnectPlatformMercadoPago} variant="danger" className="py-1 px-3 text-xs w-auto">Desconectar</Button>
-                                </div>
-                            ) : (
-                                <div className="space-y-2">
-                                    <p className="text-lg font-bold text-red-400">Desconectado</p>
-                                    <Button onClick={handleConnectPlatformMercadoPago} variant="secondary" className="py-1 px-3 text-xs w-auto">Conectar MP</Button>
-                                </div>
-                            )
-                        )}
+                        {renderPlatformPaymentStatus()}
                     </div>
                 </div>
 

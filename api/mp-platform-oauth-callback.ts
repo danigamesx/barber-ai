@@ -68,7 +68,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             throw new Error('Failed to save platform credentials.');
         }
 
-        res.redirect(302, `${baseUrl}/`);
+        // Redirect with a success flag in the hash for the client to read
+        res.redirect(302, `${baseUrl}/#/?mp_connect_status=success`);
 
     } catch (error: any) {
         console.error('Platform OAuth Callback Error:', error);
