@@ -1,3 +1,4 @@
+
 import type { Session as SupabaseSession } from '@supabase/supabase-js';
 
 export type Json =
@@ -65,6 +66,7 @@ export interface IntegrationSettings {
     stripeAccountOnboarded?: boolean;
     mercadopagoAccessToken?: string | null;
     mercadopagoPublicKey?: string | null;
+    // FIX: Added missing fields for Mercado Pago OAuth to align with database and API logic.
     mercadopagoRefreshToken?: string | null;
     mercadopagoUserId?: number | null;
     plan?: 'BASIC' | 'PRO' | 'PREMIUM' | string;
@@ -117,8 +119,9 @@ export interface SubscriptionPlan {
   id: string;
   name: string;
   price: number;
-  // FIX: Changed structure to benefits array to align with implementation in components.
-  benefits: string[];
+  // FIX: Replaced 'benefits' with 'serviceIds' and 'usesPerMonth' to align with implementation in various components.
+  serviceIds: string[];
+  usesPerMonth: number;
 }
 
 
@@ -135,7 +138,7 @@ export interface SubscriptionPlanDetails {
     googleCalendar: boolean;
     onlinePayments: boolean;
     packagesAndSubscriptions: boolean;
-    // FIX: Added missing 'clientManagement' feature to align with type requirements.
+    // FIX: Added missing 'clientManagement' feature to align with type requirements in ManagePlanDetailsModal.
     clientManagement: boolean;
   };
 }

@@ -1,3 +1,4 @@
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { MercadoPagoConfig, Payment } from 'mercadopago';
 import { createClient } from '@supabase/supabase-js';
@@ -99,6 +100,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         cancellation_fee: null,
                         commission_amount: null,
                         review_id: null,
+                        package_usage_id: appointmentData.package_usage_id,
+                        subscription_usage_id: appointmentData.subscription_usage_id,
                     };
                     
                     const { error: insertError } = await supabaseAdmin

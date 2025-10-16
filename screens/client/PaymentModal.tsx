@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useContext } from 'react';
 import { AppContext } from '../../App';
 import { Appointment, IntegrationSettings } from '../../types';
@@ -88,8 +89,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ appointmentData, onClose })
         api.createMercadoPagoPreference(appointmentData)
             // FIX: The API response is an object. Destructure `preferenceId` from it.
             // The original code passed the entire response object to `setPreferenceId`, causing a type error.
-            .then(data => {
-                setPreferenceId(data.preferenceId);
+            .then(({ preferenceId }) => {
+                setPreferenceId(preferenceId);
             })
             .catch(err => {
                 setError(err.message || "Falha ao criar a preferência de pagamento.");

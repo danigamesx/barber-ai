@@ -1,3 +1,4 @@
+
 import { supabase, supabaseInitializationError } from './supabaseClient';
 import { User, Barbershop, Appointment, Review, Barber, FinancialRecord, Promotion, ClientNotification, WaitingListEntry, Json, IntegrationSettings, Address } from './types';
 import { TablesInsert, TablesUpdate } from './types/database';
@@ -421,7 +422,7 @@ export const createMercadoPagoPreference = async (appointmentData: Omit<Appointm
     return data;
 };
 
-// FIX: Added function to create payment preference for plans by calling the backend API.
+// FIX: Updated function to create payment preference for plans by calling the backend API and align return type.
 export const createPlanPreference = async (planId: string, billingCycle: 'monthly' | 'annual', barbershopId: string): Promise<{ preferenceId: string, publicKey: string }> => {
     const response = await fetch(`/api/create-plan-preference`, {
         method: 'POST',

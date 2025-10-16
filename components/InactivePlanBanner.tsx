@@ -1,14 +1,18 @@
+
 import React, { useState, useContext } from 'react';
 import Button from './Button';
 import PlansModal from '../screens/barbershop/PlansModal';
 import { AppContext } from '../App';
 
 const InactivePlanBanner: React.FC = () => {
-    const { setPurchaseIntent } = useContext(AppContext);
     const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
+    // FIX: Get setPurchaseIntent from context to fix error where the function was not found.
+    const { setPurchaseIntent } = useContext(AppContext);
 
     const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
-        setPurchaseIntent({ planId, billingCycle });
+        if (setPurchaseIntent) {
+            setPurchaseIntent({ planId, billingCycle });
+        }
         setIsPlansModalOpen(false);
     };
     
