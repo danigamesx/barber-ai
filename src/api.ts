@@ -428,10 +428,19 @@ export const createPlanPreference = async (planId: string, billingCycle: 'monthl
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ planId, billingCycle, barbershopId }),
     });
+    
     if (!response.ok) {
-        const errorBody = await response.json();
-        throw new Error(errorBody.error || 'Falha ao criar preferência de pagamento do plano.');
+        // Handle non-JSON error responses gracefully
+        const errorText = await response.text();
+        try {
+            const errorBody = JSON.parse(errorText);
+            throw new Error(errorBody.error || `Falha ao criar preferência de pagamento do plano (status: ${response.status}).`);
+        } catch (e) {
+            // If parsing fails, the error response was not JSON
+            throw new Error(errorText || `Falha ao criar preferência de pagamento do plano (status: ${response.status}).`);
+        }
     }
+    
     const data = await response.json();
     return data;
 };
@@ -446,5 +455,22 @@ export const disconnectMercadoPago = async (barbershopId: string): Promise<void>
     if (!response.ok) {
         const errorBody = await response.json();
         throw new Error(errorBody.error || 'Falha ao desconectar conta do Mercado Pago.');
+    }
+};
+
+/**
+ * Calls a Supabase RPC function to securely delete the currently authenticated user
+ * and all of their associated barbershop data.
+ * NOTE: This requires a corresponding `delete_user_and_barbershop` function to be created in the Supabase database.
+ * The function should use `SECURITY DEFINER` to have the necessary permissions.
+ */
+export const deleteBarbershopAccount = async () => {
+    if (!supabase) throw new Error(supabaseInitializationError!);
+    // This RPC function should be created in your Supabase SQL editor.
+    // It should verify the user owns the barbershop and then perform a cascade delete of all related data before deleting the user.
+    const { error } = await supabase.rpc('delete_user_and_barbershop');
+    if (error) {
+        console.error('Error calling delete_user_and_barbershop RPC:', error);
+        throw new Error('Não foi possível excluir a conta. Certifique-se de que a função `delete_user_and_barbershop` existe no seu banco de dados ou entre em contato com o suporte.');
     }
 };

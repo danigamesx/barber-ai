@@ -18,7 +18,9 @@ const TrialBanner: React.FC<TrialBannerProps> = ({ trialEndDate }) => {
 
   // FIX: Define a handler to set the purchase intent in the App's state.
   const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
-    setPurchaseIntent({ planId, billingCycle });
+    if (setPurchaseIntent) {
+      setPurchaseIntent({ planId, billingCycle });
+    }
     setIsPlansModalOpen(false);
   };
 

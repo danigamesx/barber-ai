@@ -64,6 +64,7 @@ export const AppContext = React.createContext<{
   patchUser: (user: User) => void;
   // FIX: Added setPurchaseIntent to the context to handle plan purchases globally.
   setPurchaseIntent: (intent: { planId: string; billingCycle: 'monthly' | 'annual' } | null) => void;
+  deleteBarbershopAccount: () => Promise<void>;
 }>({
   user: null,
   users: [],
@@ -96,6 +97,7 @@ export const AppContext = React.createContext<{
   patchUser: () => {},
   // FIX: Added default value for setPurchaseIntent.
   setPurchaseIntent: () => {},
+  deleteBarbershopAccount: async () => {},
 });
 
 export const PlanContext = React.createContext<{
@@ -287,7 +289,7 @@ const App: React.FC = () => {
       
       if (integrations?.plan_status === 'suspended') {
           finalPlanId = 'INACTIVE';
-          setAccessStatus({ hasAccess: true, isTrial: false, planId: finalPlanId, trialEndDate: null });
+          setAccessStatus({ hasAccess: false, isTrial: false, planId: finalPlanId, trialEndDate: null });
           return;
       }
   
@@ -311,7 +313,7 @@ const App: React.FC = () => {
           }
       }
       
-      setAccessStatus({ hasAccess: true, isTrial: false, planId: 'INACTIVE', trialEndDate: null });
+      setAccessStatus({ hasAccess: false, isTrial: false, planId: 'INACTIVE', trialEndDate: null });
   
   }, [user, barbershopData]);
 
@@ -505,6 +507,20 @@ const App: React.FC = () => {
     patchUser,
     // FIX: Pass the state setter through the context.
     setPurchaseIntent,
+    deleteBarbershopAccount: async () => {
+        await api.deleteBarbershopAccount();
+        // After successful deletion on backend, sign out on client
+        await api.signOutUser();
+        // Clear local state
+        setUser(null);
+        setAppointments([]);
+        setUsers([]);
+        setBarbershops([]);
+        setReviews([]);
+        setGoogleToken(null);
+        setShowLanding(true); 
+        setLoginAccountType(null);
+    }
   };
 
   const appContextValue = { 

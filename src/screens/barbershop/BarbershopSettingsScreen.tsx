@@ -41,10 +41,11 @@ type ModalState =
   | null;
 
 const BarbershopSettingsScreen: React.FC = () => {
-  const { barbershopData, updateBarbershopData, logout, accessStatus } = useContext(AppContext);
+  const { barbershopData, updateBarbershopData, logout, accessStatus, setPurchaseIntent, deleteBarbershopAccount } = useContext(AppContext);
   const { plan, features } = useContext(PlanContext);
   const [modalState, setModalState] = useState<ModalState>(null);
   const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const [policy, setPolicy] = useState<CancellationPolicy>({
     enabled: false, feePercentage: 50, timeLimitHours: 2
@@ -80,6 +81,16 @@ const BarbershopSettingsScreen: React.FC = () => {
   if (!barbershopData) {
     return <div className="p-4">Carregando...</div>;
   }
+
+  const handleAccountDelete = async () => {
+    try {
+        await deleteBarbershopAccount();
+        // O AppContext irá lidar com o logout e limpeza do estado após a exclusão bem-sucedida.
+    } catch (error: any) {
+        alert(error.message);
+        setIsDeleteModalOpen(false); // Fecha o modal em caso de erro para permitir nova tentativa.
+    }
+  };
   
   const getStatusInfo = () => {
     const integrations = barbershopData.integrations as IntegrationSettings;
@@ -278,6 +289,11 @@ const BarbershopSettingsScreen: React.FC = () => {
       } else {
           setModalState({ type: feature });
       }
+  };
+  
+  const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
+    setPurchaseIntent({ planId, billingCycle });
+    setIsPlansModalOpen(false);
   };
 
   return (
@@ -574,7 +590,10 @@ const BarbershopSettingsScreen: React.FC = () => {
           </Accordion>
           
           <Accordion title="Conta">
-             <Button variant="danger" onClick={logout}>Sair da Conta</Button>
+             <div className="space-y-4">
+                <Button variant="secondary" onClick={logout}>Sair da Conta</Button>
+                <Button variant="danger" onClick={() => setIsDeleteModalOpen(true)}>Excluir Conta Permanentemente</Button>
+             </div>
           </Accordion>
         </div>
       </div>
@@ -654,9 +673,73 @@ const BarbershopSettingsScreen: React.FC = () => {
             onClose={() => setModalState(null)}
         />
       )}
-      {isPlansModalOpen && <PlansModal onClose={() => setIsPlansModalOpen(false)} />}
+      {isPlansModalOpen && <PlansModal onClose={() => setIsPlansModalOpen(false)} onInitiatePurchase={handleInitiatePurchase} />}
+      {isDeleteModalOpen && (
+        <DeleteAccountModal 
+            onClose={() => setIsDeleteModalOpen(false)}
+            onConfirmDelete={handleAccountDelete}
+        />
+      )}
     </>
   );
+};
+
+const DeleteAccountModal: React.FC<{ onClose: () => void; onConfirmDelete: () => void; }> = ({ onClose, onConfirmDelete }) => {
+    const [isConfirmed, setIsConfirmed] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleDelete = () => {
+        setIsLoading(true);
+        onConfirmDelete();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+            <div className="bg-brand-dark w-full max-w-md rounded-lg shadow-xl p-6 relative">
+                <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white">
+                    <XCircleIcon className="w-8 h-8" />
+                </button>
+                <h2 className="text-xl font-bold text-red-500 text-center">Atenção! Ação Irreversível</h2>
+                <div className="my-4 text-gray-300 text-center space-y-2">
+                    <p>Você está prestes a excluir sua conta e todos os dados associados à sua barbearia.</p>
+                    <p className="font-bold">Isso inclui:</p>
+                    <ul className="text-sm list-disc list-inside text-left mx-auto max-w-xs">
+                        <li>Seu perfil de usuário</li>
+                        <li>Todas as informações da barbearia</li>
+                        <li>Histórico de agendamentos</li>
+                        <li>Dados de clientes e avaliações</li>
+                    </ul>
+                    <p className="font-bold text-amber-400 mt-2">Esta ação não pode ser desfeita.</p>
+                </div>
+
+                <div className="my-6">
+                    <label className="flex items-center justify-center gap-2 cursor-pointer text-sm">
+                        <input 
+                            type="checkbox"
+                            checked={isConfirmed}
+                            onChange={() => setIsConfirmed(!isConfirmed)}
+                            className="w-5 h-5 accent-brand-primary bg-brand-secondary border-gray-600 rounded"
+                        />
+                        <span>Estou ciente e quero excluir minha conta permanentemente.</span>
+                    </label>
+                </div>
+                
+                <div className="flex flex-col gap-3">
+                    <Button 
+                        variant="danger" 
+                        onClick={handleDelete} 
+                        disabled={!isConfirmed || isLoading}
+                        className="disabled:bg-red-900 disabled:text-gray-500 disabled:cursor-not-allowed"
+                    >
+                        {isLoading ? 'Excluindo...' : 'Confirmar Exclusão'}
+                    </Button>
+                    <Button variant="secondary" onClick={onClose} disabled={isLoading}>
+                        Cancelar
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 export default BarbershopSettingsScreen;

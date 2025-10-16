@@ -2,6 +2,7 @@ import React, { useState, useContext } from 'react';
 import Button from './Button';
 import PlansModal from '../screens/barbershop/PlansModal';
 // FIX: Import AppContext to use the global state setter for purchases.
+// FIX: Corrected import path to ensure it resolves to src/App.tsx
 import { AppContext } from '../App';
 
 const InactivePlanBanner: React.FC = () => {
