@@ -237,7 +237,12 @@ export const updateAppointmentStatus = async (appointment: Appointment, status: 
 export const updateBarbershop = async (id: string, fields: Partial<Omit<Barbershop, 'id'>>) => {
     if (!supabase) throw new Error(supabaseInitializationError!);
     const { error } = await supabase.from('barbershops').update(fields as TablesUpdate<'barbershops'>).eq('id', id);
-    if (error) throw error;
+    if (error) {
+        if (error.message.includes('duplicate key value violates unique constraint "barbershops_slug_key"')) {
+            throw new Error('Este link personalizado já está em uso. Por favor, escolha outro.');
+        }
+        throw error;
+    }
 };
 
 export const addReview = async (review: Omit<Review, 'id' | 'created_at'>, appointmentId: string) => {

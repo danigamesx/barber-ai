@@ -190,6 +190,7 @@ export interface Barbershop {
   id: string;
   owner_id: string;
   name: string;
+  // FIX: Added missing 'slug' property to align with database schema and fix usage errors.
   slug: string | null;
   phone: string | null;
   description: string | null;

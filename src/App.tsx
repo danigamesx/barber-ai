@@ -44,6 +44,7 @@ export const AppContext = React.createContext<{
     planId: string;
     trialEndDate: Date | null;
   };
+  // FIX: Added missing setPurchaseIntent to context type definition
   setPurchaseIntent: React.Dispatch<React.SetStateAction<PurchaseIntent | null>>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -75,6 +76,7 @@ export const AppContext = React.createContext<{
   googleToken: null,
   isSuperAdmin: false,
   accessStatus: { hasAccess: false, isTrial: false, planId: 'BASIC', trialEndDate: null },
+  // FIX: Added missing setPurchaseIntent to context default value
   setPurchaseIntent: () => {},
   login: async () => {},
   logout: async () => {},
@@ -230,10 +232,15 @@ const App: React.FC = () => {
                 }
             }
             
-            const bookingIntentBarbershopId = sessionStorage.getItem('bookingIntentBarbershopId');
-            if (bookingIntentBarbershopId) {
-                window.location.hash = `/?barbershopId=${bookingIntentBarbershopId}&openBooking=true`;
-                sessionStorage.removeItem('bookingIntentBarbershopId');
+            const bookingIntentIdentifier = sessionStorage.getItem('bookingIntentIdentifier');
+            if (bookingIntentIdentifier) {
+                const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(bookingIntentIdentifier);
+                if (isUUID) {
+                    window.location.hash = `/?barbershopId=${bookingIntentIdentifier}&openBooking=true`;
+                } else {
+                    window.location.hash = `/${bookingIntentIdentifier}?openBooking=true`;
+                }
+                sessionStorage.removeItem('bookingIntentIdentifier');
             }
 
             loadInitialData();
@@ -246,7 +253,7 @@ const App: React.FC = () => {
             setGoogleToken(null);
             setPurchaseIntent(null);
             sessionStorage.removeItem('purchaseIntent');
-            sessionStorage.removeItem('bookingIntentBarbershopId');
+            sessionStorage.removeItem('bookingIntentIdentifier');
             setShowLanding(true); 
             setLoginAccountType(null);
         }
@@ -437,10 +444,10 @@ const App: React.FC = () => {
     updateBarbershopData: async (id: string, fields: Partial<Omit<Barbershop, 'id'>>) => {
       try {
         await api.updateBarbershop(id, fields);
-      } catch (error) {
+        setBarbershops(await api.getBarbershops());
+      } catch (error: any) {
         console.error("Falha ao atualizar barbearia:", error);
-        alert("Ocorreu um erro ao salvar as alterações. A interface será atualizada para refletir os dados reais do servidor.");
-      } finally {
+        alert(error.message || "Ocorreu um erro ao salvar as alterações. A interface será atualizada para refletir os dados reais do servidor.");
         setBarbershops(await api.getBarbershops());
       }
     },
@@ -645,14 +652,20 @@ const App: React.FC = () => {
         );
     }
     
-    const hash = currentHash;
-    if (hash.includes('barbershopId')) {
-        const queryString = hash.substring(hash.indexOf('?'));
-        const urlParams = new URLSearchParams(queryString);
-        const barbershopId = urlParams.get('barbershopId');
+    const hashContent = currentHash.substring(1); // Content after '#'
 
-        if (barbershopId) {
-            return <BarbershopPublicPage barbershopId={barbershopId} />;
+    if (hashContent.startsWith('/')) {
+        const pathAndQuery = hashContent.substring(1); // Content after '#/'
+        const [path, query] = pathAndQuery.split('?');
+
+        if (path) { // It's a slug, e.g., /#/[slug]
+            return <BarbershopPublicPage identifier={path} />;
+        } else if (query) { // It's the old format, e.g., /#/?barbershopId=[id]
+            const params = new URLSearchParams(query);
+            const barbershopId = params.get('barbershopId');
+            if (barbershopId) {
+                return <BarbershopPublicPage identifier={barbershopId} />;
+            }
         }
     }
 

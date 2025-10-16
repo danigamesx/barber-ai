@@ -244,7 +244,8 @@ const BarbershopDashboardScreen: React.FC = () => {
         return <div className="p-4 text-center">Carregando dados do painel...</div>;
     }
     
-    const shareableLink = barbershopData.slug
+    // FIX: Added a null check for barbershopData before accessing its properties.
+    const shareableLink = barbershopData && barbershopData.slug
       ? `${window.location.origin}/#/${barbershopData.slug}`
       : `${window.location.origin}/#/?barbershopId=${barbershopData.id}`;
 
@@ -292,7 +293,8 @@ const BarbershopDashboardScreen: React.FC = () => {
                         {copySuccess || 'Copiar'}
                     </Button>
                   </div>
-                   {!barbershopData.slug && (
+                   {/* FIX: Added a null check for barbershopData before accessing its properties. */}
+                   {barbershopData && !barbershopData.slug && (
                     <p className="text-xs text-amber-400 mt-2">
                       Dica: Personalize este link na tela de <span className="font-bold">Ajustes</span> para torná-lo mais profissional!
                     </p>

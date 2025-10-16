@@ -10,10 +10,10 @@ import * as api from '../../api';
 type NewAppointmentData = Omit<Appointment, 'id' | 'start_time' | 'end_time' | 'created_at'> & { start_time: Date, end_time: Date };
 
 interface BarbershopPublicPageProps {
-  barbershopId: string;
+  identifier: string;
 }
 
-const BarbershopPublicPage: React.FC<BarbershopPublicPageProps> = ({ barbershopId }) => {
+const BarbershopPublicPage: React.FC<BarbershopPublicPageProps> = ({ identifier }) => {
     const { reviews, user } = useContext(AppContext);
     const [barbershop, setBarbershop] = useState<Barbershop | null>(null);
     const [loading, setLoading] = useState(true);
@@ -23,13 +23,17 @@ const BarbershopPublicPage: React.FC<BarbershopPublicPageProps> = ({ barbershopI
     const [showLoginPrompt, setShowLoginPrompt] = useState(false);
     
     useEffect(() => {
-        if (!barbershopId) return;
+        if (!identifier) return;
+
+        const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(identifier);
 
         const fetchBarbershop = async () => {
             setLoading(true);
             setComponentError(null);
             try {
-                const shopData = await api.getBarbershopById(barbershopId);
+                const shopData = isUUID
+                    ? await api.getBarbershopById(identifier)
+                    : await api.getBarbershopBySlug(identifier);
                 setBarbershop(shopData);
             } catch (err) {
                 console.error("Failed to fetch barbershop:", err);
@@ -40,18 +44,17 @@ const BarbershopPublicPage: React.FC<BarbershopPublicPageProps> = ({ barbershopI
         };
 
         fetchBarbershop();
-    }, [barbershopId]);
+    }, [identifier]);
     
     useEffect(() => {
         const hash = window.location.hash;
-        if (hash.includes('openBooking=true') && user) {
-            const urlParams = new URLSearchParams(hash.substring(hash.indexOf('?')));
+        const urlParams = new URLSearchParams(hash.substring(hash.indexOf('?')));
+        if (urlParams.get('openBooking') === 'true' && user && barbershop) {
             setIsBookingModalOpen(true);
-            urlParams.delete('openBooking');
-            const newHash = `/?${urlParams.toString()}`;
-            window.history.replaceState(null, '', `#${newHash}`);
+            const path = hash.split('?')[0];
+            window.history.replaceState(null, '', path);
         }
-    }, [user]);
+    }, [user, barbershop]);
 
     const isAcceptingAppointments = useMemo(() => {
         if (!barbershop) return false;
@@ -88,8 +91,8 @@ const BarbershopPublicPage: React.FC<BarbershopPublicPageProps> = ({ barbershopI
     };
     
     const redirectToLogin = () => {
-        sessionStorage.setItem('bookingIntentBarbershopId', barbershopId);
-        window.location.hash = '';
+        sessionStorage.setItem('bookingIntentIdentifier', identifier);
+        window.location.hash = ''; // Navega para a tela de login
     };
 
     const handleInitiatePayment = async (appointmentData: NewAppointmentData) => {

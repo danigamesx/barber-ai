@@ -51,6 +51,7 @@ const BarbershopSettingsScreen: React.FC = () => {
   
   const [autoConfirm, setAutoConfirm] = useState(false);
   const [name, setName] = useState('');
+  const [slug, setSlug] = useState('');
   const [phone, setPhone] = useState('');
   const [description, setDescription] = useState('');
   const [socialMedia, setSocialMedia] = useState<SocialMedia>({});
@@ -64,6 +65,7 @@ const BarbershopSettingsScreen: React.FC = () => {
   useEffect(() => {
     if(barbershopData) {
         setName(barbershopData.name || '');
+        setSlug(barbershopData.slug || '');
         setPhone(barbershopData.phone || '');
         setDescription(barbershopData.description || '');
         setSocialMedia((barbershopData.social_media as SocialMedia) || {});
@@ -102,6 +104,17 @@ const BarbershopSettingsScreen: React.FC = () => {
         label: 'Plano gratuito sem data de expiração',
         color: 'text-gray-400'
     };
+  };
+  
+  const slugify = (text: string) => {
+    return text
+      .toString()
+      .toLowerCase()
+      .replace(/\s+/g, '-')           // Replace spaces with -
+      .replace(/[^\w-]+/g, '')       // Remove all non-word chars
+      .replace(/--+/g, '-')         // Replace multiple - with single -
+      .replace(/^-+/, '')             // Trim - from start of text
+      .replace(/-+$/, '');            // Trim - from end of text
   };
 
   const statusInfo = getStatusInfo();
@@ -157,7 +170,8 @@ const BarbershopSettingsScreen: React.FC = () => {
         }
 
         await updateBarbershopData(barbershopData.id, { 
-            name, 
+            name,
+            slug,
             phone,
             description,
             social_media: socialMedia as Json,
@@ -169,7 +183,6 @@ const BarbershopSettingsScreen: React.FC = () => {
         alert('Informações salvas com sucesso!');
     } catch (error) {
         console.error("Failed to save barbershop info:", error);
-        alert("Ocorreu um erro ao salvar as informações.");
     } finally {
         setIsUploading(false);
     }
@@ -321,6 +334,23 @@ const BarbershopSettingsScreen: React.FC = () => {
                 </div>
 
                 <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Nome da Barbearia" className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
+                
+                <div>
+                    <label htmlFor="slug" className="block text-sm font-medium text-gray-400">Link Personalizado</label>
+                    <div className="flex items-center mt-1">
+                        <span className="text-gray-500 bg-brand-dark px-3 py-2 rounded-l-lg border border-r-0 border-gray-600 truncate">{window.location.origin}/#/</span>
+                        <input
+                            id="slug"
+                            type="text"
+                            value={slug}
+                            onChange={e => setSlug(slugify(e.target.value))}
+                            placeholder="nome-da-sua-barbearia"
+                            className="w-full px-4 py-2 bg-brand-secondary border border-gray-600 rounded-r-lg"
+                        />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Use apenas letras minúsculas, números e hifens.</p>
+                </div>
+
                 <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Sobre sua barbearia..." rows={3} className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
                 <input type="tel" value={phone} onChange={e => setPhone(formatPhone(e.target.value))} placeholder="Telefone para Contato" maxLength={15} className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
                 
