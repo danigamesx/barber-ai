@@ -16,6 +16,7 @@ const AdminDashboardScreen: React.FC = () => {
     useEffect(() => {
         const params = new URLSearchParams(window.location.hash.split('?')[1]);
         const connectStatus = params.get('mp_connect_status');
+        let intervalId: number | undefined;
 
         const fetchInitialStatus = () => {
             api.getPlatformMpStatus()
@@ -30,26 +31,48 @@ const AdminDashboardScreen: React.FC = () => {
             setIsVerifying(true);
             let attempts = 0;
             const maxAttempts = 10;
-            const interval = setInterval(() => {
+
+            const checkStatus = () => {
                 attempts++;
                 api.getPlatformMpStatus().then(status => {
-                    if (status.connected || attempts >= maxAttempts) {
-                        clearInterval(interval);
-                        setPlatformMpStatus({ loading: false, connected: status.connected });
+                    if (status.connected) {
+                        clearInterval(intervalId);
                         setIsVerifying(false);
+                        setPlatformMpStatus({ loading: false, connected: true });
                         const newUrl = window.location.pathname + window.location.hash.split('?')[0];
                         window.history.replaceState({}, '', newUrl);
-                        if (!status.connected) {
-                            alert("A verificação da conexão falhou. Por favor, atualize a página para ver o status correto.");
-                        }
+                    } else if (attempts >= maxAttempts) {
+                        clearInterval(intervalId);
+                        setIsVerifying(false);
+                        setPlatformMpStatus({ loading: false, connected: false });
+                        alert("A verificação da conexão falhou. Por favor, atualize a página para ver o status correto.");
+                        const newUrl = window.location.pathname + window.location.hash.split('?')[0];
+                        window.history.replaceState({}, '', newUrl);
                     }
-                }).catch(() => {
-                    // Ignora erros individuais durante a verificação, o timeout cuidará disso.
+                }).catch((error) => {
+                     console.error(`Polling attempt ${attempts} failed:`, error);
+                    if (attempts >= maxAttempts) {
+                        clearInterval(intervalId);
+                        setIsVerifying(false);
+                        setPlatformMpStatus({ loading: false, connected: false });
+                        alert("Erro ao verificar a conexão. Por favor, atualize a página.");
+                        const newUrl = window.location.pathname + window.location.hash.split('?')[0];
+                        window.history.replaceState({}, '', newUrl);
+                    }
                 });
-            }, 1500); // Verifica a cada 1.5 segundos
+            };
+            
+            checkStatus(); // Initial check
+            intervalId = window.setInterval(checkStatus, 2000); // Poll every 2 seconds
         } else {
             fetchInitialStatus();
         }
+
+        return () => {
+            if (intervalId) {
+                clearInterval(intervalId);
+            }
+        };
     }, []);
 
     const handleConnectPlatformMercadoPago = () => {

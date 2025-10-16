@@ -429,11 +429,14 @@ export const createPlanPreference = async (planId: string, billingCycle: 'monthl
     });
     if (!response.ok) {
         let errorMessage = 'Falha ao criar preferência de pagamento do plano.';
+        // Read the body as text first to avoid "body stream already read" error
+        const textError = await response.text();
         try {
-            const errorBody = await response.json();
+            // Try to parse it as JSON
+            const errorBody = JSON.parse(textError);
             errorMessage = errorBody.error || errorMessage;
         } catch (e) {
-            const textError = await response.text();
+            // If it's not JSON, use the raw text
             if (textError) {
                 errorMessage = textError;
             }
@@ -460,7 +463,8 @@ export const disconnectMercadoPago = async (barbershopId: string): Promise<void>
 // --- PLATFORM-SPECIFIC API CALLS ---
 
 async function getAuthHeaders() {
-    const { data: { session } } = await supabase!.auth.getSession();
+    if (!supabase) throw new Error(supabaseInitializationError!);
+    const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error("Usuário não autenticado.");
     return {
         'Content-Type': 'application/json',

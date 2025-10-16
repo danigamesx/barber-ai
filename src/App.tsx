@@ -297,7 +297,9 @@ const App: React.FC = () => {
               isTrial = true;
               trialEndDate = trialEnd;
               finalPlanId = 'PREMIUM'; 
-              setAccessStatus({ hasAccess: true, isTrial, isTrial: isTrial, planId: finalPlanId, trialEndDate });
+              // FIX: An object literal cannot have multiple properties with the same name.
+              // Removed duplicate `isTrial` property.
+              setAccessStatus({ hasAccess: true, isTrial, planId: finalPlanId, trialEndDate });
               return;
           }
       }
