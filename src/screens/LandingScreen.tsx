@@ -101,7 +101,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
         Sou Cliente
       </Button>
       <Button
-        onClick={() => handleWhatsAppRedirect('Premium')}
+        onClick={() => onEnter('barbershop')}
         variant="primary"
         className="py-2 px-4 text-sm min-w-[120px] w-auto whitespace-nowrap"
       >
@@ -187,7 +187,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
           </div>
           <div className="py-6">
             <Button
-              onClick={() => handleWhatsAppRedirect('Premium')}
+              onClick={() => onEnter('barbershop')}
               variant="primary"
               className="w-full"
             >
@@ -211,7 +211,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
                         <h1 className="text-4xl font-bold tracking-tight text-white sm:text-6xl">Transforme Sua Barbearia com a Gestão que Você Merece</h1>
                         <p className="mt-6 text-lg leading-8 text-gray-300">Menos administração, mais arte. O BarberAI automatiza seus agendamentos, pagamentos e marketing para que você possa focar no que faz de melhor: cortes incríveis.</p>
                         <div className="mt-10 flex items-center justify-center gap-x-6">
-                            <Button onClick={() => handleWhatsAppRedirect('Premium')} variant="primary" className="py-3 px-8 text-base w-auto shadow-lg shadow-amber-500/20 transform hover:scale-105 transition-transform">
+                            <Button onClick={() => onEnter('barbershop')} variant="primary" className="py-3 px-8 text-base w-auto shadow-lg shadow-amber-500/20 transform hover:scale-105 transition-transform">
                                 Teste Grátis por 30 Dias
                             </Button>
                         </div>

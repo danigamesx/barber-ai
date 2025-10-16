@@ -4,8 +4,14 @@ import { AppContext } from '../../App';
 import PlansModal from './PlansModal';
 
 const TrialExpiredScreen: React.FC = () => {
-    const { logout } = useContext(AppContext);
+    // FIX: Get setPurchaseIntent from context to handle plan purchase initiation.
+    const { logout, setPurchaseIntent } = useContext(AppContext);
     const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
+
+    const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
+        setPurchaseIntent({ planId, billingCycle });
+        setIsPlansModalOpen(false);
+    };
 
     return (
         <>
@@ -19,7 +25,8 @@ const TrialExpiredScreen: React.FC = () => {
                     <Button variant="secondary" onClick={logout}>Sair</Button>
                 </div>
             </div>
-            {isPlansModalOpen && <PlansModal onClose={() => setIsPlansModalOpen(false)} />}
+            {/* FIX: Passed the required onInitiatePurchase prop to PlansModal */}
+            {isPlansModalOpen && <PlansModal onClose={() => setIsPlansModalOpen(false)} onInitiatePurchase={handleInitiatePurchase} />}
         </>
     );
 };

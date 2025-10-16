@@ -16,7 +16,10 @@ const TrialBanner: React.FC<TrialBannerProps> = ({ trialEndDate }) => {
   const remainingDays = Math.max(0, Math.ceil(remainingMilliseconds / (1000 * 60 * 60 * 24)));
 
   const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
-    setPurchaseIntent({ planId, billingCycle });
+    // FIX: Correctly call setPurchaseIntent which is expected by AppContext
+    if (setPurchaseIntent) {
+      setPurchaseIntent({ planId, billingCycle });
+    }
     setIsPlansModalOpen(false);
   };
 
