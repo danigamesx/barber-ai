@@ -15,34 +15,40 @@ const AdminDashboardScreen: React.FC = () => {
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.hash.split('?')[1]);
-        if (params.get('mp_connect_status') === 'success') {
-            setIsVerifying(true);
-            // Wait a few seconds for the DB to update from the serverless function
-            setTimeout(() => {
-                api.getPlatformMpStatus()
-                    .then(status => {
-                        setPlatformMpStatus({ loading: false, connected: status.connected });
-                    })
-                    .catch(error => {
-                        console.error("Failed to fetch platform MP status after redirect", error);
-                        setPlatformMpStatus({ loading: false, connected: false });
-                    })
-                    .finally(() => {
-                        setIsVerifying(false);
-                        // Clean up the URL
-                        const newUrl = window.location.pathname + window.location.hash.split('?')[0];
-                        window.history.replaceState({}, '', newUrl);
-                    });
-            }, 3000); // 3-second delay
-        } else {
+        const connectStatus = params.get('mp_connect_status');
+
+        const fetchInitialStatus = () => {
             api.getPlatformMpStatus()
-                .then(status => {
-                    setPlatformMpStatus({ loading: false, connected: status.connected });
-                })
+                .then(status => setPlatformMpStatus({ loading: false, connected: status.connected }))
                 .catch(error => {
                     console.error("Failed to fetch platform MP status", error);
                     setPlatformMpStatus({ loading: false, connected: false });
                 });
+        };
+
+        if (connectStatus === 'success') {
+            setIsVerifying(true);
+            let attempts = 0;
+            const maxAttempts = 10;
+            const interval = setInterval(() => {
+                attempts++;
+                api.getPlatformMpStatus().then(status => {
+                    if (status.connected || attempts >= maxAttempts) {
+                        clearInterval(interval);
+                        setPlatformMpStatus({ loading: false, connected: status.connected });
+                        setIsVerifying(false);
+                        const newUrl = window.location.pathname + window.location.hash.split('?')[0];
+                        window.history.replaceState({}, '', newUrl);
+                        if (!status.connected) {
+                            alert("A verificação da conexão falhou. Por favor, atualize a página para ver o status correto.");
+                        }
+                    }
+                }).catch(() => {
+                    // Ignora erros individuais durante a verificação, o timeout cuidará disso.
+                });
+            }, 1500); // Verifica a cada 1.5 segundos
+        } else {
+            fetchInitialStatus();
         }
     }, []);
 
@@ -84,7 +90,6 @@ const AdminDashboardScreen: React.FC = () => {
         const now = new Date();
         const integrations = shop.integrations as IntegrationSettings;
 
-        // 1. Check for active trial
         if (shop.trial_ends_at) {
             const trialEndDate = new Date(shop.trial_ends_at);
             if (trialEndDate > now) {
@@ -93,7 +98,6 @@ const AdminDashboardScreen: React.FC = () => {
             }
         }
         
-        // 2. Check for active paid plan
         if (integrations?.plan_expires_at) {
             const planEndDate = new Date(integrations.plan_expires_at);
              if (planEndDate > now) {
@@ -103,7 +107,6 @@ const AdminDashboardScreen: React.FC = () => {
             }
         }
 
-        // 3. Fallback for expired trial without a paid plan
         if (shop.trial_ends_at) {
             const trialEndDate = new Date(shop.trial_ends_at);
             if (trialEndDate <= now) {
@@ -111,7 +114,6 @@ const AdminDashboardScreen: React.FC = () => {
             }
         }
 
-        // 4. Default for Basic plan without an expiry (should not happen with new logic, but safe)
         if (!integrations?.plan_expires_at && (integrations?.plan === 'BASIC' || !integrations?.plan)) {
             return { text: 'Básico / Gratuito', color: 'text-gray-400' };
         }

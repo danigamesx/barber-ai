@@ -297,7 +297,7 @@ const App: React.FC = () => {
               isTrial = true;
               trialEndDate = trialEnd;
               finalPlanId = 'PREMIUM'; 
-              setAccessStatus({ hasAccess: true, isTrial, planId: finalPlanId, trialEndDate });
+              setAccessStatus({ hasAccess: true, isTrial, isTrial: isTrial, planId: finalPlanId, trialEndDate });
               return;
           }
       }

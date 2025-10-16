@@ -428,8 +428,17 @@ export const createPlanPreference = async (planId: string, billingCycle: 'monthl
         body: JSON.stringify({ planId, billingCycle, barbershopId }),
     });
     if (!response.ok) {
-        const errorBody = await response.json();
-        throw new Error(errorBody.error || 'Falha ao criar preferência de pagamento do plano.');
+        let errorMessage = 'Falha ao criar preferência de pagamento do plano.';
+        try {
+            const errorBody = await response.json();
+            errorMessage = errorBody.error || errorMessage;
+        } catch (e) {
+            const textError = await response.text();
+            if (textError) {
+                errorMessage = textError;
+            }
+        }
+        throw new Error(errorMessage);
     }
     const data = await response.json();
     return data;
