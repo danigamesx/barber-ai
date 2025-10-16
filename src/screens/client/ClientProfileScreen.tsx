@@ -21,7 +21,6 @@ const ClientProfileScreen: React.FC = () => {
     };
 
     const expenseHistory = useMemo(() => {
-        // FIX: Replaced 'any[]' with a specific type to help TypeScript infer types correctly down the line.
         const history: {
             id: string;
             date: Date;
@@ -33,15 +32,17 @@ const ClientProfileScreen: React.FC = () => {
         appointments.forEach(app => {
             if (app.client_id !== user.id) return;
             
-            if (app.status === 'completed') {
-                history.push({
-                    id: `exp-${app.id}`,
-                    date: app.start_time,
-                    description: app.service_name,
-                    barbershopId: app.barbershop_id,
-                    amount: app.price,
-                    type: 'service'
-                });
+            if (app.status === 'completed' || app.status === 'paid') {
+                 if (app.price !== null && app.price > 0) {
+                    history.push({
+                        id: `exp-${app.id}`,
+                        date: app.start_time,
+                        description: app.service_name,
+                        barbershopId: app.barbershop_id,
+                        amount: app.price,
+                        type: 'service'
+                    });
+                }
             } else if (app.status === 'cancelled' && app.cancellation_fee && app.cancellation_fee > 0) {
                  history.push({
                     id: `fee-${app.id}`,
@@ -123,7 +124,6 @@ const ClientProfileScreen: React.FC = () => {
                             <div key={sub.id} className="bg-brand-secondary p-4 rounded-lg">
                                 <p className="font-bold">{subDetails.name}</p>
                                 <p className="text-xs text-gray-400 mb-2">{getBarbershopName(sub.barbershopId)}</p>
-                                {/* FIX: Replaced non-existent 'benefits' with actual properties from the SubscriptionPlan type. */}
                                 <ul className="text-sm list-disc list-inside space-y-1 text-gray-300">
                                     {subDetails.serviceIds.map(serviceId => {
                                         const service = allServices.find(s => s.id === serviceId);
@@ -168,7 +168,6 @@ const ClientProfileScreen: React.FC = () => {
                          <select name="barbershopId" value={filters.barbershopId} onChange={handleFilterChange} className="bg-brand-dark p-2 rounded-md border border-gray-600">
                             <option value="all">Todas as Barbearias</option>
                             {[...new Set(expenseHistory.map(e => e.barbershopId))].map(id => (
-                                // FIX: Explicitly cast 'id' to string to satisfy TypeScript's strict type checking for key, value, and function arguments.
                                 <option key={id as string} value={id as string}>{getBarbershopName(id as string)}</option>
                             ))}
                         </select>

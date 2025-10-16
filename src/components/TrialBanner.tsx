@@ -1,3 +1,4 @@
+
 import React, { useState, useContext } from 'react';
 import Button from './Button';
 import PlansModal from '../screens/barbershop/PlansModal';

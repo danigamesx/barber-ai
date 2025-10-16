@@ -1,3 +1,4 @@
+
 import React, { useContext, useState } from 'react';
 import Button from '../../components/Button';
 import { AppContext } from '../../App';
@@ -9,7 +10,9 @@ const TrialExpiredScreen: React.FC = () => {
     const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
 
     const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
-        setPurchaseIntent({ planId, billingCycle });
+        if (setPurchaseIntent) {
+            setPurchaseIntent({ planId, billingCycle });
+        }
         setIsPlansModalOpen(false);
     };
 

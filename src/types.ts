@@ -66,7 +66,6 @@ export interface IntegrationSettings {
     stripeAccountOnboarded?: boolean;
     mercadopagoAccessToken?: string | null;
     mercadopagoPublicKey?: string | null;
-    // FIX: Added missing fields for Mercado Pago OAuth to align with database and API logic.
     mercadopagoRefreshToken?: string | null;
     mercadopagoUserId?: number | null;
     plan?: 'BASIC' | 'PRO' | 'PREMIUM' | string;
@@ -119,7 +118,6 @@ export interface SubscriptionPlan {
   id: string;
   name: string;
   price: number;
-  // FIX: Replaced 'benefits' with 'serviceIds' and 'usesPerMonth' to align with implementation in various components.
   serviceIds: string[];
   usesPerMonth: number;
 }
@@ -138,7 +136,7 @@ export interface SubscriptionPlanDetails {
     googleCalendar: boolean;
     onlinePayments: boolean;
     packagesAndSubscriptions: boolean;
-    // FIX: Added missing 'clientManagement' feature to align with type requirements in ManagePlanDetailsModal.
+    // FIX: Add 'clientManagement' to features to match its usage in components.
     clientManagement: boolean;
   };
 }
@@ -208,7 +206,6 @@ export interface User {
   outstanding_debts: Json | null;
   rewards: Json | null;
   store_credits: Json | null;
-  // FIX: Added missing properties to user type to avoid errors when creating mock/walk-in users.
   purchased_packages: Json | UserPurchasedPackage[] | null;
   active_subscriptions: Json | UserActiveSubscription[] | null;
 }
@@ -217,7 +214,7 @@ export interface Barbershop {
   id: string;
   owner_id: string;
   name: string;
-  // FIX: Added missing 'slug' property to align with database schema and fix usage errors.
+  // FIX: Add 'slug' property to Barbershop type to resolve usage errors.
   slug: string | null;
   phone: string | null;
   description: string | null;

@@ -1,5 +1,6 @@
+
 import React, { useState, useContext, useMemo, useEffect } from 'react';
-import { Barbershop, Service, Barber, Address, SocialMedia, Review, IntegrationSettings } from '../../types';
+import { Barbershop, Service, Barber, Address, SocialMedia, Review, IntegrationSettings, ServicePackage, SubscriptionPlan } from '../../types';
 import { AppContext } from '../../App';
 import Button from '../../components/Button';
 import { StarIcon, PhoneIcon, InstagramIcon, FacebookIcon, GlobeAltIcon, XCircleIcon, ArrowLeftIcon } from '../../components/icons/OutlineIcons';
@@ -14,7 +15,8 @@ interface BarbershopPublicPageProps {
 }
 
 const BarbershopPublicPage: React.FC<BarbershopPublicPageProps> = ({ identifier }) => {
-    const { reviews, user } = useContext(AppContext);
+    // FIX: Add setPackageSubscriptionIntent to context destructuring
+    const { reviews, user, setPackageSubscriptionIntent } = useContext(AppContext);
     const [barbershop, setBarbershop] = useState<Barbershop | null>(null);
     const [loading, setLoading] = useState(true);
     const [componentError, setComponentError] = useState<string | null>(null);
@@ -51,7 +53,6 @@ const BarbershopPublicPage: React.FC<BarbershopPublicPageProps> = ({ identifier 
         const urlParams = new URLSearchParams(hash.substring(hash.indexOf('?')));
         if (urlParams.get('openBooking') === 'true' && user && barbershop) {
             setIsBookingModalOpen(true);
-            // Clean up the URL
             urlParams.delete('openBooking');
             const newParamsString = urlParams.toString();
             const path = hash.split('?')[0];
@@ -59,6 +60,18 @@ const BarbershopPublicPage: React.FC<BarbershopPublicPageProps> = ({ identifier 
             window.history.replaceState(null, '', newHash);
         }
     }, [user, barbershop]);
+    
+     useEffect(() => {
+        const purchaseIntentStr = sessionStorage.getItem('purchaseIntent');
+        if (user && purchaseIntentStr && setPackageSubscriptionIntent) {
+            const intent = JSON.parse(purchaseIntentStr);
+            if (intent.identifier === identifier) {
+                setPackageSubscriptionIntent({ type: intent.type, itemId: intent.itemId, barbershopId: intent.barbershopId });
+                sessionStorage.removeItem('purchaseIntent');
+            }
+        }
+    }, [user, identifier, setPackageSubscriptionIntent]);
+
 
     const isAcceptingAppointments = useMemo(() => {
         if (!barbershop) return false;
@@ -90,12 +103,22 @@ const BarbershopPublicPage: React.FC<BarbershopPublicPageProps> = ({ identifier 
         if (user) {
             setIsBookingModalOpen(true);
         } else {
+             sessionStorage.setItem('bookingIntentIdentifier', identifier);
+            setShowLoginPrompt(true);
+        }
+    };
+    
+    const handlePurchaseClick = (type: 'package' | 'subscription', itemId: string) => {
+        if (user && barbershop && setPackageSubscriptionIntent) {
+            setPackageSubscriptionIntent({ type, itemId, barbershopId: barbershop.id });
+        } else {
+            sessionStorage.setItem('purchaseIntent', JSON.stringify({ type, itemId, barbershopId: barbershop?.id, identifier }));
             setShowLoginPrompt(true);
         }
     };
     
     const redirectToLogin = () => {
-        sessionStorage.setItem('bookingIntentIdentifier', identifier);
+        sessionStorage.setItem('returnToIdentifier', identifier);
         window.location.hash = ''; // Navega para a tela de login
     };
 
@@ -136,6 +159,8 @@ const BarbershopPublicPage: React.FC<BarbershopPublicPageProps> = ({ identifier 
     const phone = barbershop.phone;
     const barbers = Array.isArray(barbershop.barbers) ? barbershop.barbers as Barber[] : [];
     const services = Array.isArray(barbershop.services) ? barbershop.services as Service[] : [];
+    const packages = Array.isArray(barbershop.packages) ? barbershop.packages as ServicePackage[] : [];
+    const subscriptions = Array.isArray(barbershop.subscriptions) ? barbershop.subscriptions as SubscriptionPlan[] : [];
     const gallery = barbershop.gallery_images || [];
     const whatsappLink = phone ? `https://wa.me/55${phone.replace(/\D/g, '')}` : null;
     const barbershopReviews = reviews.filter(r => r.barbershop_id === barbershop.id);
@@ -230,6 +255,48 @@ const BarbershopPublicPage: React.FC<BarbershopPublicPageProps> = ({ identifier 
                                     ))}
                                 </div>
                              </section>
+
+                             {packages.length > 0 && (
+                                <section>
+                                    <h2 className="text-xl font-semibold text-brand-primary mb-3">Pacotes de Serviços</h2>
+                                    <div className="space-y-3">
+                                        {packages.map(pkg => (
+                                            <div key={pkg.id} className="bg-brand-secondary p-4 rounded-lg">
+                                                <p className="font-bold">{pkg.name}</p>
+                                                <p className="text-sm text-gray-400">{pkg.totalUses} usos por R$ {pkg.price.toFixed(2)}</p>
+                                                <ul className="text-xs list-disc list-inside pl-1 mt-2 text-gray-300">
+                                                    {pkg.serviceIds.map(id => {
+                                                        const service = services.find(s => s.id === id);
+                                                        return service ? <li key={id}>{service.name}</li> : null;
+                                                    })}
+                                                </ul>
+                                                <Button onClick={() => handlePurchaseClick('package', pkg.id)} variant="secondary" className="w-full py-2 text-sm mt-3">Contratar Pacote</Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                             )}
+
+                             {subscriptions.length > 0 && (
+                                 <section>
+                                    <h2 className="text-xl font-semibold text-brand-primary mb-3">Assinaturas Mensais</h2>
+                                     <div className="space-y-3">
+                                        {subscriptions.map(sub => (
+                                            <div key={sub.id} className="bg-brand-secondary p-4 rounded-lg">
+                                                <p className="font-bold">{sub.name}</p>
+                                                <p className="text-sm text-gray-400">{sub.usesPerMonth} uso(s)/mês por R$ {sub.price.toFixed(2)}</p>
+                                                 <ul className="text-xs list-disc list-inside pl-1 mt-2 text-gray-300">
+                                                    {sub.serviceIds.map(id => {
+                                                        const service = services.find(s => s.id === id);
+                                                        return service ? <li key={id}>{service.name}</li> : null;
+                                                    })}
+                                                </ul>
+                                                <Button onClick={() => handlePurchaseClick('subscription', sub.id)} variant="secondary" className="w-full py-2 text-sm mt-3">Assinar</Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                 </section>
+                             )}
                          </>
                      ) : (
                          <div className="bg-brand-secondary p-6 rounded-lg text-center my-8">
@@ -287,7 +354,7 @@ const BarbershopPublicPage: React.FC<BarbershopPublicPageProps> = ({ identifier 
                             <XCircleIcon className="w-8 h-8" />
                         </button>
                         <h2 className="text-xl font-bold mb-4">Quase lá!</h2>
-                        <p className="text-gray-300 mb-6">Para agendar seu horário, por favor, entre na sua conta ou crie um cadastro.</p>
+                        <p className="text-gray-300 mb-6">Para agendar seu horário ou fazer uma compra, por favor, entre na sua conta ou crie um cadastro.</p>
                         <Button onClick={redirectToLogin}>Entrar ou Cadastrar</Button>
                     </div>
                 </div>

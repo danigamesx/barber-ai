@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { User, Appointment, Barbershop, Review, ClientNotification, Session, Barber, FinancialRecord, Json, IntegrationSettings, CancellationPolicy } from './types';
 import LoginScreen from './screens/LoginScreen';
@@ -64,6 +65,8 @@ export const AppContext = React.createContext<{
   deleteBarbershopAccount: () => Promise<void>;
   // FIX: Added 'setPurchaseIntent' to the context to handle plan purchases throughout the app.
   setPurchaseIntent: (intent: { planId: string, billingCycle: 'monthly' | 'annual' } | null) => void;
+  // FIX: Added 'setPackageSubscriptionIntent' for client-side package/subscription purchases.
+  setPackageSubscriptionIntent: (intent: { type: 'package' | 'subscription', itemId: string, barbershopId: string } | null) => void;
 }>({
   user: null,
   users: [],
@@ -97,6 +100,8 @@ export const AppContext = React.createContext<{
   deleteBarbershopAccount: async () => {},
   // FIX: Provided a default empty function for 'setPurchaseIntent' in the context.
   setPurchaseIntent: () => {},
+  // FIX: Provided a default empty function for 'setPackageSubscriptionIntent'.
+  setPackageSubscriptionIntent: () => {},
 });
 
 export const PlanContext = React.createContext<{
@@ -137,6 +142,8 @@ const App: React.FC = () => {
   const [currentHash, setCurrentHash] = useState(window.location.hash);
   // FIX: Added state to manage the plan purchase flow.
   const [purchaseIntent, setPurchaseIntent] = useState<{ planId: string, billingCycle: 'monthly' | 'annual' } | null>(null);
+  // FIX: Added state for client-side package/subscription purchase flow.
+  const [packageSubscriptionIntent, setPackageSubscriptionIntent] = useState<{ type: 'package' | 'subscription', itemId: string, barbershopId: string } | null>(null);
 
 
   const [activeClientScreen, setActiveClientScreen] = useState('home');
@@ -502,6 +509,8 @@ const App: React.FC = () => {
       user, users, barbershops, barbershopData, appointments, allAppointments: appointments, reviews, googleToken, isSuperAdmin, accessStatus,
       ...contextFunctions,
       setPurchaseIntent,
+      // FIX: Pass the setter for package/subscription purchase intent.
+      setPackageSubscriptionIntent,
   };
   
   const handleEnterApp = (type: 'client' | 'barbershop') => {

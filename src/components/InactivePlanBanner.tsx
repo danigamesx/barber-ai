@@ -1,3 +1,4 @@
+
 import React, { useState, useContext } from 'react';
 import Button from './Button';
 import PlansModal from '../screens/barbershop/PlansModal';
@@ -9,7 +10,9 @@ const InactivePlanBanner: React.FC = () => {
     const { setPurchaseIntent } = useContext(AppContext);
 
     const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
-        setPurchaseIntent({ planId, billingCycle });
+        if (setPurchaseIntent) {
+            setPurchaseIntent({ planId, billingCycle });
+        }
         setIsPlansModalOpen(false);
     };
     
