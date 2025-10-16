@@ -408,7 +408,8 @@ export const setAppointmentGoogleEventId = async (appointmentId: string, googleE
 };
 
 // === MERCADO PAGO PAYMENT INTEGRATION ===
-export const createMercadoPagoPreference = async (appointmentData: Omit<Appointment, 'id' | 'created_at'> & { start_time: Date, end_time: Date }): Promise<{ redirectUrl: string, preferenceId: string }> => {
+// FIX: Updated return type to include 'publicKey' as it is returned by the API endpoint.
+export const createMercadoPagoPreference = async (appointmentData: Omit<Appointment, 'id' | 'created_at'> & { start_time: Date, end_time: Date }): Promise<{ redirectUrl: string, preferenceId: string, publicKey: string }> => {
     const response = await fetch(`/api/create-mp-preference`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -422,7 +423,33 @@ export const createMercadoPagoPreference = async (appointmentData: Omit<Appointm
     return data;
 };
 
-// FIX: Updated function to create payment preference for plans by calling the backend API and align return type.
+export const createPackageSubscriptionPreference = async (
+  type: 'package' | 'subscription',
+  itemId: string,
+  barbershopId: string,
+  user: User
+): Promise<{ preferenceId: string, publicKey: string }> => {
+  const response = await fetch(`/api/create-mp-preference`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        packageData: { 
+          type, 
+          itemId, 
+          barbershopId, 
+          userId: user.id, 
+          userName: user.name, 
+          userEmail: user.email 
+        } 
+      }),
+  });
+  if (!response.ok) {
+      const errorBody = await response.json();
+      throw new Error(errorBody.error || 'Falha ao criar preferência de pagamento.');
+  }
+  return await response.json();
+};
+
 export const createPlanPreference = async (planId: string, billingCycle: 'monthly' | 'annual', barbershopId: string): Promise<{ preferenceId: string, publicKey: string }> => {
     const response = await fetch(`/api/create-plan-preference`, {
         method: 'POST',
@@ -459,16 +486,8 @@ export const disconnectMercadoPago = async (barbershopId: string): Promise<void>
     }
 };
 
-/**
- * Calls a Supabase RPC function to securely delete the currently authenticated user
- * and all of their associated barbershop data.
- * NOTE: This requires a corresponding `delete_user_and_barbershop` function to be created in the Supabase database.
- * The function should use `SECURITY DEFINER` to have the necessary permissions.
- */
 export const deleteBarbershopAccount = async () => {
     if (!supabase) throw new Error(supabaseInitializationError!);
-    // This RPC function should be created in your Supabase SQL editor.
-    // It should verify the user owns the barbershop and then perform a cascade delete of all related data before deleting the user.
     const { error } = await supabase.rpc('delete_user_and_barbershop');
     if (error) {
         console.error('Error calling delete_user_and_barbershop RPC:', error);

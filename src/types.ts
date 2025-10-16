@@ -118,7 +118,9 @@ export interface SubscriptionPlan {
   id: string;
   name: string;
   price: number;
+  // FIX: Changed 'benefits' to 'serviceIds' to match component usage.
   serviceIds: string[];
+  // FIX: Added 'usesPerMonth' to match component usage.
   usesPerMonth: number;
 }
 
@@ -136,7 +138,6 @@ export interface SubscriptionPlanDetails {
     googleCalendar: boolean;
     onlinePayments: boolean;
     packagesAndSubscriptions: boolean;
-    // FIX: Add 'clientManagement' to features to match its usage in components.
     clientManagement: boolean;
   };
 }
@@ -206,6 +207,7 @@ export interface User {
   outstanding_debts: Json | null;
   rewards: Json | null;
   store_credits: Json | null;
+  // FIX: Added purchased_packages and active_subscriptions to User type
   purchased_packages: Json | UserPurchasedPackage[] | null;
   active_subscriptions: Json | UserActiveSubscription[] | null;
 }
@@ -214,7 +216,7 @@ export interface Barbershop {
   id: string;
   owner_id: string;
   name: string;
-  // FIX: Add 'slug' property to Barbershop type to resolve usage errors.
+  // FIX: Added missing 'slug' property to align with database schema and component usage.
   slug: string | null;
   phone: string | null;
   description: string | null;

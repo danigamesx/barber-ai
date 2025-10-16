@@ -26,6 +26,7 @@ import BarbershopPublicPage from './screens/public/BarbershopPublicPage';
 import InactivePlanBanner from './components/InactivePlanBanner';
 import { supabaseInitializationError } from './supabaseClient';
 import PlanPaymentModal from './screens/barbershop/PlanPaymentModal';
+import { PackagePaymentModal } from './screens/client/PaymentModal';
 
 export const AppContext = React.createContext<{
   user: User | null;
@@ -62,10 +63,9 @@ export const AppContext = React.createContext<{
   removeFromWaitingList: (barbershopId: string, date: string, clientId: string) => Promise<void>;
   setGoogleToken: (token: string | null) => void;
   patchUser: (user: User) => void;
+  // FIX: Added missing properties to the context type to resolve useContext errors in child components.
   deleteBarbershopAccount: () => Promise<void>;
-  // FIX: Added 'setPurchaseIntent' to the context to handle plan purchases throughout the app.
   setPurchaseIntent: (intent: { planId: string, billingCycle: 'monthly' | 'annual' } | null) => void;
-  // FIX: Added 'setPackageSubscriptionIntent' for client-side package/subscription purchases.
   setPackageSubscriptionIntent: (intent: { type: 'package' | 'subscription', itemId: string, barbershopId: string } | null) => void;
 }>({
   user: null,
@@ -97,10 +97,9 @@ export const AppContext = React.createContext<{
   removeFromWaitingList: async () => {},
   setGoogleToken: () => {},
   patchUser: () => {},
+  // FIX: Added default values for the new context properties.
   deleteBarbershopAccount: async () => {},
-  // FIX: Provided a default empty function for 'setPurchaseIntent' in the context.
   setPurchaseIntent: () => {},
-  // FIX: Provided a default empty function for 'setPackageSubscriptionIntent'.
   setPackageSubscriptionIntent: () => {},
 });
 
@@ -140,9 +139,8 @@ const App: React.FC = () => {
   const [loginAccountType, setLoginAccountType] = useState<'client' | 'barbershop' | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'failure' | 'pending' | null>(null);
   const [currentHash, setCurrentHash] = useState(window.location.hash);
-  // FIX: Added state to manage the plan purchase flow.
+  // FIX: Added state management for purchase intents to handle payment modal logic.
   const [purchaseIntent, setPurchaseIntent] = useState<{ planId: string, billingCycle: 'monthly' | 'annual' } | null>(null);
-  // FIX: Added state for client-side package/subscription purchase flow.
   const [packageSubscriptionIntent, setPackageSubscriptionIntent] = useState<{ type: 'package' | 'subscription', itemId: string, barbershopId: string } | null>(null);
 
 
@@ -203,6 +201,10 @@ const App: React.FC = () => {
 
       if (status && ['success', 'failure', 'pending'].includes(status)) {
         setPaymentStatus(status);
+        if (status === 'success') {
+          // Give time for webhook to process before reloading data
+          setTimeout(() => loadInitialData(), 3000);
+        }
       }
 
       // Clean the hash
@@ -508,8 +510,8 @@ const App: React.FC = () => {
   const appContextValue = { 
       user, users, barbershops, barbershopData, appointments, allAppointments: appointments, reviews, googleToken, isSuperAdmin, accessStatus,
       ...contextFunctions,
+      // FIX: Pass state setters to the context value.
       setPurchaseIntent,
-      // FIX: Pass the setter for package/subscription purchase intent.
       setPackageSubscriptionIntent,
   };
   
@@ -644,7 +646,6 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
-    // FIX: Simplified public page logic to use a single identifier from the hash.
     const identifierMatch = currentHash.match(/#\/(.+)/) || currentHash.match(/#\/\?barbershopId=(.+)/);
     const identifier = identifierMatch ? identifierMatch[1].split('&')[0] : null;
 
@@ -704,6 +705,12 @@ const App: React.FC = () => {
               onClose={() => setPurchaseIntent(null)}
             />
           )}
+          {packageSubscriptionIntent && (
+            <PackagePaymentModal
+              intent={packageSubscriptionIntent}
+              onClose={() => setPackageSubscriptionIntent(null)}
+            />
+          )}
           {paymentStatus && (
               <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[100]">
                   <div className="bg-brand-dark w-full max-w-md rounded-lg shadow-xl p-8 text-center">
@@ -711,14 +718,14 @@ const App: React.FC = () => {
                           <>
                               <CheckCircleIcon className="w-20 h-20 text-green-500 mx-auto mb-4" />
                               <h2 className="text-2xl font-bold mb-2">Pagamento Aprovado!</h2>
-                              <p className="text-gray-400 mb-6">Seu agendamento está confirmado. O status será atualizado em breve para "Pago".</p>
+                              <p className="text-gray-400 mb-6">Sua compra foi concluída com sucesso e os detalhes foram atualizados no seu perfil.</p>
                               <Button onClick={() => {
                                   setPaymentStatus(null);
                                   if (user?.user_type === 'CLIENT') {
-                                     setActiveClientScreen('appointments');
+                                     setActiveClientScreen('profile');
                                   }
                               }}>
-                                  Ver Meus Agendamentos
+                                  Ver Meu Perfil
                               </Button>
                           </>
                       )}
@@ -726,7 +733,7 @@ const App: React.FC = () => {
                           <>
                               <XCircleIcon className="w-20 h-20 text-red-500 mx-auto mb-4" />
                               <h2 className="text-2xl font-bold mb-2">Pagamento Recusado</h2>
-                              <p className="text-gray-400 mb-6">Não foi possível processar seu pagamento. Nenhum valor foi cobrado. Por favor, tente novamente ou escolha outro método de pagamento.</p>
+                              <p className="text-gray-400 mb-6">Não foi possível processar seu pagamento. Nenhum valor foi cobrado. Por favor, tente novamente.</p>
                               <Button variant="secondary" onClick={() => setPaymentStatus(null)}>
                                   Tentar Novamente
                               </Button>
@@ -736,14 +743,14 @@ const App: React.FC = () => {
                           <>
                               <ClockIcon className="w-20 h-20 text-amber-500 mx-auto mb-4" />
                               <h2 className="text-2xl font-bold mb-2">Pagamento Pendente</h2>
-                              <p className="text-gray-400 mb-6">Seu pagamento está sendo processado. Seu agendamento será confirmado assim que o pagamento for aprovado.</p>
+                              <p className="text-gray-400 mb-6">Seu pagamento está sendo processado. Sua compra será confirmada assim que o pagamento for aprovado.</p>
                                <Button variant="secondary" onClick={() => {
                                   setPaymentStatus(null);
                                   if (user?.user_type === 'CLIENT') {
-                                     setActiveClientScreen('appointments');
+                                     setActiveClientScreen('profile');
                                   }
                               }}>
-                                  Ver Meus Agendamentos
+                                  Ver Meu Perfil
                               </Button>
                           </>
                       )}
