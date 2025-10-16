@@ -4,9 +4,11 @@ import { AppContext } from '../../App';
 import PlansModal from './PlansModal';
 
 const TrialExpiredScreen: React.FC = () => {
+    // FIX: Destructured 'setPurchaseIntent' from AppContext to handle plan purchases.
     const { logout, setPurchaseIntent } = useContext(AppContext);
     const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
 
+    // FIX: Created a handler to set the purchase intent when a plan is selected.
     const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
         setPurchaseIntent({ planId, billingCycle });
         setIsPlansModalOpen(false);

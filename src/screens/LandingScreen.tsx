@@ -16,9 +16,9 @@ const featuresList = [
 ];
 
 const plans = [
-    { name: 'Básico', id: 'BASIC', price: { monthly: 59.90, annual: 41.90 }, features: ['Até 1 Barbeiro', 'Gestão de Clientes', 'Análises de Desempenho', 'Ferramentas de Marketing', 'Integração Google Agenda', 'Pacotes e Assinaturas'], mostPopular: false },
-    { name: 'Pro', id: 'PRO', price: { monthly: 84.90, annual: 59.90 }, features: ['Até 5 Barbeiros', 'Tudo do Básico', 'Pagamentos Online'], mostPopular: true },
-    { name: 'Premium', id: 'PREMIUM', price: { monthly: 142.90, annual: 99.90 }, features: ['Barbeiros Ilimitados', 'Tudo do Pro', 'Suporte Prioritário'], mostPopular: false },
+    { name: 'Básico', id: 'BASIC', price: { monthly: 44.90, annual: 31.43 }, features: ['Até 1 Barbeiro', 'Gestão de Clientes', 'Análises de Desempenho', 'Ferramentas de Marketing', 'Integração Google Agenda', 'Pacotes e Assinaturas'], mostPopular: false },
+    { name: 'Pro', id: 'PRO', price: { monthly: 59.90, annual: 41.93 }, features: ['Até 5 Barbeiros', 'Tudo do Básico', 'Pagamentos Online'], mostPopular: true },
+    { name: 'Premium', id: 'PREMIUM', price: { monthly: 89.90, annual: 62.93 }, features: ['Barbeiros Ilimitados', 'Tudo do Pro', 'Suporte Prioritário'], mostPopular: false },
 ];
 
 
@@ -35,9 +35,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleStartPurchase = (planId: string, cycle: 'monthly' | 'annual') => {
-    const purchaseIntent = { planId, billingCycle: cycle };
-    sessionStorage.setItem('purchaseIntent', JSON.stringify(purchaseIntent));
+  const handleStartPurchase = () => {
     onEnter('barbershop');
   };
 
@@ -210,7 +208,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
                         <h1 className="text-4xl font-bold tracking-tight text-white sm:text-6xl">Transforme Sua Barbearia com a Gestão que Você Merece</h1>
                         <p className="mt-6 text-lg leading-8 text-gray-300">Menos administração, mais arte. O BarberAI automatiza seus agendamentos, pagamentos e marketing para que você possa focar no que faz de melhor: cortes incríveis.</p>
                         <div className="mt-10 flex items-center justify-center gap-x-6">
-                            <Button onClick={() => handleStartPurchase('PREMIUM', 'monthly')} variant="primary" className="py-3 px-8 text-base w-auto shadow-lg shadow-amber-500/20 transform hover:scale-105 transition-transform">
+                            <Button onClick={handleStartPurchase} variant="primary" className="py-3 px-8 text-base w-auto shadow-lg shadow-amber-500/20 transform hover:scale-105 transition-transform">
                                 Teste Grátis por 30 Dias
                             </Button>
                         </div>
@@ -294,7 +292,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
                                 <span className="text-4xl font-bold tracking-tight text-white">R${plan.price[billingCycle].toFixed(2).replace('.',',')}</span>
                                 <span className="text-sm font-semibold leading-6 text-gray-300">/mês</span>
                             </p>
-                            <Button onClick={() => handleStartPurchase(plan.id, billingCycle)} variant={plan.mostPopular ? 'primary' : 'secondary'} className="mt-6 w-full">Comece agora</Button>
+                            <Button onClick={handleStartPurchase} variant={plan.mostPopular ? 'primary' : 'secondary'} className="mt-6 w-full">Comece agora</Button>
                             <ul role="list" className="mt-8 space-y-3 text-sm leading-6 text-gray-300 xl:mt-10">
                                 {plan.features.map((feature) => (
                                     <li key={feature} className="flex gap-x-3"><CheckIcon className="h-6 w-5 flex-none text-brand-primary" aria-hidden="true" />{feature}</li>

@@ -15,6 +15,7 @@ const TrialBanner: React.FC<TrialBannerProps> = ({ trialEndDate }) => {
   const remainingDays = Math.max(0, Math.ceil(remainingMilliseconds / (1000 * 60 * 60 * 24)));
 
   const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
+    // FIX: Set purchase intent in the app's context to trigger the payment flow.
     setPurchaseIntent({ planId, billingCycle });
     setIsPlansModalOpen(false);
   };
@@ -32,7 +33,7 @@ const TrialBanner: React.FC<TrialBannerProps> = ({ trialEndDate }) => {
           </div>
         </div>
       </div>
-      {/* FIX: Passed the required onInitiatePurchase prop to PlansModal */}
+      {/* FIX: Passed the required onInitiatePurchase prop to PlansModal. */}
       {isPlansModalOpen && <PlansModal onClose={() => setIsPlansModalOpen(false)} onInitiatePurchase={handleInitiatePurchase} />}
     </>
   );

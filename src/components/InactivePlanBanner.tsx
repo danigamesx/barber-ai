@@ -4,9 +4,11 @@ import PlansModal from '../screens/barbershop/PlansModal';
 import { AppContext } from '../App';
 
 const InactivePlanBanner: React.FC = () => {
+    // FIX: Destructured 'setPurchaseIntent' from context to handle purchase initiation.
     const { setPurchaseIntent } = useContext(AppContext);
     const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
 
+    // FIX: Created handler to set the purchase intent when a plan is selected.
     const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
         setPurchaseIntent({ planId, billingCycle });
         setIsPlansModalOpen(false);

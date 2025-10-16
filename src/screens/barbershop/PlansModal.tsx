@@ -5,16 +5,15 @@ import { PLANS } from '../../constants';
 
 interface PlansModalProps {
   onClose: () => void;
-  // FIX: Added required onInitiatePurchase prop to handle purchase logic in the parent component.
-  onInitiatePurchase: (planId: string, billingCycle: 'monthly' | 'annual') => void;
 }
 
-const PlansModal: React.FC<PlansModalProps> = ({ onClose, onInitiatePurchase }) => {
+const PlansModal: React.FC<PlansModalProps> = ({ onClose }) => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
 
-  const handlePurchase = (planId: string, cycle: 'monthly' | 'annual') => {
-    // FIX: Call the onInitiatePurchase prop instead of setting state directly.
-    onInitiatePurchase(planId, cycle);
+  const handlePurchase = (planName: string, cycle: 'monthly' | 'annual') => {
+    const message = encodeURIComponent(`Quero contratar o BARBERAI! Tenho interesse no plano ${planName} (${cycle === 'annual' ? 'Anual' : 'Mensal'}).`);
+    const whatsappUrl = `https://wa.me/5551994829915?text=${message}`;
+    window.open(whatsappUrl, '_blank');
     onClose();
   };
 
@@ -71,7 +70,7 @@ const PlansModal: React.FC<PlansModalProps> = ({ onClose, onInitiatePurchase }) 
                   </li>
                   <li className={`flex items-start gap-2 ${plan.features.packagesAndSubscriptions ? '' : 'text-gray-500 line-through'}`}><span>{plan.features.packagesAndSubscriptions ? '✓' : '✕'}</span> <span>Pacotes e Assinaturas</span></li>
                 </ul>
-                 <Button onClick={() => handlePurchase(plan.id, billingCycle)} variant={plan.id === 'PRO' ? 'primary' : 'secondary'} className="mt-auto">Contratar Plano</Button>
+                 <Button onClick={() => handlePurchase(plan.name, billingCycle)} variant={plan.id === 'PRO' ? 'primary' : 'secondary'} className="mt-auto">Entrar em Contato</Button>
               </div>
             );
           })}

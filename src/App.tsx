@@ -26,8 +26,6 @@ import InactivePlanBanner from './components/InactivePlanBanner';
 import { supabaseInitializationError } from './supabaseClient';
 import PlanPaymentModal from './screens/barbershop/PlanPaymentModal';
 
-type PurchaseIntent = { planId: string; billingCycle: 'monthly' | 'annual' };
-
 export const AppContext = React.createContext<{
   user: User | null;
   users: User[];
@@ -44,8 +42,6 @@ export const AppContext = React.createContext<{
     planId: string;
     trialEndDate: Date | null;
   };
-  // FIX: Added missing setPurchaseIntent to context type definition
-  setPurchaseIntent: React.Dispatch<React.SetStateAction<PurchaseIntent | null>>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   signup: (name: string, email: string, password: string, accountType: 'client' | 'barbershop', phone: string, birthDate?: string, barbershopName?: string) => Promise<void>;
@@ -65,6 +61,8 @@ export const AppContext = React.createContext<{
   removeFromWaitingList: (barbershopId: string, date: string, clientId: string) => Promise<void>;
   setGoogleToken: (token: string | null) => void;
   patchUser: (user: User) => void;
+  // FIX: Added 'setPurchaseIntent' to the context to handle plan purchases.
+  setPurchaseIntent: (intent: { planId: string, billingCycle: 'monthly' | 'annual' } | null) => void;
 }>({
   user: null,
   users: [],
@@ -76,8 +74,6 @@ export const AppContext = React.createContext<{
   googleToken: null,
   isSuperAdmin: false,
   accessStatus: { hasAccess: false, isTrial: false, planId: 'BASIC', trialEndDate: null },
-  // FIX: Added missing setPurchaseIntent to context default value
-  setPurchaseIntent: () => {},
   login: async () => {},
   logout: async () => {},
   signup: async () => {},
@@ -97,6 +93,8 @@ export const AppContext = React.createContext<{
   removeFromWaitingList: async () => {},
   setGoogleToken: () => {},
   patchUser: () => {},
+  // FIX: Added default value for 'setPurchaseIntent'.
+  setPurchaseIntent: () => {},
 });
 
 export const PlanContext = React.createContext<{
@@ -135,7 +133,8 @@ const App: React.FC = () => {
   const [loginAccountType, setLoginAccountType] = useState<'client' | 'barbershop' | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'failure' | 'pending' | null>(null);
   const [currentHash, setCurrentHash] = useState(window.location.hash);
-  const [purchaseIntent, setPurchaseIntent] = useState<PurchaseIntent | null>(null);
+  // FIX: Added state to manage plan purchase flow.
+  const [purchaseIntent, setPurchaseIntent] = useState<{ planId: string, billingCycle: 'monthly' | 'annual' } | null>(null);
 
 
   const [activeClientScreen, setActiveClientScreen] = useState('home');
@@ -220,20 +219,13 @@ const App: React.FC = () => {
         setSession(newSession);
 
         if (userJustLoggedIn) {
-            const storedPurchaseIntent = sessionStorage.getItem('purchaseIntent');
-            if (storedPurchaseIntent) {
-                try {
-                    const intent = JSON.parse(storedPurchaseIntent);
-                    setPurchaseIntent(intent);
-                    sessionStorage.removeItem('purchaseIntent');
-                } catch (e) {
-                    console.error("Failed to parse purchase intent", e);
-                    sessionStorage.removeItem('purchaseIntent');
-                }
-            }
-            
             const bookingIntentIdentifier = sessionStorage.getItem('bookingIntentIdentifier');
-            if (bookingIntentIdentifier) {
+            // FIX: Check for a purchase intent when a user logs in.
+            const purchaseIntentRaw = sessionStorage.getItem('purchaseIntent');
+            if (purchaseIntentRaw) {
+                setPurchaseIntent(JSON.parse(purchaseIntentRaw));
+                sessionStorage.removeItem('purchaseIntent');
+            } else if (bookingIntentIdentifier) {
                 const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(bookingIntentIdentifier);
                 if (isUUID) {
                     window.location.hash = `/?barbershopId=${bookingIntentIdentifier}&openBooking=true`;
@@ -251,8 +243,6 @@ const App: React.FC = () => {
             setBarbershops([]);
             setReviews([]);
             setGoogleToken(null);
-            setPurchaseIntent(null);
-            sessionStorage.removeItem('purchaseIntent');
             sessionStorage.removeItem('bookingIntentIdentifier');
             setShowLanding(true); 
             setLoginAccountType(null);
@@ -297,8 +287,6 @@ const App: React.FC = () => {
               isTrial = true;
               trialEndDate = trialEnd;
               finalPlanId = 'PREMIUM'; 
-              // FIX: An object literal cannot have multiple properties with the same name.
-              // Removed duplicate `isTrial` property.
               setAccessStatus({ hasAccess: true, isTrial, planId: finalPlanId, trialEndDate });
               return;
           }
@@ -379,7 +367,6 @@ const App: React.FC = () => {
       setBarbershops([]);
       setReviews([]);
       setGoogleToken(null);
-      setPurchaseIntent(null);
       setShowLanding(true); 
       setLoginAccountType(null);
     },
@@ -509,8 +496,10 @@ const App: React.FC = () => {
   };
 
   const appContextValue = { 
-      user, users, barbershops, barbershopData, appointments, allAppointments: appointments, reviews, googleToken, isSuperAdmin, accessStatus, setPurchaseIntent,
-      ...contextFunctions
+      user, users, barbershops, barbershopData, appointments, allAppointments: appointments, reviews, googleToken, isSuperAdmin, accessStatus,
+      ...contextFunctions,
+      // FIX: Provide 'setPurchaseIntent' through the context.
+      setPurchaseIntent,
   };
   
   const handleEnterApp = (type: 'client' | 'barbershop') => {
@@ -644,16 +633,6 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
-    if (user && purchaseIntent && barbershopData) {
-        return (
-            <PlanPaymentModal
-                planId={purchaseIntent.planId}
-                billingCycle={purchaseIntent.billingCycle}
-                onClose={() => setPurchaseIntent(null)}
-            />
-        );
-    }
-    
     const hashContent = currentHash.substring(1); // Content after '#'
 
     if (hashContent.startsWith('/')) {
@@ -715,6 +694,14 @@ const App: React.FC = () => {
       <PlanContext.Provider value={planContextValue}>
         <div className="antialiased font-sans bg-brand-dark min-h-screen">
           {renderContent()}
+          {/* FIX: Render the plan payment modal when an intent is set. */}
+          {purchaseIntent && barbershopData && (
+              <PlanPaymentModal 
+                  planId={purchaseIntent.planId} 
+                  billingCycle={purchaseIntent.billingCycle} 
+                  onClose={() => setPurchaseIntent(null)} 
+              />
+          )}
           {paymentStatus && (
               <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[100]">
                   <div className="bg-brand-dark w-full max-w-md rounded-lg shadow-xl p-8 text-center">

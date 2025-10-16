@@ -5,8 +5,8 @@ export const PLANS = [
     id: 'BASIC',
     name: 'Básico',
     description: 'Plano para iniciantes.',
-    priceMonthly: 59.90,
-    priceAnnual: 502.80, // 41.90 * 12
+    priceMonthly: 44.90,
+    priceAnnual: 377.16, // 31.43 * 12
     maxBarbers: 1,
     features: {
       analytics: true,
@@ -21,8 +21,8 @@ export const PLANS = [
     id: 'PRO',
     name: 'Pro',
     description: 'Plano para profissionais.',
-    priceMonthly: 84.90,
-    priceAnnual: 718.80, // 59.90 * 12
+    priceMonthly: 59.90,
+    priceAnnual: 503.16, // 41.93 * 12
     maxBarbers: 5,
     features: {
       analytics: true,
@@ -37,8 +37,8 @@ export const PLANS = [
     id: 'PREMIUM',
     name: 'Premium',
     description: 'Plano para grandes barbearias.',
-    priceMonthly: 142.90,
-    priceAnnual: 1198.80, // 99.90 * 12
+    priceMonthly: 89.90,
+    priceAnnual: 755.16, // 62.93 * 12
     maxBarbers: Infinity,
     features: {
       analytics: true,
