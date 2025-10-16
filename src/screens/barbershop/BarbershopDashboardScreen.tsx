@@ -244,7 +244,9 @@ const BarbershopDashboardScreen: React.FC = () => {
         return <div className="p-4 text-center">Carregando dados do painel...</div>;
     }
     
-    const shareableLink = `${window.location.origin}/#/?barbershopId=${barbershopData.id}`;
+    const shareableLink = barbershopData.slug
+      ? `${window.location.origin}/#/${barbershopData.slug}`
+      : `${window.location.origin}/#/?barbershopId=${barbershopData.id}`;
 
     const copyToClipboard = () => {
         navigator.clipboard.writeText(shareableLink).then(() => {
@@ -290,6 +292,11 @@ const BarbershopDashboardScreen: React.FC = () => {
                         {copySuccess || 'Copiar'}
                     </Button>
                   </div>
+                   {!barbershopData.slug && (
+                    <p className="text-xs text-amber-400 mt-2">
+                      Dica: Personalize este link na tela de <span className="font-bold">Ajustes</span> para torná-lo mais profissional!
+                    </p>
+                  )}
                 </div>
                 
                 <div className="bg-brand-secondary p-4 rounded-lg">

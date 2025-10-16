@@ -117,6 +117,7 @@ export type Database = {
           promotions: Json | null
           rating: number | null
           services: Json | null
+          slug: string | null
           social_media: Json | null
           subscriptions: Json | null
           trial_ends_at: string | null
@@ -145,6 +146,7 @@ export type Database = {
           promotions?: Json | null
           rating?: number | null
           services?: Json | null
+          slug?: string | null
           social_media?: Json | null
           subscriptions?: Json | null
           trial_ends_at?: string | null
@@ -173,6 +175,7 @@ export type Database = {
           promotions?: Json | null
           rating?: number | null
           services?: Json | null
+          slug?: string | null
           social_media?: Json | null
           subscriptions?: Json | null
           trial_ends_at?: string | null

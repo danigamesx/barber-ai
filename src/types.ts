@@ -190,6 +190,7 @@ export interface Barbershop {
   id: string;
   owner_id: string;
   name: string;
+  slug: string | null;
   phone: string | null;
   description: string | null;
   image_url: string | null;

@@ -4,6 +4,7 @@
 
 
 
+
 import React, { useContext, useMemo, useState } from 'react';
 import { AppContext } from '../../App';
 import { Appointment, Barber, Service } from '../../types';
@@ -131,7 +132,9 @@ const AnalyticsScreen: React.FC = () => {
         
         // FIX: Explicitly specify generic type for reduce to avoid incorrect type inference for 'sum'.
         const revenueFromServices = completed.reduce<number>((sum, app) => sum + (app.price || 0), 0);
+        // FIX: Explicitly specify generic type for reduce to avoid incorrect type inference for 'sum'.
         const revenueFromFees = cancelledWithFee.reduce<number>((sum, app) => sum + (app.cancellation_fee || 0), 0);
+        // FIX: Explicitly specify generic type for reduce to avoid incorrect type inference for 'sum'.
         const totalCommissions = completed.reduce<number>((sum, app) => sum + (app.commission_amount || 0), 0);
         
         const totalRevenue = revenueFromServices + revenueFromFees;
