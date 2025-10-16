@@ -1,7 +1,7 @@
 import React, { useContext, useState } from 'react';
 import Button from '../../components/Button';
 // FIX: Corrected import path to point to src/App.tsx instead of a non-existent root App.tsx
-import { AppContext } from '../App';
+import { AppContext } from '../../App';
 import PlansModal from './PlansModal';
 
 const TrialExpiredScreen: React.FC = () => {

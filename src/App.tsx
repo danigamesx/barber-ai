@@ -233,20 +233,6 @@ const App: React.FC = () => {
                 sessionStorage.removeItem('bookingIntentIdentifier');
             }
 
-            // FIX: Handle plan purchase intent after login.
-            const purchaseIntentRaw = sessionStorage.getItem('purchaseIntent');
-            if (purchaseIntentRaw) {
-                try {
-                    const intent = JSON.parse(purchaseIntentRaw);
-                    if(intent.planId && intent.billingCycle) {
-                        setPurchaseIntent(intent);
-                    }
-                } catch (e) {
-                    console.error('Could not parse purchase intent', e);
-                }
-                sessionStorage.removeItem('purchaseIntent');
-            }
-
             loadInitialData();
         } else if (userJustLoggedOut) {
             setUser(null);
@@ -430,13 +416,10 @@ const App: React.FC = () => {
                     if (debtUpdate > 0) updates.outstanding_debts = { ...currentDebts, [shopId]: (currentDebts[shopId] || 0) + debtUpdate } as Json;
         
                     if (Object.keys(updates).length > 0) {
-                        clientProfile = await api.updateUserProfile(clientProfile.id, updates);
+                        const updatedProfile = await api.updateUserProfile(clientProfile.id, updates);
+                        patchUser(updatedProfile);
                     }
                 }
-            }
-        
-            if (clientProfile) {
-                patchUser(clientProfile);
             }
         } catch (error) {
              console.error(`Falha ao buscar ou atualizar o perfil do cliente ${appointment.client_id} após a atualização de status.`, error);
@@ -445,11 +428,13 @@ const App: React.FC = () => {
     updateBarbershopData: async (id: string, fields: Partial<Omit<Barbershop, 'id'>>) => {
       try {
         await api.updateBarbershop(id, fields);
-        setBarbershops(await api.getBarbershops());
+        const updatedBarbershops = await api.getBarbershops();
+        setBarbershops(updatedBarbershops);
       } catch (error: any) {
         console.error("Falha ao atualizar barbearia:", error);
-        alert(error.message || "Ocorreu um erro ao salvar as alterações. A interface será atualizada para refletir os dados reais do servidor.");
-        setBarbershops(await api.getBarbershops());
+        alert(`Ocorreu um erro ao salvar as alterações: ${error.message}`);
+        const updatedBarbershops = await api.getBarbershops();
+        setBarbershops(updatedBarbershops);
       }
     },
     updateBarberData: async (barbershopId: string, barberId: string, fields: Partial<Omit<Barber, 'id'>>) => {
@@ -488,6 +473,9 @@ const App: React.FC = () => {
         const clients = users.filter(u => u.user_type === 'CLIENT');
         await api.sendPromotion(barbershopId, title, message, clients, barbershops);
         setBarbershops(await api.getBarbershops());
+        // To see the notification badge update in realtime for the client (if testing in same browser)
+        const updatedUsers = await api.getAllUsers();
+        setUsers(updatedUsers);
     },
     markNotificationsAsRead: async (notificationIds: string[]) => {
         if (!user) return;
@@ -503,24 +491,13 @@ const App: React.FC = () => {
       await api.removeFromWaitingList(barbershopId, date, clientId, barbershops);
       setBarbershops(await api.getBarbershops());
     },
+    deleteBarbershopAccount: async () => {
+      await api.deleteBarbershopAccount();
+      // On success, the auth listener will trigger a logout and state cleanup.
+    },
     setGoogleToken,
     patchUser,
-    // FIX: Pass the state setter through the context.
     setPurchaseIntent,
-    deleteBarbershopAccount: async () => {
-        await api.deleteBarbershopAccount();
-        // After successful deletion on backend, sign out on client
-        await api.signOutUser();
-        // Clear local state
-        setUser(null);
-        setAppointments([]);
-        setUsers([]);
-        setBarbershops([]);
-        setReviews([]);
-        setGoogleToken(null);
-        setShowLanding(true); 
-        setLoginAccountType(null);
-    }
   };
 
   const appContextValue = { 
@@ -659,21 +636,12 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
-    const hashContent = currentHash.substring(1); // Content after '#'
+    // FIX: Simplified public page logic to use a single identifier from the hash.
+    const identifierMatch = currentHash.match(/#\/(.+)/) || currentHash.match(/#\/\?barbershopId=(.+)/);
+    const identifier = identifierMatch ? identifierMatch[1].split('&')[0] : null;
 
-    if (hashContent.startsWith('/')) {
-        const pathAndQuery = hashContent.substring(1); // Content after '#/'
-        const [path, query] = pathAndQuery.split('?');
-
-        if (path) { // It's a slug, e.g., /#/[slug]
-            return <BarbershopPublicPage identifier={path} />;
-        } else if (query) { // It's the old format, e.g., /#/?barbershopId=[id]
-            const params = new URLSearchParams(query);
-            const barbershopId = params.get('barbershopId');
-            if (barbershopId) {
-                return <BarbershopPublicPage identifier={barbershopId} />;
-            }
-        }
+    if (identifier) {
+        return <BarbershopPublicPage identifier={identifier} />;
     }
 
     if (showLanding && !session) {
@@ -708,15 +676,16 @@ const App: React.FC = () => {
       if (barbershopData && !barbershopData.has_completed_setup) {
         return <BarbershopSetupScreen />;
       }
+       if (!accessStatus.hasAccess && !accessStatus.isTrial) {
+            return <InactivePlanBanner />; // Or a dedicated expired screen
+        }
       return renderBarbershopApp();
     }
     return <LoginScreen initialAccountType={loginAccountType} />;
   };
 
-  const finalAppContextValue = { ...appContextValue };
-
   return (
-    <AppContext.Provider value={finalAppContextValue}>
+    <AppContext.Provider value={appContextValue}>
       <PlanContext.Provider value={planContextValue}>
         <div className="antialiased font-sans bg-brand-dark min-h-screen">
           {renderContent()}
@@ -766,13 +735,12 @@ const App: React.FC = () => {
                   </div>
               </div>
           )}
-          {/* FIX: Render the plan payment modal when a purchase is initiated. */}
           {purchaseIntent && barbershopData && (
-            <PlanPaymentModal 
-              planId={purchaseIntent.planId}
-              billingCycle={purchaseIntent.billingCycle}
-              onClose={() => setPurchaseIntent(null)}
-            />
+              <PlanPaymentModal
+                  planId={purchaseIntent.planId}
+                  billingCycle={purchaseIntent.billingCycle}
+                  onClose={() => setPurchaseIntent(null)}
+              />
           )}
         </div>
       </PlanContext.Provider>
