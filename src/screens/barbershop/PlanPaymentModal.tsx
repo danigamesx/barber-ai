@@ -69,18 +69,12 @@ const PlanPaymentModal: React.FC<PlanPaymentModalProps> = ({ planId, billingCycl
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [preferenceId, setPreferenceId] = useState<string | null>(null);
+    const [publicKey, setPublicKey] = useState<string | null>(null);
 
     const plan = PLANS.find(p => p.id === planId);
     const price = billingCycle === 'annual' ? plan?.priceAnnual : plan?.priceMonthly;
-    const mpPublicKey = import.meta.env.VITE_MERCADO_PAGO_PLATFORM_PUBLIC_KEY;
     
     useEffect(() => {
-        if (!mpPublicKey) {
-            setError("A chave de pagamentos da plataforma não está configurada.");
-            setIsLoading(false);
-            return;
-        }
-
         if (!plan || !barbershopData) {
             setError("Não foi possível carregar os detalhes do plano ou da barbearia.");
             setIsLoading(false);
@@ -90,13 +84,14 @@ const PlanPaymentModal: React.FC<PlanPaymentModalProps> = ({ planId, billingCycl
         api.createPlanPreference(planId, billingCycle, barbershopData.id)
             .then(data => {
                 setPreferenceId(data.preferenceId);
+                setPublicKey(data.publicKey);
             })
             .catch(err => {
                 setError(err.message || "Falha ao criar a preferência de pagamento do plano.");
             })
             .finally(() => setIsLoading(false));
 
-    }, [planId, billingCycle, barbershopData, mpPublicKey, plan]);
+    }, [planId, billingCycle, barbershopData, plan]);
 
     if (!plan) return null;
 
@@ -132,10 +127,10 @@ const PlanPaymentModal: React.FC<PlanPaymentModalProps> = ({ planId, billingCycl
                         </div>
                     )}
 
-                    {!isLoading && !error && preferenceId && mpPublicKey && (
+                    {!isLoading && !error && preferenceId && publicKey && (
                         <PaymentBrickComponent
                             preferenceId={preferenceId}
-                            publicKey={mpPublicKey}
+                            publicKey={publicKey}
                         />
                     )}
                 </div>

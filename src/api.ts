@@ -421,7 +421,7 @@ export const createMercadoPagoPreference = async (appointmentData: Omit<Appointm
     return data;
 };
 
-export const createPlanPreference = async (planId: string, billingCycle: 'monthly' | 'annual', barbershopId: string): Promise<{ preferenceId: string }> => {
+export const createPlanPreference = async (planId: string, billingCycle: 'monthly' | 'annual', barbershopId: string): Promise<{ preferenceId: string; publicKey: string }> => {
     const response = await fetch(`/api/create-plan-preference`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

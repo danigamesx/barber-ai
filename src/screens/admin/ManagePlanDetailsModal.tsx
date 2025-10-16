@@ -22,6 +22,8 @@ const emptyPlan: SubscriptionPlanDetails = {
         googleCalendar: false,
         onlinePayments: false,
         packagesAndSubscriptions: false,
+        // FIX: Added missing 'clientManagement' property to align with type definition.
+        clientManagement: false,
     },
 };
 
@@ -99,6 +101,7 @@ const ManagePlanDetailsModal: React.FC<ManagePlanDetailsModalProps> = ({ plan, o
                 {renderFeatureToggle('googleCalendar', 'Integração Google Agenda')}
                 {renderFeatureToggle('onlinePayments', 'Pagamentos Online')}
                 {renderFeatureToggle('packagesAndSubscriptions', 'Pacotes e Assinaturas')}
+                {renderFeatureToggle('clientManagement', 'Gestão de Clientes')}
             </div>
           </div>
 

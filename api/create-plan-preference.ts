@@ -32,11 +32,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(500).json({ error: 'Configuração de pagamento da plataforma não encontrada.' });
         }
         
-        const platformAccessToken = (settings.config as any)?.mercadopagoAccessToken;
+        const platformConfig = settings.config as any;
+        const platformAccessToken = platformConfig?.mercadopagoAccessToken;
+        const platformPublicKey = platformConfig?.mercadopagoPublicKey;
 
-        if (!platformAccessToken) {
-            console.error('Platform Mercado Pago access token is missing in platform_settings.');
-            return res.status(500).json({ error: 'A conta de pagamento da plataforma não está conectada.' });
+        if (!platformAccessToken || !platformPublicKey) {
+            console.error('Platform Mercado Pago access token or public key is missing in platform_settings.');
+            return res.status(500).json({ error: 'A conta de pagamento da plataforma não está conectada ou configurada corretamente.' });
         }
 
         const { planId, billingCycle, barbershopId } = req.body;
@@ -84,7 +86,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             throw new Error('Não foi possível obter o ID da preferência do Mercado Pago.');
         }
         
-        res.status(200).json({ preferenceId });
+        res.status(200).json({ preferenceId, publicKey: platformPublicKey });
 
     } catch (error: any) {
         console.error('Erro ao criar preferência de plano no Mercado Pago:', error.cause || error.message);
