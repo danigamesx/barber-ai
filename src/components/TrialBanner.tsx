@@ -1,6 +1,7 @@
 import React, { useState, useContext } from 'react';
 import Button from './Button';
 import PlansModal from '../screens/barbershop/PlansModal';
+// FIX: Import AppContext to access the global purchase intent setter.
 import { AppContext } from '../App';
 
 interface TrialBannerProps {
@@ -8,14 +9,15 @@ interface TrialBannerProps {
 }
 
 const TrialBanner: React.FC<TrialBannerProps> = ({ trialEndDate }) => {
-  const { setPurchaseIntent } = useContext(AppContext);
   const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
+  // FIX: Get setPurchaseIntent from the context to initiate a purchase.
+  const { setPurchaseIntent } = useContext(AppContext);
   const now = new Date();
   const remainingMilliseconds = trialEndDate.getTime() - now.getTime();
   const remainingDays = Math.max(0, Math.ceil(remainingMilliseconds / (1000 * 60 * 60 * 24)));
 
+  // FIX: Define a handler to set the purchase intent in the App's state.
   const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
-    // FIX: Set purchase intent in the app's context to trigger the payment flow.
     setPurchaseIntent({ planId, billingCycle });
     setIsPlansModalOpen(false);
   };
@@ -29,11 +31,11 @@ const TrialBanner: React.FC<TrialBannerProps> = ({ trialEndDate }) => {
             <p className="text-sm text-center md:text-left">Restam {remainingDays} dia(s). Aproveite todos os recursos do plano Premium.</p>
           </div>
           <div className="ml-auto mt-2 md:mt-0 flex-shrink-0">
-            <Button onClick={() => setIsPlansModalOpen(true)} className="py-2 px-4 text-sm w-auto">Contratar Plano</Button>
+            <Button onClick={() => setIsPlansModalOpen(true)} className="py-2 px-4 text-sm w-auto">Ver Planos</Button>
           </div>
         </div>
       </div>
-      {/* FIX: Passed the required onInitiatePurchase prop to PlansModal. */}
+      {/* FIX: Pass the onInitiatePurchase prop to PlansModal to handle the purchase flow. */}
       {isPlansModalOpen && <PlansModal onClose={() => setIsPlansModalOpen(false)} onInitiatePurchase={handleInitiatePurchase} />}
     </>
   );

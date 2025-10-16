@@ -4,13 +4,15 @@ import { AppContext } from '../../App';
 import PlansModal from './PlansModal';
 
 const TrialExpiredScreen: React.FC = () => {
-    // FIX: Destructured 'setPurchaseIntent' from AppContext to handle plan purchases.
+    // FIX: Destructure setPurchaseIntent from AppContext to handle plan purchases.
     const { logout, setPurchaseIntent } = useContext(AppContext);
     const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
 
-    // FIX: Created a handler to set the purchase intent when a plan is selected.
+    // FIX: Create a handler to set the purchase intent, which will be passed to the PlansModal.
     const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
-        setPurchaseIntent({ planId, billingCycle });
+        if (setPurchaseIntent) {
+            setPurchaseIntent({ planId, billingCycle });
+        }
         setIsPlansModalOpen(false);
     };
 
@@ -19,7 +21,7 @@ const TrialExpiredScreen: React.FC = () => {
             <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-brand-dark text-center">
                 <h1 className="text-3xl font-bold text-brand-primary mb-4">Seu Período de Teste Terminou</h1>
                 <p className="text-gray-300 max-w-md mb-8">
-                    Para continuar utilizando todas as funcionalidades do BarberAI, como a agenda e o marketing, por favor, entre em contato com nosso suporte para contratar um plano.
+                    Para continuar utilizando todas as funcionalidades do BarberAI, por favor, entre em contato com nosso suporte para contratar um plano.
                 </p>
                 <div className="w-full max-w-xs space-y-4">
                     <Button onClick={() => setIsPlansModalOpen(true)}>Ver Planos</Button>

@@ -1,16 +1,19 @@
 import React, { useState, useContext } from 'react';
 import Button from './Button';
 import PlansModal from '../screens/barbershop/PlansModal';
+// FIX: Import AppContext to use the global state setter for purchases.
 import { AppContext } from '../App';
 
 const InactivePlanBanner: React.FC = () => {
-    // FIX: Destructured 'setPurchaseIntent' from context to handle purchase initiation.
+    // FIX: Get setPurchaseIntent from context to trigger the purchase flow.
     const { setPurchaseIntent } = useContext(AppContext);
     const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
 
-    // FIX: Created handler to set the purchase intent when a plan is selected.
+    // FIX: Define the handler that will be passed to the PlansModal.
     const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
-        setPurchaseIntent({ planId, billingCycle });
+        if(setPurchaseIntent) {
+            setPurchaseIntent({ planId, billingCycle });
+        }
         setIsPlansModalOpen(false);
     };
     

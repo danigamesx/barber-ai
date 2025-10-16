@@ -24,6 +24,7 @@ import Button from './components/Button';
 import BarbershopPublicPage from './screens/public/BarbershopPublicPage';
 import InactivePlanBanner from './components/InactivePlanBanner';
 import { supabaseInitializationError } from './supabaseClient';
+// FIX: Import PlanPaymentModal to handle plan purchases.
 import PlanPaymentModal from './screens/barbershop/PlanPaymentModal';
 
 export const AppContext = React.createContext<{
@@ -61,8 +62,8 @@ export const AppContext = React.createContext<{
   removeFromWaitingList: (barbershopId: string, date: string, clientId: string) => Promise<void>;
   setGoogleToken: (token: string | null) => void;
   patchUser: (user: User) => void;
-  // FIX: Added 'setPurchaseIntent' to the context to handle plan purchases.
-  setPurchaseIntent: (intent: { planId: string, billingCycle: 'monthly' | 'annual' } | null) => void;
+  // FIX: Added setPurchaseIntent to the context to handle plan purchases globally.
+  setPurchaseIntent: (intent: { planId: string; billingCycle: 'monthly' | 'annual' } | null) => void;
 }>({
   user: null,
   users: [],
@@ -93,7 +94,7 @@ export const AppContext = React.createContext<{
   removeFromWaitingList: async () => {},
   setGoogleToken: () => {},
   patchUser: () => {},
-  // FIX: Added default value for 'setPurchaseIntent'.
+  // FIX: Added default value for setPurchaseIntent.
   setPurchaseIntent: () => {},
 });
 
@@ -133,7 +134,7 @@ const App: React.FC = () => {
   const [loginAccountType, setLoginAccountType] = useState<'client' | 'barbershop' | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'failure' | 'pending' | null>(null);
   const [currentHash, setCurrentHash] = useState(window.location.hash);
-  // FIX: Added state to manage plan purchase flow.
+  // FIX: Added state to manage the plan purchase flow.
   const [purchaseIntent, setPurchaseIntent] = useState<{ planId: string, billingCycle: 'monthly' | 'annual' } | null>(null);
 
 
@@ -220,12 +221,7 @@ const App: React.FC = () => {
 
         if (userJustLoggedIn) {
             const bookingIntentIdentifier = sessionStorage.getItem('bookingIntentIdentifier');
-            // FIX: Check for a purchase intent when a user logs in.
-            const purchaseIntentRaw = sessionStorage.getItem('purchaseIntent');
-            if (purchaseIntentRaw) {
-                setPurchaseIntent(JSON.parse(purchaseIntentRaw));
-                sessionStorage.removeItem('purchaseIntent');
-            } else if (bookingIntentIdentifier) {
+            if (bookingIntentIdentifier) {
                 const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(bookingIntentIdentifier);
                 if (isUUID) {
                     window.location.hash = `/?barbershopId=${bookingIntentIdentifier}&openBooking=true`;
@@ -233,6 +229,20 @@ const App: React.FC = () => {
                     window.location.hash = `/${bookingIntentIdentifier}?openBooking=true`;
                 }
                 sessionStorage.removeItem('bookingIntentIdentifier');
+            }
+
+            // FIX: Handle plan purchase intent after login.
+            const purchaseIntentRaw = sessionStorage.getItem('purchaseIntent');
+            if (purchaseIntentRaw) {
+                try {
+                    const intent = JSON.parse(purchaseIntentRaw);
+                    if(intent.planId && intent.billingCycle) {
+                        setPurchaseIntent(intent);
+                    }
+                } catch (e) {
+                    console.error('Could not parse purchase intent', e);
+                }
+                sessionStorage.removeItem('purchaseIntent');
             }
 
             loadInitialData();
@@ -493,13 +503,13 @@ const App: React.FC = () => {
     },
     setGoogleToken,
     patchUser,
+    // FIX: Pass the state setter through the context.
+    setPurchaseIntent,
   };
 
   const appContextValue = { 
       user, users, barbershops, barbershopData, appointments, allAppointments: appointments, reviews, googleToken, isSuperAdmin, accessStatus,
-      ...contextFunctions,
-      // FIX: Provide 'setPurchaseIntent' through the context.
-      setPurchaseIntent,
+      ...contextFunctions
   };
   
   const handleEnterApp = (type: 'client' | 'barbershop') => {
@@ -694,14 +704,6 @@ const App: React.FC = () => {
       <PlanContext.Provider value={planContextValue}>
         <div className="antialiased font-sans bg-brand-dark min-h-screen">
           {renderContent()}
-          {/* FIX: Render the plan payment modal when an intent is set. */}
-          {purchaseIntent && barbershopData && (
-              <PlanPaymentModal 
-                  planId={purchaseIntent.planId} 
-                  billingCycle={purchaseIntent.billingCycle} 
-                  onClose={() => setPurchaseIntent(null)} 
-              />
-          )}
           {paymentStatus && (
               <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[100]">
                   <div className="bg-brand-dark w-full max-w-md rounded-lg shadow-xl p-8 text-center">
@@ -747,6 +749,14 @@ const App: React.FC = () => {
                       )}
                   </div>
               </div>
+          )}
+          {/* FIX: Render the plan payment modal when a purchase is initiated. */}
+          {purchaseIntent && barbershopData && (
+            <PlanPaymentModal 
+              planId={purchaseIntent.planId}
+              billingCycle={purchaseIntent.billingCycle}
+              onClose={() => setPurchaseIntent(null)}
+            />
           )}
         </div>
       </PlanContext.Provider>

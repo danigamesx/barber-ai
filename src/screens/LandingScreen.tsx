@@ -35,7 +35,10 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleStartPurchase = () => {
+  // FIX: Created a handler to set purchase intent in sessionStorage before navigating.
+  const handleStartPurchase = (planId: string, cycle: 'monthly' | 'annual') => {
+    const purchaseIntent = { planId, billingCycle: cycle };
+    sessionStorage.setItem('purchaseIntent', JSON.stringify(purchaseIntent));
     onEnter('barbershop');
   };
 
@@ -208,7 +211,8 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
                         <h1 className="text-4xl font-bold tracking-tight text-white sm:text-6xl">Transforme Sua Barbearia com a Gestão que Você Merece</h1>
                         <p className="mt-6 text-lg leading-8 text-gray-300">Menos administração, mais arte. O BarberAI automatiza seus agendamentos, pagamentos e marketing para que você possa focar no que faz de melhor: cortes incríveis.</p>
                         <div className="mt-10 flex items-center justify-center gap-x-6">
-                            <Button onClick={handleStartPurchase} variant="primary" className="py-3 px-8 text-base w-auto shadow-lg shadow-amber-500/20 transform hover:scale-105 transition-transform">
+                            {/* FIX: Changed onClick to initiate a purchase for the Premium plan (trial). */}
+                            <Button onClick={() => handleStartPurchase('PREMIUM', 'monthly')} variant="primary" className="py-3 px-8 text-base w-auto shadow-lg shadow-amber-500/20 transform hover:scale-105 transition-transform">
                                 Teste Grátis por 30 Dias
                             </Button>
                         </div>
@@ -287,12 +291,13 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
                         <div key={plan.id} className={`rounded-3xl p-8 ring-1 xl:p-10 flex flex-col relative ${plan.mostPopular ? 'ring-2 ring-brand-primary bg-gray-800/50' : 'ring-gray-700'}`}>
                             {plan.mostPopular && <div className="absolute top-0 -translate-y-1/2 self-center bg-brand-primary text-brand-dark font-bold text-sm px-4 py-1 rounded-full">MAIS POPULAR</div>}
                             <h3 className="text-lg font-semibold leading-8 text-white">{plan.name}</h3>
-                            <p className="mt-4 text-sm leading-6 text-gray-300">{plan.id === 'basic' ? 'Para quem está começando.' : plan.id === 'pro' ? 'Para negócios em crescimento.' : 'Para barbearias estabelecidas.'}</p>
+                            <p className="mt-4 text-sm leading-6 text-gray-300">{plan.id === 'BASIC' ? 'Para quem está começando.' : plan.id === 'PRO' ? 'Para negócios em crescimento.' : 'Para barbearias estabelecidas.'}</p>
                             <p className="mt-6 flex items-baseline gap-x-1">
                                 <span className="text-4xl font-bold tracking-tight text-white">R${plan.price[billingCycle].toFixed(2).replace('.',',')}</span>
                                 <span className="text-sm font-semibold leading-6 text-gray-300">/mês</span>
                             </p>
-                            <Button onClick={handleStartPurchase} variant={plan.mostPopular ? 'primary' : 'secondary'} className="mt-6 w-full">Comece agora</Button>
+                            {/* FIX: Changed onClick to call the purchase handler with plan details. */}
+                            <Button onClick={() => handleStartPurchase(plan.id, billingCycle)} variant={plan.mostPopular ? 'primary' : 'secondary'} className="mt-6 w-full">Comece agora</Button>
                             <ul role="list" className="mt-8 space-y-3 text-sm leading-6 text-gray-300 xl:mt-10">
                                 {plan.features.map((feature) => (
                                     <li key={feature} className="flex gap-x-3"><CheckIcon className="h-6 w-5 flex-none text-brand-primary" aria-hidden="true" />{feature}</li>

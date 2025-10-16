@@ -421,27 +421,16 @@ export const createMercadoPagoPreference = async (appointmentData: Omit<Appointm
     return data;
 };
 
-export const createPlanPreference = async (planId: string, billingCycle: 'monthly' | 'annual', barbershopId: string): Promise<{ preferenceId: string; publicKey: string }> => {
+// FIX: Added function to create payment preference for plans by calling the backend API.
+export const createPlanPreference = async (planId: string, billingCycle: 'monthly' | 'annual', barbershopId: string): Promise<{ preferenceId: string, publicKey: string }> => {
     const response = await fetch(`/api/create-plan-preference`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ planId, billingCycle, barbershopId }),
     });
     if (!response.ok) {
-        let errorMessage = 'Falha ao criar preferência de pagamento do plano.';
-        // Read the body as text first to avoid "body stream already read" error
-        const textError = await response.text();
-        try {
-            // Try to parse it as JSON
-            const errorBody = JSON.parse(textError);
-            errorMessage = errorBody.error || errorMessage;
-        } catch (e) {
-            // If it's not JSON, use the raw text
-            if (textError) {
-                errorMessage = textError;
-            }
-        }
-        throw new Error(errorMessage);
+        const errorBody = await response.json();
+        throw new Error(errorBody.error || 'Falha ao criar preferência de pagamento do plano.');
     }
     const data = await response.json();
     return data;
@@ -457,41 +446,5 @@ export const disconnectMercadoPago = async (barbershopId: string): Promise<void>
     if (!response.ok) {
         const errorBody = await response.json();
         throw new Error(errorBody.error || 'Falha ao desconectar conta do Mercado Pago.');
-    }
-};
-
-// --- PLATFORM-SPECIFIC API CALLS ---
-
-async function getAuthHeaders() {
-    if (!supabase) throw new Error(supabaseInitializationError!);
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error("Usuário não autenticado.");
-    return {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-    };
-}
-
-export const getPlatformMpStatus = async (): Promise<{ connected: boolean }> => {
-    const response = await fetch('/api/get-platform-mp-status', {
-        method: 'GET',
-        headers: await getAuthHeaders(),
-    });
-    if (!response.ok) {
-        const errorBody = await response.json();
-        throw new Error(errorBody.error || 'Falha ao verificar status do Mercado Pago.');
-    }
-    return response.json();
-};
-
-export const disconnectPlatformMercadoPago = async (): Promise<void> => {
-    const response = await fetch('/api/mp-platform-oauth-disconnect', {
-        method: 'POST',
-        headers: await getAuthHeaders(),
-    });
-
-    if (!response.ok) {
-        const errorBody = await response.json();
-        throw new Error(errorBody.error || 'Falha ao desconectar a conta da plataforma.');
     }
 };
