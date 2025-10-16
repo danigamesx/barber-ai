@@ -16,6 +16,7 @@ import SearchableSelect from '../../components/SearchableSelect';
 import UpgradePlanModal from './UpgradePlanModal';
 import PlansModal from './PlansModal';
 import * as api from '../../api';
+import Accordion from '../../components/Accordion';
 
 
 const dayTranslations: { [key: string]: string } = {
@@ -181,8 +182,9 @@ const BarbershopSettingsScreen: React.FC = () => {
 
         setNewGalleryFiles([]);
         alert('Informações salvas com sucesso!');
-    } catch (error) {
+    } catch (error: any) {
         console.error("Failed to save barbershop info:", error);
+        alert(error.message);
     } finally {
         setIsUploading(false);
     }
@@ -294,36 +296,33 @@ const BarbershopSettingsScreen: React.FC = () => {
       <div className="p-4 pb-24">
         <h1 className="text-2xl font-bold mb-6 text-brand-light">Ajustes</h1>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           
-          <div className="bg-brand-secondary p-4 rounded-lg">
-            <h2 className="text-lg font-semibold text-brand-primary mb-3">Meu Plano</h2>
-            <div className="space-y-2 text-sm mb-4">
-                <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Plano Atual:</span>
-                    <span className="font-bold text-lg text-white">{plan.name}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Status:</span>
-                    <span className={`font-semibold ${statusInfo.color}`}>{statusInfo.status}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                     <span className="text-gray-400">{statusInfo.label}:</span>
-                     <span className="font-semibold text-white">{statusInfo.date ? statusInfo.date.toLocaleDateString('pt-BR') : 'N/A'}</span>
-                </div>
-            </div>
-            <Button onClick={() => setIsPlansModalOpen(true)} variant="secondary">Ver ou Alterar Plano</Button>
-          </div>
+          <Accordion title="Plano e Assinatura" initialOpen={true}>
+              <div className="space-y-2 text-sm mb-4">
+                  <div className="flex justify-between items-center">
+                      <span className="text-gray-400">Plano Atual:</span>
+                      <span className="font-bold text-lg text-white">{plan.name}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                      <span className="text-gray-400">Status:</span>
+                      <span className={`font-semibold ${statusInfo.color}`}>{statusInfo.status}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                       <span className="text-gray-400">{statusInfo.label}:</span>
+                       <span className="font-semibold text-white">{statusInfo.date ? statusInfo.date.toLocaleDateString('pt-BR') : 'N/A'}</span>
+                  </div>
+              </div>
+              <Button onClick={() => setIsPlansModalOpen(true)} variant="secondary">Ver ou Alterar Plano</Button>
+          </Accordion>
           
-          <div className="bg-brand-secondary p-4 rounded-lg">
-             <h2 className="text-lg font-semibold text-brand-primary mb-3">Página da Barbearia</h2>
-             <div className="space-y-3">
-                
+          <Accordion title="Página da Barbearia">
+             <div className="space-y-6">
                  <div className="flex items-center gap-4">
                     <img 
                         src={barbershopData.image_url || `https://placehold.co/400x400/1F2937/FBBF24?text=Logo`} 
                         alt="Logo da Barbearia"
-                        className="w-24 h-24 rounded-lg object-cover bg-brand-secondary"
+                        className="w-24 h-24 rounded-lg object-cover bg-brand-dark"
                     />
                     <div>
                         <label htmlFor="logo-upload" className="text-md font-semibold text-gray-300">Logo e Imagem de Capa</label>
@@ -345,7 +344,7 @@ const BarbershopSettingsScreen: React.FC = () => {
                             value={slug}
                             onChange={e => setSlug(slugify(e.target.value))}
                             placeholder="nome-da-sua-barbearia"
-                            className="w-full px-4 py-2 bg-brand-secondary border border-gray-600 rounded-r-lg"
+                            className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-r-lg"
                         />
                     </div>
                     <p className="text-xs text-gray-500 mt-1">Use apenas letras minúsculas, números e hifens.</p>
@@ -406,149 +405,155 @@ const BarbershopSettingsScreen: React.FC = () => {
                     {isUploading ? 'Salvando...' : 'Salvar Informações'}
                 </Button>
              </div>
-          </div>
+          </Accordion>
 
-          <div className="bg-brand-secondary p-4 rounded-lg">
-            <div className="flex justify-between items-center mb-3">
-              <h2 className="text-lg font-semibold text-brand-primary">Gerenciar Serviços</h2>
-              <button onClick={() => setModalState({ type: 'service', data: null })} className="text-brand-primary hover:text-amber-300">
-                <PlusCircleIcon className="w-7 h-7" />
-              </button>
-            </div>
-            <div className="space-y-2">
-              {services.map(service => (
-                <div key={service.id} className="flex justify-between items-center bg-brand-dark p-3 rounded-md">
-                  <div>
-                    <p>{service.name}</p>
-                    <p className="text-xs text-gray-400">{service.duration} min</p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <p className="font-semibold">R${service.price}</p>
-                    <button onClick={() => setModalState({ type: 'service', data: service })} className="text-gray-400 hover:text-brand-primary"><PencilIcon className="w-5 h-5"/></button>
-                    <button onClick={() => handleDeleteService(service.id)} className="text-gray-400 hover:text-red-500"><TrashIcon className="w-5 h-5"/></button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-brand-secondary p-4 rounded-lg">
-             <div className="flex justify-between items-center mb-3">
-                <h2 className="text-lg font-semibold text-brand-primary">Gerenciar Barbeiros ({barbers.length}/{plan.maxBarbers === Infinity ? '∞' : plan.maxBarbers})</h2>
-                <button onClick={handleAddBarberClick} className="text-brand-primary hover:text-amber-300">
+          <Accordion title="Serviços e Equipe">
+            <div className="space-y-6">
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-lg font-semibold text-white">Gerenciar Serviços</h3>
+                  <button onClick={() => setModalState({ type: 'service', data: null })} className="text-brand-primary hover:text-amber-300">
                     <PlusCircleIcon className="w-7 h-7" />
-                </button>
-            </div>
-            <div className="space-y-2">
-              {barbers.map(barber => (
-                <div key={barber.id} className="flex justify-between items-center bg-brand-dark p-2 rounded-md">
-                   <div className="flex items-center space-x-3">
-                    <img src={barber.avatarUrl} alt={barber.name} className="w-10 h-10 rounded-full" />
-                    <p>{barber.name}</p>
-                   </div>
-                   <div className="flex items-center gap-4 mr-2">
-                    <button onClick={() => setModalState({ type: 'barber', data: barber })} className="text-gray-400 hover:text-brand-primary"><PencilIcon className="w-5 h-5"/></button>
-                    <button onClick={() => handleDeleteBarber(barber.id)} className="text-gray-400 hover:text-red-500"><TrashIcon className="w-5 h-5"/></button>
-                  </div>
+                  </button>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-brand-secondary p-4 rounded-lg">
-            <h2 className="text-lg font-semibold text-brand-primary mb-3">Agenda</h2>
-             <div className="space-y-2 text-sm mb-4">
-              {Object.keys((barbershopData.opening_hours as OpeningHours) || {}).map((day) => {
-                const hours = (barbershopData.opening_hours as OpeningHours)[day] as DayOpeningHours | null;
-                return (
-                  <div key={day} className="flex justify-between items-center">
-                    <p className="capitalize">{dayTranslations[day]}</p>
-                    <p className="text-gray-300 text-right text-xs">
-                        {hours ? `Manhã: ${hours.morning_open}-${hours.morning_close} | Tarde: ${hours.afternoon_open}-${hours.afternoon_close}` : 'Fechado'}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-            <Button onClick={() => setModalState({type: 'schedule'})} variant="secondary">Gerenciar Agenda</Button>
-          </div>
-          
-          <div className="bg-brand-secondary p-4 rounded-lg">
-            <h2 className="text-lg font-semibold text-brand-primary mb-3">Preferências de Agendamento</h2>
-            <div className="flex justify-between items-center mb-3">
-                <div>
-                    <label htmlFor="autoConfirmToggle" className="font-semibold">Confirmar agendamentos automaticamente</label>
-                    <p className="text-xs text-gray-400 font-normal mt-1">Se ativado, novos pedidos são aceitos na hora. Se desativado, você precisa confirmá-los manualmente.</p>
+                <div className="space-y-2">
+                  {services.map(service => (
+                    <div key={service.id} className="flex justify-between items-center bg-brand-dark p-3 rounded-md">
+                      <div>
+                        <p>{service.name}</p>
+                        <p className="text-xs text-gray-400">{service.duration} min</p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <p className="font-semibold">R${service.price}</p>
+                        <button onClick={() => setModalState({ type: 'service', data: service })} className="text-gray-400 hover:text-brand-primary"><PencilIcon className="w-5 h-5"/></button>
+                        <button onClick={() => handleDeleteService(service.id)} className="text-gray-400 hover:text-red-500"><TrashIcon className="w-5 h-5"/></button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <input 
-                  id="autoConfirmToggle" 
-                  type="checkbox" 
-                  className="toggle-checkbox" 
-                  checked={autoConfirm}
-                  onChange={e => setAutoConfirm(e.target.checked)}
-                />
-            </div>
-            <Button onClick={handleSaveAutoConfirm} variant="secondary">Salvar Preferência</Button>
-          </div>
+              </div>
 
-           <div className="bg-brand-secondary p-4 rounded-lg">
-            <h2 className="text-lg font-semibold text-brand-primary mb-3">Recursos Adicionais</h2>
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-lg font-semibold text-white">Gerenciar Barbeiros ({barbers.length}/{plan.maxBarbers === Infinity ? '∞' : plan.maxBarbers})</h3>
+                  <button onClick={handleAddBarberClick} className="text-brand-primary hover:text-amber-300">
+                      <PlusCircleIcon className="w-7 h-7" />
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {barbers.map(barber => (
+                    <div key={barber.id} className="flex justify-between items-center bg-brand-dark p-2 rounded-md">
+                      <div className="flex items-center space-x-3">
+                        <img src={barber.avatarUrl} alt={barber.name} className="w-10 h-10 rounded-full" />
+                        <p>{barber.name}</p>
+                      </div>
+                      <div className="flex items-center gap-4 mr-2">
+                        <button onClick={() => setModalState({ type: 'barber', data: barber })} className="text-gray-400 hover:text-brand-primary"><PencilIcon className="w-5 h-5"/></button>
+                        <button onClick={() => handleDeleteBarber(barber.id)} className="text-gray-400 hover:text-red-500"><TrashIcon className="w-5 h-5"/></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </Accordion>
+
+          <Accordion title="Agenda e Políticas">
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-3">Horário de Funcionamento</h3>
+                <div className="space-y-2 text-sm mb-4">
+                  {Object.keys((barbershopData.opening_hours as OpeningHours) || {}).map((day) => {
+                    const hours = (barbershopData.opening_hours as OpeningHours)[day] as DayOpeningHours | null;
+                    return (
+                      <div key={day} className="flex justify-between items-center">
+                        <p className="capitalize">{dayTranslations[day]}</p>
+                        <p className="text-gray-300 text-right text-xs">
+                            {hours ? `Manhã: ${hours.morning_open}-${hours.morning_close} | Tarde: ${hours.afternoon_open}-${hours.afternoon_close}` : 'Fechado'}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+                <Button onClick={() => setModalState({type: 'schedule'})} variant="secondary">Gerenciar Agenda Completa</Button>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-3">Preferências de Agendamento</h3>
+                <div className="flex justify-between items-center mb-3">
+                    <div>
+                        <label htmlFor="autoConfirmToggle" className="font-semibold">Confirmar agendamentos automaticamente</label>
+                        <p className="text-xs text-gray-400 font-normal mt-1">Se ativado, novos pedidos são aceitos na hora. Se desativado, você precisa confirmá-los manualmente.</p>
+                    </div>
+                    <input 
+                      id="autoConfirmToggle" 
+                      type="checkbox" 
+                      className="toggle-checkbox" 
+                      checked={autoConfirm}
+                      onChange={e => setAutoConfirm(e.target.checked)}
+                    />
+                </div>
+                <Button onClick={handleSaveAutoConfirm} variant="secondary">Salvar Preferência</Button>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-3">Política de Cancelamento</h3>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <label htmlFor="enablePolicy" className="font-semibold flex-1 pr-4">Cobrar por cancelamentos tardios</label>
+                    <input 
+                      id="enablePolicy" 
+                      type="checkbox" 
+                      className="toggle-checkbox" 
+                      checked={policy.enabled}
+                      onChange={e => setPolicy(p => ({ ...p, enabled: e.target.checked }))}
+                    />
+                  </div>
+                  {policy.enabled && (
+                    <>
+                      <div>
+                        <label htmlFor="feePercentage" className="block text-sm font-medium text-gray-400 mb-1">
+                          Percentual da multa (%)
+                        </label>
+                        <input
+                          id="feePercentage"
+                          type="number"
+                          value={policy.feePercentage}
+                          onChange={e => setPolicy(p => ({ ...p, feePercentage: parseInt(e.target.value) || 0 }))}
+                          className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"
+                          placeholder="Ex: 50"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="timeLimit" className="block text-sm font-medium text-gray-400 mb-1">
+                          Cancelar sem custo até (horas antes)
+                        </label>
+                        <input
+                          id="timeLimit"
+                          type="number"
+                          value={policy.timeLimitHours}
+                          onChange={e => setPolicy(p => ({ ...p, timeLimitHours: parseInt(e.target.value) || 0 }))}
+                          className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"
+                          placeholder="Ex: 2"
+                        />
+                      </div>
+                    </>
+                  )}
+                  <Button onClick={handleSavePolicy} variant="secondary">Salvar Política</Button>
+                </div>
+              </div>
+            </div>
+          </Accordion>
+
+          <Accordion title="Recursos Adicionais (Marketing)">
             <div className="space-y-4">
               <Button variant="secondary" onClick={() => setModalState({type: 'loyalty'})}>Gerenciar Fidelidade</Button>
               <Button variant="secondary" onClick={() => handleFeatureClick('packages', 'Premium', 'Gerenciar Pacotes')}>Gerenciar Pacotes</Button>
               <Button variant="secondary" onClick={() => handleFeatureClick('subscriptions', 'Premium', 'Gerenciar Assinaturas')}>Gerenciar Assinaturas</Button>
             </div>
-          </div>
-
-          <div className="bg-brand-secondary p-4 rounded-lg">
-            <h2 className="text-lg font-semibold text-brand-primary mb-3">Política de Cancelamento</h2>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <label htmlFor="enablePolicy" className="font-semibold flex-1 pr-4">Cobrar por cancelamentos tardios</label>
-                <input 
-                  id="enablePolicy" 
-                  type="checkbox" 
-                  className="toggle-checkbox" 
-                  checked={policy.enabled}
-                  onChange={e => setPolicy(p => ({ ...p, enabled: e.target.checked }))}
-                />
-              </div>
-              {policy.enabled && (
-                <>
-                  <div>
-                    <label htmlFor="feePercentage" className="block text-sm font-medium text-gray-400 mb-1">
-                      Percentual da multa (%)
-                    </label>
-                    <input
-                      id="feePercentage"
-                      type="number"
-                      value={policy.feePercentage}
-                      onChange={e => setPolicy(p => ({ ...p, feePercentage: parseInt(e.target.value) || 0 }))}
-                      className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"
-                      placeholder="Ex: 50"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="timeLimit" className="block text-sm font-medium text-gray-400 mb-1">
-                      Cancelar sem custo até (horas antes)
-                    </label>
-                    <input
-                      id="timeLimit"
-                      type="number"
-                      value={policy.timeLimitHours}
-                      onChange={e => setPolicy(p => ({ ...p, timeLimitHours: parseInt(e.target.value) || 0 }))}
-                      className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"
-                      placeholder="Ex: 2"
-                    />
-                  </div>
-                </>
-              )}
-              <Button onClick={handleSavePolicy} variant="secondary">Salvar Política</Button>
-            </div>
-          </div>
+          </Accordion>
           
-          <div className="bg-brand-secondary p-4 rounded-lg">
-            <h2 className="text-lg font-semibold text-brand-primary mb-3">Integrações</h2>
+          <Accordion title="Integrações">
             <p className="text-gray-400 text-sm mb-4">Sincronize sua agenda e receba pagamentos.</p>
             <div className="space-y-3">
                <div className="flex justify-between items-center">
@@ -571,11 +576,11 @@ const BarbershopSettingsScreen: React.FC = () => {
               </div>
               <Button onClick={() => setModalState({type: 'integrations'})} className="mt-4" variant="secondary">Gerenciar Integrações</Button>
             </div>
-          </div>
-
-          <div className="mt-6">
-            <Button variant="danger" onClick={logout}>Sair da Conta</Button>
-          </div>
+          </Accordion>
+          
+          <Accordion title="Conta">
+             <Button variant="danger" onClick={logout}>Sair da Conta</Button>
+          </Accordion>
         </div>
       </div>
       

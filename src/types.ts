@@ -134,6 +134,7 @@ export interface SubscriptionPlanDetails {
     googleCalendar: boolean;
     onlinePayments: boolean;
     packagesAndSubscriptions: boolean;
+    clientManagement: boolean;
   };
 }
 
