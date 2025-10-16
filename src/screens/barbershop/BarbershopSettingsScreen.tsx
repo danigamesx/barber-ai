@@ -522,9 +522,9 @@ const BarbershopSettingsScreen: React.FC = () => {
             <p className="text-gray-400 text-sm mb-4">Sincronize sua agenda e receba pagamentos.</p>
             <div className="space-y-3">
                <div className="flex justify-between items-center">
-                <span>Pagamentos Online (Stripe)</span>
-                <span className={`px-2 py-1 text-xs rounded-full ${(barbershopData.integrations as IntegrationSettings)?.stripeAccountOnboarded ? 'bg-green-500/20 text-green-400' : 'bg-gray-600'}`}>
-                  {(barbershopData.integrations as IntegrationSettings)?.stripeAccountOnboarded ? 'Conectado' : 'Desconectado'}
+                <span>Pagamentos Online (Mercado Pago)</span>
+                <span className={`px-2 py-1 text-xs rounded-full ${((barbershopData.integrations as IntegrationSettings)?.mercadopagoAccessToken && (barbershopData.integrations as IntegrationSettings)?.mercadopagoPublicKey) ? 'bg-green-500/20 text-green-400' : 'bg-gray-600'}`}>
+                  {((barbershopData.integrations as IntegrationSettings)?.mercadopagoAccessToken && (barbershopData.integrations as IntegrationSettings)?.mercadopagoPublicKey) ? 'Conectado' : 'Desconectado'}
                 </span>
               </div>
               <div className="flex justify-between items-center">
