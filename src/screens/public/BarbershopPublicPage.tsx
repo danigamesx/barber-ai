@@ -9,11 +9,38 @@ import * as api from '../../api';
 
 type NewAppointmentData = Omit<Appointment, 'id' | 'start_time' | 'end_time' | 'created_at'> & { start_time: Date, end_time: Date };
 
-const BarbershopPublicPage: React.FC<{ barbershop: Barbershop }> = ({ barbershop }) => {
+interface BarbershopPublicPageProps {
+  barbershopId: string;
+}
+
+const BarbershopPublicPage: React.FC<BarbershopPublicPageProps> = ({ barbershopId }) => {
     const { reviews, user } = useContext(AppContext);
+    const [barbershop, setBarbershop] = useState<Barbershop | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [componentError, setComponentError] = useState<string | null>(null);
     const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
     const [isRedirecting, setIsRedirecting] = useState(false);
     const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+    
+    useEffect(() => {
+        if (!barbershopId) return;
+
+        const fetchBarbershop = async () => {
+            setLoading(true);
+            setComponentError(null);
+            try {
+                const shopData = await api.getBarbershopById(barbershopId);
+                setBarbershop(shopData);
+            } catch (err) {
+                console.error("Failed to fetch barbershop:", err);
+                setComponentError("Não foi possível carregar os dados da barbearia. Verifique o link ou tente novamente.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchBarbershop();
+    }, [barbershopId]);
     
     useEffect(() => {
         const hash = window.location.hash;
@@ -27,6 +54,7 @@ const BarbershopPublicPage: React.FC<{ barbershop: Barbershop }> = ({ barbershop
     }, [user]);
 
     const isAcceptingAppointments = useMemo(() => {
+        if (!barbershop) return false;
         const now = new Date();
         const integrations = barbershop.integrations as IntegrationSettings;
     
@@ -60,25 +88,9 @@ const BarbershopPublicPage: React.FC<{ barbershop: Barbershop }> = ({ barbershop
     };
     
     const redirectToLogin = () => {
-        sessionStorage.setItem('bookingIntentBarbershopId', barbershop.id);
+        sessionStorage.setItem('bookingIntentBarbershopId', barbershopId);
         window.location.hash = '';
     };
-
-    const address = barbershop.address as Address;
-    const social = barbershop.social_media as SocialMedia;
-    const phone = barbershop.phone;
-    const barbers = Array.isArray(barbershop.barbers) ? barbershop.barbers as Barber[] : [];
-    const services = Array.isArray(barbershop.services) ? barbershop.services as Service[] : [];
-    const gallery = barbershop.gallery_images || [];
-
-    const whatsappLink = phone ? `https://wa.me/55${phone.replace(/\D/g, '')}` : null;
-    
-    const barbershopReviews = useMemo(() => reviews.filter(r => r.barbershop_id === barbershop.id), [reviews, barbershop.id]);
-    const averageRating = useMemo(() => {
-        if (barbershopReviews.length === 0) return 'Novo';
-        const sum = barbershopReviews.reduce((acc, review) => acc + review.rating, 0);
-        return (sum / barbershopReviews.length).toFixed(1);
-    }, [barbershopReviews]);
 
     const handleInitiatePayment = async (appointmentData: NewAppointmentData) => {
         setIsBookingModalOpen(false);
@@ -97,6 +109,30 @@ const BarbershopPublicPage: React.FC<{ barbershop: Barbershop }> = ({ barbershop
             setIsRedirecting(false);
         }
     };
+
+    if (loading) {
+        return <div className="flex items-center justify-center h-screen"><p>Carregando barbearia...</p></div>;
+    }
+
+    if (componentError || !barbershop) {
+        return (
+            <div className="flex flex-col items-center justify-center h-screen p-4 text-center">
+                <h2 className="text-2xl font-bold text-red-500 mb-2">Barbearia não encontrada.</h2>
+                <p className="text-gray-400 mb-6">{componentError || 'O link que você acessou pode estar quebrado ou a barbearia pode ter sido removida.'}</p>
+                <a href="#" onClick={() => (window.location.hash = '')} className="text-brand-primary hover:underline">Voltar para o início</a>
+            </div>
+        );
+    }
+    
+    const address = barbershop.address as Address;
+    const social = barbershop.social_media as SocialMedia;
+    const phone = barbershop.phone;
+    const barbers = Array.isArray(barbershop.barbers) ? barbershop.barbers as Barber[] : [];
+    const services = Array.isArray(barbershop.services) ? barbershop.services as Service[] : [];
+    const gallery = barbershop.gallery_images || [];
+    const whatsappLink = phone ? `https://wa.me/55${phone.replace(/\D/g, '')}` : null;
+    const barbershopReviews = reviews.filter(r => r.barbershop_id === barbershop.id);
+    const averageRating = barbershopReviews.length === 0 ? 'Novo' : (barbershopReviews.reduce((acc, r) => acc + r.rating, 0) / barbershopReviews.length).toFixed(1);
 
     return (
         <>

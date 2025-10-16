@@ -103,6 +103,17 @@ export const getBarbershops = async (): Promise<Barbershop[]> => {
     return data;
 };
 
+export const getBarbershopById = async (id: string): Promise<Barbershop> => {
+    if (!supabase) throw new Error(supabaseInitializationError!);
+    const { data, error } = await supabase.from('barbershops').select('*').eq('id', id).single();
+    if (error) {
+        console.error(`Error fetching barbershop ${id}:`, error);
+        throw error;
+    }
+    if (!data) throw new Error(`Barbershop with id ${id} not found.`);
+    return data;
+};
+
 export const getAppointments = async (): Promise<Appointment[]> => {
     if (!supabase) throw new Error(supabaseInitializationError!);
     const { data, error } = await supabase.from('appointments').select('*');

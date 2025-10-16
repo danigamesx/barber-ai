@@ -1,10 +1,3 @@
-
-
-
-
-
-
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { User, Appointment, Barbershop, Review, ClientNotification, Session, Barber, FinancialRecord, Json, IntegrationSettings, CancellationPolicy } from './types';
 import LoginScreen from './screens/LoginScreen';
@@ -647,6 +640,7 @@ const App: React.FC = () => {
             />
         );
     }
+    
     const hash = currentHash;
     if (hash.includes('barbershopId')) {
         const queryString = hash.substring(hash.indexOf('?'));
@@ -654,23 +648,7 @@ const App: React.FC = () => {
         const barbershopId = urlParams.get('barbershopId');
 
         if (barbershopId) {
-            if (loading) {
-                return <div className="flex items-center justify-center h-screen"><p>Carregando barbearia...</p></div>;
-            }
-
-            const shop = barbershops.find(b => b.id === barbershopId);
-            
-            if (shop) {
-                return <BarbershopPublicPage barbershop={shop} />;
-            } else {
-                return (
-                    <div className="flex flex-col items-center justify-center h-screen p-4 text-center">
-                        <h2 className="text-2xl font-bold text-red-500 mb-2">Barbearia não encontrada.</h2>
-                        <p className="text-gray-400 mb-6">O link que você acessou pode estar quebrado ou a barbearia pode ter sido removida.</p>
-                        <a href="#" onClick={() => setCurrentHash('')} className="text-brand-primary hover:underline">Voltar para o início</a>
-                    </div>
-                );
-            }
+            return <BarbershopPublicPage barbershopId={barbershopId} />;
         }
     }
 

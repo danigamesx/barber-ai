@@ -2,6 +2,7 @@
 
 
 
+
 import React, { useContext, useMemo, useState } from 'react';
 import { AppContext } from '../../App';
 import { Appointment, Barber, Service } from '../../types';
@@ -127,6 +128,7 @@ const AnalyticsScreen: React.FC = () => {
         const completed = filteredAppointments.filter(a => a.status === 'completed');
         const cancelledWithFee = filteredAppointments.filter(a => a.status === 'cancelled' && a.cancellation_fee && a.cancellation_fee > 0);
         
+        // FIX: Explicitly specify generic type for reduce to avoid incorrect type inference for 'sum'.
         const revenueFromServices = completed.reduce<number>((sum, app) => sum + (app.price || 0), 0);
         const revenueFromFees = cancelledWithFee.reduce<number>((sum, app) => sum + (app.cancellation_fee || 0), 0);
         const totalCommissions = completed.reduce<number>((sum, app) => sum + (app.commission_amount || 0), 0);
