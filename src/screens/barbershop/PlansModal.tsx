@@ -1,16 +1,21 @@
 import React, { useState } from 'react';
 import Button from '../../components/Button';
 import { XCircleIcon } from '../../components/icons/OutlineIcons';
-import { PLANS } from '../../constants';
+import { PLANS, WHATSAPP_CONTACT } from '../../constants';
 
 interface PlansModalProps {
   onClose: () => void;
-  // FIX: Added prop to handle initiating the purchase flow from the parent component.
-  onInitiatePurchase: (planId: string, billingCycle: 'monthly' | 'annual') => void;
 }
 
-const PlansModal: React.FC<PlansModalProps> = ({ onClose, onInitiatePurchase }) => {
+const PlansModal: React.FC<PlansModalProps> = ({ onClose }) => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+
+  const handleSelectPlan = (planName: string) => {
+    const message = `Quero contratar o BarberAI. Tenho interesse no plano ${planName}.`;
+    const whatsappUrl = `https://wa.me/${WHATSAPP_CONTACT}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+    onClose();
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
@@ -65,8 +70,7 @@ const PlansModal: React.FC<PlansModalProps> = ({ onClose, onInitiatePurchase }) 
                   </li>
                   <li className={`flex items-start gap-2 ${plan.features.packagesAndSubscriptions ? '' : 'text-gray-500 line-through'}`}><span>{plan.features.packagesAndSubscriptions ? '✓' : '✕'}</span> <span>Pacotes e Assinaturas</span></li>
                 </ul>
-                 {/* FIX: Changed onClick to call the onInitiatePurchase prop, starting the payment flow. */}
-                 <Button onClick={() => onInitiatePurchase(plan.id, billingCycle)} variant={plan.id === 'PRO' ? 'primary' : 'secondary'} className="mt-auto">Contratar Plano</Button>
+                 <Button onClick={() => handleSelectPlan(plan.name)} variant={plan.id === 'PRO' ? 'primary' : 'secondary'} className="mt-auto">Contratar Plano</Button>
               </div>
             );
           })}

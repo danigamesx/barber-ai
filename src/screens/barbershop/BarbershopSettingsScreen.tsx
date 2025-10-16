@@ -41,7 +41,7 @@ type ModalState =
   | null;
 
 const BarbershopSettingsScreen: React.FC = () => {
-  const { barbershopData, updateBarbershopData, logout, accessStatus, setPurchaseIntent, deleteBarbershopAccount } = useContext(AppContext);
+  const { barbershopData, updateBarbershopData, logout, accessStatus, deleteBarbershopAccount } = useContext(AppContext);
   const { plan, features } = useContext(PlanContext);
   const [modalState, setModalState] = useState<ModalState>(null);
   const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
@@ -289,11 +289,6 @@ const BarbershopSettingsScreen: React.FC = () => {
       } else {
           setModalState({ type: feature });
       }
-  };
-  
-  const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
-    setPurchaseIntent({ planId, billingCycle });
-    setIsPlansModalOpen(false);
   };
 
   return (
@@ -673,7 +668,7 @@ const BarbershopSettingsScreen: React.FC = () => {
             onClose={() => setModalState(null)}
         />
       )}
-      {isPlansModalOpen && <PlansModal onClose={() => setIsPlansModalOpen(false)} onInitiatePurchase={handleInitiatePurchase} />}
+      {isPlansModalOpen && <PlansModal onClose={() => setIsPlansModalOpen(false)} />}
       {isDeleteModalOpen && (
         <DeleteAccountModal 
             onClose={() => setIsDeleteModalOpen(false)}

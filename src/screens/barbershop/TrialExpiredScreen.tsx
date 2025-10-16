@@ -1,21 +1,11 @@
 import React, { useContext, useState } from 'react';
 import Button from '../../components/Button';
-// FIX: Corrected import path to point to src/App.tsx instead of a non-existent root App.tsx
 import { AppContext } from '../../App';
 import PlansModal from './PlansModal';
 
 const TrialExpiredScreen: React.FC = () => {
-    // FIX: Destructure setPurchaseIntent from AppContext to handle plan purchases.
-    const { logout, setPurchaseIntent } = useContext(AppContext);
+    const { logout } = useContext(AppContext);
     const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
-
-    // FIX: Create a handler to set the purchase intent, which will be passed to the PlansModal.
-    const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
-        if (setPurchaseIntent) {
-            setPurchaseIntent({ planId, billingCycle });
-        }
-        setIsPlansModalOpen(false);
-    };
 
     return (
         <>
@@ -29,8 +19,7 @@ const TrialExpiredScreen: React.FC = () => {
                     <Button variant="secondary" onClick={logout}>Sair</Button>
                 </div>
             </div>
-            {/* FIX: Passed the required onInitiatePurchase prop to PlansModal */}
-            {isPlansModalOpen && <PlansModal onClose={() => setIsPlansModalOpen(false)} onInitiatePurchase={handleInitiatePurchase} />}
+            {isPlansModalOpen && <PlansModal onClose={() => setIsPlansModalOpen(false)} />}
         </>
     );
 };

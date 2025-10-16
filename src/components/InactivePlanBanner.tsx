@@ -1,20 +1,15 @@
 import React, { useState, useContext } from 'react';
 import Button from './Button';
 import PlansModal from '../screens/barbershop/PlansModal';
-// FIX: Import AppContext to use the global state setter for purchases.
-// FIX: Corrected import path to ensure it resolves to src/App.tsx
 import { AppContext } from '../App';
 
 const InactivePlanBanner: React.FC = () => {
-    // FIX: Get setPurchaseIntent from context to trigger the purchase flow.
-    const { setPurchaseIntent } = useContext(AppContext);
     const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
+    // FIX: Get setPurchaseIntent from context to fix error where the function was not found.
+    const { setPurchaseIntent } = useContext(AppContext);
 
-    // FIX: Define the handler that will be passed to the PlansModal.
     const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
-        if(setPurchaseIntent) {
-            setPurchaseIntent({ planId, billingCycle });
-        }
+        setPurchaseIntent({ planId, billingCycle });
         setIsPlansModalOpen(false);
     };
     

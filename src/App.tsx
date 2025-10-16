@@ -24,7 +24,6 @@ import Button from './components/Button';
 import BarbershopPublicPage from './screens/public/BarbershopPublicPage';
 import InactivePlanBanner from './components/InactivePlanBanner';
 import { supabaseInitializationError } from './supabaseClient';
-// FIX: Import PlanPaymentModal to handle plan purchases.
 import PlanPaymentModal from './screens/barbershop/PlanPaymentModal';
 
 export const AppContext = React.createContext<{
@@ -62,9 +61,9 @@ export const AppContext = React.createContext<{
   removeFromWaitingList: (barbershopId: string, date: string, clientId: string) => Promise<void>;
   setGoogleToken: (token: string | null) => void;
   patchUser: (user: User) => void;
-  // FIX: Added setPurchaseIntent to the context to handle plan purchases globally.
-  setPurchaseIntent: (intent: { planId: string; billingCycle: 'monthly' | 'annual' } | null) => void;
   deleteBarbershopAccount: () => Promise<void>;
+  // FIX: Added 'setPurchaseIntent' to the context to handle plan purchases throughout the app.
+  setPurchaseIntent: (intent: { planId: string, billingCycle: 'monthly' | 'annual' } | null) => void;
 }>({
   user: null,
   users: [],
@@ -95,9 +94,9 @@ export const AppContext = React.createContext<{
   removeFromWaitingList: async () => {},
   setGoogleToken: () => {},
   patchUser: () => {},
-  // FIX: Added default value for setPurchaseIntent.
-  setPurchaseIntent: () => {},
   deleteBarbershopAccount: async () => {},
+  // FIX: Provided a default empty function for 'setPurchaseIntent' in the context.
+  setPurchaseIntent: () => {},
 });
 
 export const PlanContext = React.createContext<{
@@ -497,12 +496,12 @@ const App: React.FC = () => {
     },
     setGoogleToken,
     patchUser,
-    setPurchaseIntent,
   };
 
   const appContextValue = { 
       user, users, barbershops, barbershopData, appointments, allAppointments: appointments, reviews, googleToken, isSuperAdmin, accessStatus,
-      ...contextFunctions
+      ...contextFunctions,
+      setPurchaseIntent,
   };
   
   const handleEnterApp = (type: 'client' | 'barbershop') => {
@@ -689,6 +688,13 @@ const App: React.FC = () => {
       <PlanContext.Provider value={planContextValue}>
         <div className="antialiased font-sans bg-brand-dark min-h-screen">
           {renderContent()}
+          {purchaseIntent && barbershopData && (
+            <PlanPaymentModal
+              planId={purchaseIntent.planId}
+              billingCycle={purchaseIntent.billingCycle}
+              onClose={() => setPurchaseIntent(null)}
+            />
+          )}
           {paymentStatus && (
               <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[100]">
                   <div className="bg-brand-dark w-full max-w-md rounded-lg shadow-xl p-8 text-center">
@@ -734,13 +740,6 @@ const App: React.FC = () => {
                       )}
                   </div>
               </div>
-          )}
-          {purchaseIntent && barbershopData && (
-              <PlanPaymentModal
-                  planId={purchaseIntent.planId}
-                  billingCycle={purchaseIntent.billingCycle}
-                  onClose={() => setPurchaseIntent(null)}
-              />
           )}
         </div>
       </PlanContext.Provider>

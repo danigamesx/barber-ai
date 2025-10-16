@@ -1,7 +1,6 @@
 import React, { useState, useContext } from 'react';
 import Button from './Button';
 import PlansModal from '../screens/barbershop/PlansModal';
-// FIX: Import AppContext to access the global purchase intent setter.
 import { AppContext } from '../App';
 
 interface TrialBannerProps {
@@ -10,17 +9,14 @@ interface TrialBannerProps {
 
 const TrialBanner: React.FC<TrialBannerProps> = ({ trialEndDate }) => {
   const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
-  // FIX: Get setPurchaseIntent from the context to initiate a purchase.
+  // FIX: Get setPurchaseIntent from AppContext to handle plan purchase initiation.
   const { setPurchaseIntent } = useContext(AppContext);
   const now = new Date();
   const remainingMilliseconds = trialEndDate.getTime() - now.getTime();
   const remainingDays = Math.max(0, Math.ceil(remainingMilliseconds / (1000 * 60 * 60 * 24)));
 
-  // FIX: Define a handler to set the purchase intent in the App's state.
   const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
-    if (setPurchaseIntent) {
-      setPurchaseIntent({ planId, billingCycle });
-    }
+    setPurchaseIntent({ planId, billingCycle });
     setIsPlansModalOpen(false);
   };
 
@@ -37,7 +33,7 @@ const TrialBanner: React.FC<TrialBannerProps> = ({ trialEndDate }) => {
           </div>
         </div>
       </div>
-      {/* FIX: Pass the onInitiatePurchase prop to PlansModal to handle the purchase flow. */}
+      {/* FIX: Pass the required 'onInitiatePurchase' prop to PlansModal. */}
       {isPlansModalOpen && <PlansModal onClose={() => setIsPlansModalOpen(false)} onInitiatePurchase={handleInitiatePurchase} />}
     </>
   );
