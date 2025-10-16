@@ -51,10 +51,19 @@ const ManagePackagesModal: React.FC<ManagePackagesModalProps> = ({ currentPackag
       return (
           <div className="bg-brand-secondary p-4 rounded-lg mt-4 space-y-4">
               <h3 className="font-semibold text-lg">{editingPackage.id ? 'Editar Pacote' : 'Novo Pacote'}</h3>
-              <input type="text" placeholder="Nome do Pacote" value={editingPackage.name} onChange={e => setEditingPackage({...editingPackage, name: e.target.value})} className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg" />
+              <div>
+                <label htmlFor="pkg-name" className="block text-sm font-medium text-gray-400 mb-1">Nome do Pacote</label>
+                <input id="pkg-name" type="text" placeholder="Ex: Pacote Barba & Cabelo" value={editingPackage.name} onChange={e => setEditingPackage({...editingPackage, name: e.target.value})} className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg" />
+              </div>
               <div className="flex gap-4">
-                <input type="number" placeholder="Preço (R$)" value={editingPackage.price} onChange={e => setEditingPackage({...editingPackage, price: parseFloat(e.target.value) || 0})} className="w-1/2 px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg" />
-                <input type="number" placeholder="Nº de Usos" value={editingPackage.totalUses} onChange={e => setEditingPackage({...editingPackage, totalUses: parseInt(e.target.value) || 0})} className="w-1/2 px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg" />
+                <div className="w-1/2">
+                    <label htmlFor="pkg-price" className="block text-sm font-medium text-gray-400 mb-1">Preço (R$)</label>
+                    <input id="pkg-price" type="number" placeholder="100,00" value={editingPackage.price} onChange={e => setEditingPackage({...editingPackage, price: parseFloat(e.target.value) || 0})} className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg" />
+                </div>
+                <div className="w-1/2">
+                    <label htmlFor="pkg-uses" className="block text-sm font-medium text-gray-400 mb-1">Nº de Usos</label>
+                    <input id="pkg-uses" type="number" placeholder="4" value={editingPackage.totalUses} onChange={e => setEditingPackage({...editingPackage, totalUses: parseInt(e.target.value) || 0})} className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg" />
+                </div>
               </div>
               <div>
                   <h4 className="font-semibold mb-2">Serviços Inclusos</h4>

@@ -51,8 +51,12 @@ const BarbershopPublicPage: React.FC<BarbershopPublicPageProps> = ({ identifier 
         const urlParams = new URLSearchParams(hash.substring(hash.indexOf('?')));
         if (urlParams.get('openBooking') === 'true' && user && barbershop) {
             setIsBookingModalOpen(true);
+            // Clean up the URL
+            urlParams.delete('openBooking');
+            const newParamsString = urlParams.toString();
             const path = hash.split('?')[0];
-            window.history.replaceState(null, '', path);
+            const newHash = newParamsString ? `${path}?${newParamsString}` : path;
+            window.history.replaceState(null, '', newHash);
         }
     }, [user, barbershop]);
 

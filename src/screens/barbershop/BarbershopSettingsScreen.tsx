@@ -7,7 +7,6 @@ import ManageServiceModal from './ManageServiceModal';
 import ManageBarberModal from './ManageBarberModal';
 import ManageScheduleModal from './ManageScheduleModal';
 import IntegrationsModal from './IntegrationsModal';
-import ManageLoyaltyModal from './ManageLoyaltyModal';
 import ManagePackagesModal from './ManagePackagesModal';
 import ManageSubscriptionsModal from './ManageSubscriptionsModal';
 import { states, cities } from '../../data/brazil-locations';
@@ -34,14 +33,13 @@ type ModalState =
   | { type: 'barber'; data: Barber | null }
   | { type: 'schedule' }
   | { type: 'integrations' }
-  | { type: 'loyalty' }
   | { type: 'packages' }
   | { type: 'subscriptions' }
   | { type: 'upgrade', feature: string, plan: string }
   | null;
 
 const BarbershopSettingsScreen: React.FC = () => {
-  const { barbershopData, updateBarbershopData, logout, accessStatus, deleteBarbershopAccount } = useContext(AppContext);
+  const { barbershopData, updateBarbershopData, logout, accessStatus, deleteBarbershopAccount, setPurchaseIntent } = useContext(AppContext);
   const { plan, features } = useContext(PlanContext);
   const [modalState, setModalState] = useState<ModalState>(null);
   const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
@@ -289,6 +287,11 @@ const BarbershopSettingsScreen: React.FC = () => {
       } else {
           setModalState({ type: feature });
       }
+  };
+
+  const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
+    setPurchaseIntent({ planId, billingCycle });
+    setIsPlansModalOpen(false);
   };
 
   return (
@@ -553,7 +556,6 @@ const BarbershopSettingsScreen: React.FC = () => {
 
           <Accordion title="Recursos Adicionais (Marketing)">
             <div className="space-y-4">
-              <Button variant="secondary" onClick={() => setModalState({type: 'loyalty'})}>Gerenciar Fidelidade</Button>
               <Button variant="secondary" onClick={() => handleFeatureClick('packages', 'Premium', 'Gerenciar Pacotes')}>Gerenciar Pacotes</Button>
               <Button variant="secondary" onClick={() => handleFeatureClick('subscriptions', 'Premium', 'Gerenciar Assinaturas')}>Gerenciar Assinaturas</Button>
             </div>
@@ -626,17 +628,6 @@ const BarbershopSettingsScreen: React.FC = () => {
             onSave={handleSaveIntegrations}
         />
       )}
-      
-       {modalState?.type === 'loyalty' && (
-        <ManageLoyaltyModal
-            currentSettings={barbershopData.loyalty_program}
-            onClose={() => setModalState(null)}
-            onSave={(settings) => {
-              updateBarbershopData(barbershopData.id, { loyalty_program: settings as unknown as Json });
-              setModalState(null);
-            }}
-        />
-      )}
 
       {modalState?.type === 'packages' && (
         <ManagePackagesModal
@@ -653,6 +644,7 @@ const BarbershopSettingsScreen: React.FC = () => {
       {modalState?.type === 'subscriptions' && (
         <ManageSubscriptionsModal
             currentSubscriptions={subscriptions}
+            availableServices={services}
             onClose={() => setModalState(null)}
             onSave={(subscriptions) => {
               updateBarbershopData(barbershopData.id, { subscriptions: subscriptions as unknown as Json });
@@ -668,7 +660,7 @@ const BarbershopSettingsScreen: React.FC = () => {
             onClose={() => setModalState(null)}
         />
       )}
-      {isPlansModalOpen && <PlansModal onClose={() => setIsPlansModalOpen(false)} />}
+      {isPlansModalOpen && <PlansModal onClose={() => setIsPlansModalOpen(false)} onInitiatePurchase={handleInitiatePurchase} />}
       {isDeleteModalOpen && (
         <DeleteAccountModal 
             onClose={() => setIsDeleteModalOpen(false)}

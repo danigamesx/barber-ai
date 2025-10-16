@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { SubscriptionPlan } from '../../types';
+import { SubscriptionPlan, Service } from '../../types';
 import Button from '../../components/Button';
 import { XCircleIcon, PlusCircleIcon, PencilIcon, TrashIcon } from '../../components/icons/OutlineIcons';
 
 interface ManageSubscriptionsModalProps {
   currentSubscriptions: SubscriptionPlan[];
+  availableServices: Service[];
   onClose: () => void;
   onSave: (subscriptions: SubscriptionPlan[]) => void;
 }
@@ -12,26 +13,22 @@ interface ManageSubscriptionsModalProps {
 const emptySubscription: Omit<SubscriptionPlan, 'id'> = {
   name: '',
   price: 0,
-  benefits: [''],
+  serviceIds: [],
+  usesPerMonth: 1,
 };
 
-const ManageSubscriptionsModal: React.FC<ManageSubscriptionsModalProps> = ({ currentSubscriptions, onClose, onSave }) => {
+const ManageSubscriptionsModal: React.FC<ManageSubscriptionsModalProps> = ({ currentSubscriptions, availableServices, onClose, onSave }) => {
   const [subscriptions, setSubscriptions] = useState<SubscriptionPlan[]>(currentSubscriptions);
   const [editingSubscription, setEditingSubscription] = useState<(Omit<SubscriptionPlan, 'id'> & { id?: string }) | null>(null);
 
   const handleSaveSubscription = () => {
     if (!editingSubscription) return;
-    // Filter out empty benefits before saving
-    const finalSubscription = {
-      ...editingSubscription,
-      benefits: editingSubscription.benefits.filter(b => b.trim() !== '')
-    };
-
+    
     let updatedSubscriptions;
-    if (finalSubscription.id) {
-      updatedSubscriptions = subscriptions.map(s => s.id === finalSubscription.id ? (finalSubscription as SubscriptionPlan) : s);
+    if (editingSubscription.id) {
+      updatedSubscriptions = subscriptions.map(s => s.id === editingSubscription.id ? (editingSubscription as SubscriptionPlan) : s);
     } else {
-      updatedSubscriptions = [...subscriptions, { ...finalSubscription, id: `sub_${Date.now()}` }];
+      updatedSubscriptions = [...subscriptions, { ...editingSubscription, id: `sub_${Date.now()}` }];
     }
     setSubscriptions(updatedSubscriptions);
     setEditingSubscription(null);
@@ -41,42 +38,45 @@ const ManageSubscriptionsModal: React.FC<ManageSubscriptionsModalProps> = ({ cur
     setSubscriptions(subscriptions.filter(s => s.id !== id));
   };
   
-  const handleBenefitChange = (index: number, value: string) => {
-      if (!editingSubscription) return;
-      const newBenefits = [...editingSubscription.benefits];
-      newBenefits[index] = value;
-      setEditingSubscription({ ...editingSubscription, benefits: newBenefits });
+  const handleToggleServiceInSubscription = (serviceId: string) => {
+    if (!editingSubscription) return;
+    const currentIds = editingSubscription.serviceIds;
+    const newIds = currentIds.includes(serviceId)
+      ? currentIds.filter(id => id !== serviceId)
+      : [...currentIds, serviceId];
+    setEditingSubscription({ ...editingSubscription, serviceIds: newIds });
   };
-  
-  const addBenefitField = () => {
-      if (!editingSubscription) return;
-      setEditingSubscription({ ...editingSubscription, benefits: [...editingSubscription.benefits, ''] });
-  };
-  
-  const removeBenefitField = (index: number) => {
-      if (!editingSubscription) return;
-      const newBenefits = editingSubscription.benefits.filter((_, i) => i !== index);
-      setEditingSubscription({ ...editingSubscription, benefits: newBenefits });
-  };
+
 
   const renderSubscriptionForm = () => {
       if (!editingSubscription) return null;
       return (
           <div className="bg-brand-secondary p-4 rounded-lg mt-4 space-y-4">
               <h3 className="font-semibold text-lg">{editingSubscription.id ? 'Editar Assinatura' : 'Nova Assinatura'}</h3>
-              <input type="text" placeholder="Nome da Assinatura" value={editingSubscription.name} onChange={e => setEditingSubscription({...editingSubscription, name: e.target.value})} className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg" />
-              <input type="number" placeholder="Preço Mensal (R$)" value={editingSubscription.price} onChange={e => setEditingSubscription({...editingSubscription, price: parseFloat(e.target.value) || 0})} className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg" />
+               <div>
+                <label htmlFor="sub-name" className="block text-sm font-medium text-gray-400 mb-1">Nome da Assinatura</label>
+                <input id="sub-name" type="text" placeholder="Ex: Clube BarberAI Mensal" value={editingSubscription.name} onChange={e => setEditingSubscription({...editingSubscription, name: e.target.value})} className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg" />
+              </div>
+              <div className="flex gap-4">
+                <div className="w-1/2">
+                    <label htmlFor="sub-price" className="block text-sm font-medium text-gray-400 mb-1">Preço Mensal (R$)</label>
+                    <input id="sub-price" type="number" placeholder="99,90" value={editingSubscription.price} onChange={e => setEditingSubscription({...editingSubscription, price: parseFloat(e.target.value) || 0})} className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg" />
+                </div>
+                 <div className="w-1/2">
+                    <label htmlFor="sub-uses" className="block text-sm font-medium text-gray-400 mb-1">Usos por Mês</label>
+                    <input id="sub-uses" type="number" placeholder="4" value={editingSubscription.usesPerMonth} onChange={e => setEditingSubscription({...editingSubscription, usesPerMonth: parseInt(e.target.value) || 0})} className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg" />
+                </div>
+              </div>
               <div>
-                  <h4 className="font-semibold mb-2">Benefícios</h4>
-                  <div className="space-y-2 max-h-32 overflow-y-auto pr-1">
-                      {editingSubscription.benefits.map((benefit, index) => (
-                          <div key={index} className="flex items-center gap-2">
-                              <input type="text" value={benefit} onChange={e => handleBenefitChange(index, e.target.value)} placeholder="Descreva um benefício" className="flex-grow px-3 py-2 bg-brand-dark border border-gray-600 rounded-lg text-sm" />
-                              <button onClick={() => removeBenefitField(index)} className="text-red-500 hover:text-red-400 p-1"><TrashIcon className="w-5 h-5"/></button>
-                          </div>
+                  <h4 className="font-semibold mb-2">Serviços Inclusos</h4>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                      {availableServices.map(service => (
+                          <label key={service.id} className="flex items-center gap-2 bg-brand-dark p-2 rounded-md">
+                              <input type="checkbox" checked={editingSubscription.serviceIds.includes(service.id)} onChange={() => handleToggleServiceInSubscription(service.id)} className="accent-brand-primary w-5 h-5"/>
+                              <span>{service.name}</span>
+                          </label>
                       ))}
                   </div>
-                  <button onClick={addBenefitField} className="text-sm text-brand-primary mt-2 flex items-center gap-1"><PlusCircleIcon className="w-5 h-5"/> Adicionar benefício</button>
               </div>
               <div className="flex gap-4">
                   <Button variant="secondary" onClick={() => setEditingSubscription(null)}>Cancelar</Button>
@@ -102,7 +102,7 @@ const ManageSubscriptionsModal: React.FC<ManageSubscriptionsModalProps> = ({ cur
                 <div key={sub.id} className="bg-brand-secondary p-3 rounded-lg flex justify-between items-center">
                     <div>
                         <p className="font-semibold">{sub.name}</p>
-                        <p className="text-xs text-gray-400">R${sub.price}/mês</p>
+                        <p className="text-xs text-gray-400">{sub.usesPerMonth} uso(s)/mês por R${sub.price}</p>
                     </div>
                      <div className="flex gap-3">
                         <button onClick={() => setEditingSubscription(sub)} className="text-gray-400 hover:text-brand-primary"><PencilIcon className="w-5 h-5"/></button>

@@ -117,8 +117,10 @@ export interface SubscriptionPlan {
   id: string;
   name: string;
   price: number;
+  // FIX: Changed structure to benefits array to align with implementation in components.
   benefits: string[];
 }
+
 
 export interface SubscriptionPlanDetails {
   id: string; 
@@ -171,6 +173,24 @@ export interface WaitingListEntry {
   requestedAt: string; // ISO Date string
 }
 
+// Specific types for structured JSON data on User profile
+export interface UserPurchasedPackage {
+  id: string; // A unique ID for this specific purchase instance
+  packageId: string; // ID of the ServicePackage template
+  barbershopId: string;
+  purchaseDate: string; // ISO Date string
+  remainingUses: number;
+}
+
+export interface UserActiveSubscription {
+  id: string; // A unique ID for this specific subscription instance
+  subscriptionId: string; // ID of the SubscriptionPlan template
+  barbershopId: string;
+  startDate: string; // ISO Date string
+  status: 'active' | 'cancelled';
+}
+
+
 // Main application types, mirroring Supabase tables
 export interface User {
   id: string;
@@ -185,6 +205,9 @@ export interface User {
   outstanding_debts: Json | null;
   rewards: Json | null;
   store_credits: Json | null;
+  // FIX: Added missing properties to user type to avoid errors when creating mock/walk-in users.
+  purchased_packages: Json | UserPurchasedPackage[] | null;
+  active_subscriptions: Json | UserActiveSubscription[] | null;
 }
 
 export interface Barbershop {
@@ -239,6 +262,8 @@ export interface Appointment {
   commission_amount: number | null;
   google_event_id?: string | null;
   mp_preference_id?: string | null;
+  package_usage_id: string | null;
+  subscription_usage_id: string | null;
 }
 
 export interface Review {

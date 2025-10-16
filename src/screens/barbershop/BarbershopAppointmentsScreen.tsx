@@ -222,6 +222,9 @@ const NewAppointmentModal: React.FC<{
                 cancellation_fee: null,
                 commission_amount: null,
                 review_id: null,
+                // FIX: Added missing properties to satisfy the Appointment type.
+                package_usage_id: null,
+                subscription_usage_id: null,
             });
             onClose();
         } catch (error: any) {
@@ -502,8 +505,8 @@ const BarbershopAppointmentsScreen: React.FC = () => {
                                         <div className="border-l-4 border-brand-accent pl-3">
                                             <div className="flex items-center gap-2">
                                                 <p className="font-semibold text-white">{app.client_name}</p>
-                                                {app.status === 'paid' && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">Confirmado e Pago</span>}
-                                                {app.status === 'confirmed' && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">Confirmado (a pagar)</span>}
+                                                {app.status === 'paid' && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">Pago</span>}
+                                                {app.status === 'confirmed' && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">A Pagar</span>}
                                             </div>
                                             <p className="text-xs text-gray-300">{app.service_name} com {app.barber_name}</p>
                                         </div>

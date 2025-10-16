@@ -25,12 +25,14 @@ export type Database = {
           is_reward: boolean | null
           mp_preference_id: string | null
           notes: string | null
+          package_usage_id: string | null
           price: number | null
           review_id: string | null
           service_id: string | null
           service_name: string | null
           start_time: string
           status: string
+          subscription_usage_id: string | null
         }
         Insert: {
           barber_id?: string | null
@@ -47,12 +49,14 @@ export type Database = {
           is_reward?: boolean | null
           mp_preference_id?: string | null
           notes?: string | null
+          package_usage_id?: string | null
           price?: number | null
           review_id?: string | null
           service_id?: string | null
           service_name?: string | null
           start_time: string
           status?: string
+          subscription_usage_id?: string | null
         }
         Update: {
           barber_id?: string | null
@@ -69,12 +73,14 @@ export type Database = {
           is_reward?: boolean | null
           mp_preference_id?: string | null
           notes?: string | null
+          package_usage_id?: string | null
           price?: number | null
           review_id?: string | null
           service_id?: string | null
           service_name?: string | null
           start_time?: string
           status?: string
+          subscription_usage_id?: string | null
         }
         Relationships: [
           {
@@ -211,6 +217,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          active_subscriptions: Json | null
           birth_date: string | null
           email: string | null
           favorite_barbershop_ids: string[] | null
@@ -220,11 +227,13 @@ export type Database = {
           notifications: Json | null
           outstanding_debts: Json | null
           phone: string | null
+          purchased_packages: Json | null
           rewards: Json | null
           store_credits: Json | null
           user_type: string
         }
         Insert: {
+          active_subscriptions?: Json | null
           birth_date?: string | null
           email?: string | null
           favorite_barbershop_ids?: string[] | null
@@ -234,11 +243,13 @@ export type Database = {
           notifications?: Json | null
           outstanding_debts?: Json | null
           phone?: string | null
+          purchased_packages?: Json | null
           rewards?: Json | null
           store_credits?: Json | null
           user_type: string
         }
         Update: {
+          active_subscriptions?: Json | null
           birth_date?: string | null
           email?: string | null
           favorite_barbershop_ids?: string[] | null
@@ -248,6 +259,7 @@ export type Database = {
           notifications?: Json | null
           outstanding_debts?: Json | null
           phone?: string | null
+          purchased_packages?: Json | null
           rewards?: Json | null
           store_credits?: Json | null
           user_type?: string
