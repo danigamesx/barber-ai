@@ -44,7 +44,6 @@ export const AppContext = React.createContext<{
     planId: string;
     trialEndDate: Date | null;
   };
-  // FIX: Added setPurchaseIntent to AppContext to allow child components to trigger plan purchases.
   setPurchaseIntent: React.Dispatch<React.SetStateAction<PurchaseIntent | null>>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -76,7 +75,6 @@ export const AppContext = React.createContext<{
   googleToken: null,
   isSuperAdmin: false,
   accessStatus: { hasAccess: false, isTrial: false, planId: 'BASIC', trialEndDate: null },
-  // FIX: Added default value for setPurchaseIntent.
   setPurchaseIntent: () => {},
   login: async () => {},
   logout: async () => {},
@@ -220,10 +218,10 @@ const App: React.FC = () => {
         setSession(newSession);
 
         if (userJustLoggedIn) {
-            const storedIntent = sessionStorage.getItem('purchaseIntent');
-            if (storedIntent) {
+            const storedPurchaseIntent = sessionStorage.getItem('purchaseIntent');
+            if (storedPurchaseIntent) {
                 try {
-                    const intent = JSON.parse(storedIntent);
+                    const intent = JSON.parse(storedPurchaseIntent);
                     setPurchaseIntent(intent);
                     sessionStorage.removeItem('purchaseIntent');
                 } catch (e) {
@@ -231,6 +229,13 @@ const App: React.FC = () => {
                     sessionStorage.removeItem('purchaseIntent');
                 }
             }
+            
+            const bookingIntentBarbershopId = sessionStorage.getItem('bookingIntentBarbershopId');
+            if (bookingIntentBarbershopId) {
+                window.location.hash = `/?barbershopId=${bookingIntentBarbershopId}&openBooking=true`;
+                sessionStorage.removeItem('bookingIntentBarbershopId');
+            }
+
             loadInitialData();
         } else if (userJustLoggedOut) {
             setUser(null);
@@ -240,6 +245,8 @@ const App: React.FC = () => {
             setReviews([]);
             setGoogleToken(null);
             setPurchaseIntent(null);
+            sessionStorage.removeItem('purchaseIntent');
+            sessionStorage.removeItem('bookingIntentBarbershopId');
             setShowLanding(true); 
             setLoginAccountType(null);
         }
@@ -333,9 +340,6 @@ const App: React.FC = () => {
   
   const signupAndRefetch = async (name: string, email: string, password: string, accountType: 'client' | 'barbershop', phone: string, birthDate?: string, barbershopName?: string) => {
     await api.signUpUser(name, email, password, accountType, phone, birthDate, barbershopName);
-    // After signup, the user is authenticated. The onAuthStateChange listener might race
-    // against the DB record creation. Explicitly reloading data here ensures we get the
-    // latest state, including the new barbershop for setup.
     await loadInitialData();
   };
   

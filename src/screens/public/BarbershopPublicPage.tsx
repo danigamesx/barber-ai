@@ -48,8 +48,8 @@ const BarbershopPublicPage: React.FC<BarbershopPublicPageProps> = ({ barbershopI
             const urlParams = new URLSearchParams(hash.substring(hash.indexOf('?')));
             setIsBookingModalOpen(true);
             urlParams.delete('openBooking');
-            const newHash = `#/?${urlParams.toString()}`;
-            window.history.replaceState(null, '', newHash);
+            const newHash = `/?${urlParams.toString()}`;
+            window.history.replaceState(null, '', `#${newHash}`);
         }
     }, [user]);
 

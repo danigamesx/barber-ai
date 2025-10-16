@@ -1,4 +1,5 @@
 
+
 import React, { useContext, useMemo, useState } from 'react';
 import { AppContext } from '../../App';
 import { Appointment, Barber, Service } from '../../types';
@@ -124,6 +125,7 @@ const AnalyticsScreen: React.FC = () => {
         const completed = filteredAppointments.filter(a => a.status === 'completed');
         const cancelledWithFee = filteredAppointments.filter(a => a.status === 'cancelled' && a.cancellation_fee && a.cancellation_fee > 0);
         
+        // FIX: Add explicit generic types to reduce calls to prevent TypeScript from inferring incorrect types.
         const revenueFromServices = completed.reduce<number>((sum, app) => sum + (app.price || 0), 0);
         const revenueFromFees = cancelledWithFee.reduce<number>((sum, app) => sum + (app.cancellation_fee || 0), 0);
         const totalCommissions = completed.reduce<number>((sum, app) => sum + (app.commission_amount || 0), 0);
@@ -131,7 +133,6 @@ const AnalyticsScreen: React.FC = () => {
         const totalRevenue = revenueFromServices + revenueFromFees;
         const netRevenue = (revenueFromServices - totalCommissions) + revenueFromFees;
         
-        // FIX: Explicitly typed the accumulator in the reduce function to ensure correct type inference for serviceCounts.
         const serviceCounts = completed.reduce<{[key: string]: number}>((counts, app) => {
             if (app.service_name) {
                 counts[app.service_name] = (counts[app.service_name] || 0) + 1;
