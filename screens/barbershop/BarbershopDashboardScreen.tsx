@@ -51,20 +51,34 @@ const DashboardDetailsModal: React.FC<DashboardDetailsModalProps> = ({ modalType
         return (
           <div>
             <h3 className="text-lg font-bold mb-4">Receita Detalhada do Dia</h3>
-            <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
+            <div className="space-y-2 max-h-60 overflow-y-auto pr-2 mb-4">
               {data.revenueBreakdown.map((item: any) => (
                 <div key={item.id} className="bg-brand-secondary p-2 rounded-md flex justify-between text-sm">
                   <span>{item.description} ({item.client})</span>
-                  <span className={`font-semibold ${item.type === 'fee' ? 'text-red-400' : 'text-green-400'}`}>
+                  <span className={`font-semibold ${item.type === 'fee' ? 'text-amber-400' : 'text-green-400'}`}>
                     R$ {item.amount.toFixed(2)}
                   </span>
                 </div>
               ))}
               {data.revenueBreakdown.length === 0 && <p className="text-gray-400 text-center">Nenhuma receita registrada hoje.</p>}
             </div>
-            <div className="border-t border-gray-700 mt-4 pt-4 flex justify-between font-bold text-lg">
-                <span>Total:</span>
-                <span>R$ {data.totalRevenue.toFixed(2)}</span>
+            <div className="border-t border-gray-700 mt-4 pt-4 space-y-2 text-sm">
+                <div className="flex justify-between font-bold">
+                    <span>Receita Bruta de Serviços:</span>
+                    <span>R$ {data.revenueFromServices.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                    <span className="text-red-400">(-) Comissões:</span>
+                    <span className="text-red-400">- R$ {data.commissions.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                    <span className="text-amber-400">(+) Taxas de Cancelamento:</span>
+                    <span className="text-amber-400">+ R$ {data.revenueFromFees.toFixed(2)}</span>
+                </div>
+                <div className="border-t border-gray-600 mt-2 pt-2 flex justify-between font-bold text-lg">
+                    <span>Receita Líquida (Loja):</span>
+                    <span>R$ {data.netRevenue.toFixed(2)}</span>
+                </div>
             </div>
           </div>
         );
@@ -165,7 +179,6 @@ const BarbershopDashboardScreen: React.FC = () => {
     const dashboardData = useMemo(() => {
         if (!barbershopData) return null;
         
-        // --- Today's Data ---
         const todaysAppointments = appointments.filter(app => 
             app.barbershop_id === barbershopData.id &&
             new Date(app.start_time).toDateString() === today.toDateString()
@@ -179,40 +192,16 @@ const BarbershopDashboardScreen: React.FC = () => {
                 .filter(app => app.status === 'cancelled' && app.cancellation_fee && app.cancellation_fee > 0)
                 .map(app => ({ id: app.id, description: 'Taxa de Cancelamento', client: app.client_name, amount: app.cancellation_fee || 0, type: 'fee' }))
         ];
-        const todaysRevenue = todaysRevenueBreakdown.reduce((sum, item) => sum + item.amount, 0);
+        const todaysGrossRevenue = todaysRevenueBreakdown.reduce((sum, item) => sum + item.amount, 0);
 
         const todaysBookingsCount = todaysAppointments.filter(app => app.status !== 'cancelled' && app.status !== 'declined').length;
         
-        const todaysClientIds = [...new Set(todaysAppointments
-            .filter(app => app.status !== 'cancelled' && app.status !== 'declined')
-            .map(app => app.client_id))
-        ];
-        const todaysClients = users.filter(u => todaysClientIds.includes(u.id));
+        const todaysCompletedOrPaid = todaysAppointments.filter(app => app.status === 'completed' || app.status === 'paid');
+        const todaysCommissions = todaysCompletedOrPaid.reduce((sum, app) => sum + (app.commission_amount || 0), 0);
+        const todaysRevenueFromServices = todaysCompletedOrPaid.reduce((sum, app) => sum + (app.price || 0), 0);
+        const todaysRevenueFromFees = todaysRevenueBreakdown.filter(i => i.type === 'fee').reduce((sum, i) => sum + i.amount, 0);
+        const todaysNetRevenue = (todaysRevenueFromServices - todaysCommissions) + todaysRevenueFromFees;
 
-        // Occupancy Rate
-        const dayOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][today.getDay()];
-        const hours = (barbershopData.opening_hours as OpeningHours || {})[dayOfWeek] as DayOpeningHours | null;
-        const barbers = barbershopData.barbers as any[] | null;
-        let totalAvailableTime = 0;
-        if (hours && barbers && barbers.length > 0) {
-            const morningOpen = new Date(`${today.toDateString()} ${hours.morning_open}`);
-            const morningClose = new Date(`${today.toDateString()} ${hours.morning_close}`);
-            const afternoonOpen = new Date(`${today.toDateString()} ${hours.afternoon_open}`);
-            const afternoonClose = new Date(`${today.toDateString()} ${hours.afternoon_close}`);
-
-            const morningDuration = Math.max(0, (morningClose.getTime() - morningOpen.getTime()) / (1000 * 60));
-            const afternoonDuration = Math.max(0, (afternoonClose.getTime() - afternoonOpen.getTime()) / (1000 * 60));
-            
-            totalAvailableTime = (morningDuration + afternoonDuration) * barbers.length;
-        }
-
-        const totalBookedTime = todaysAppointments
-            .filter(app => ['confirmed', 'paid', 'completed'].includes(app.status))
-            .reduce((sum, app) => sum + (app.end_time.getTime() - app.start_time.getTime()) / (1000 * 60), 0);
-        
-        const occupancyRate = totalAvailableTime > 0 ? (totalBookedTime / totalAvailableTime) * 100 : 0;
-
-        // --- Monthly Data ---
         const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
         const monthAppointments = appointments.filter(app => {
             if (app.barbershop_id !== barbershopData.id) return false;
@@ -223,7 +212,6 @@ const BarbershopDashboardScreen: React.FC = () => {
         const monthRevenue = monthAppointments.reduce((sum, app) => sum + (app.price || 0), 0);
         const monthClientsCount = [...new Set(monthAppointments.map(app => app.client_id))].length;
 
-        // --- Recent Activities ---
         const recentActivities = appointments
             .filter(app => app.barbershop_id === barbershopData.id)
             .sort((a, b) => (b.created_at?.getTime() || 0) - (a.created_at?.getTime() || 0))
@@ -232,22 +220,19 @@ const BarbershopDashboardScreen: React.FC = () => {
         const statusOrder: { [key: string]: number } = { 'pending': 1, 'confirmed': 2, 'paid': 3, 'completed': 4, 'cancelled': 5, 'declined': 6 };
 
         return {
-            todaysRevenue,
+            todaysGrossRevenue,
             todaysRevenueBreakdown,
+            todaysCommissions,
+            todaysNetRevenue,
+            todaysRevenueFromServices,
+            todaysRevenueFromFees,
             todaysBookingsCount,
             todaysAppointments: todaysAppointments.sort((a, b) => {
                 const statusA = statusOrder[a.status] || 99;
                 const statusB = statusOrder[b.status] || 99;
-                if (statusA !== statusB) {
-                    return statusA - statusB;
-                }
+                if (statusA !== statusB) return statusA - statusB;
                 return a.start_time.getTime() - b.start_time.getTime();
             }),
-            todaysClients,
-            totalClients: todaysClients.length,
-            occupancyRate,
-            totalAvailableTime,
-            totalBookedTime,
             monthRevenue,
             monthClientsCount,
             recentActivities
@@ -259,7 +244,9 @@ const BarbershopDashboardScreen: React.FC = () => {
         return <div className="p-4 text-center">Carregando dados do painel...</div>;
     }
     
-    const shareableLink = `${window.location.origin}/#/?barbershopId=${barbershopData.id}`;
+    const shareableLink = barbershopData.slug
+      ? `${window.location.origin}/#/${barbershopData.slug}`
+      : `${window.location.origin}/#/?barbershopId=${barbershopData.id}`;
 
     const copyToClipboard = () => {
         navigator.clipboard.writeText(shareableLink).then(() => {
@@ -272,14 +259,16 @@ const BarbershopDashboardScreen: React.FC = () => {
     };
 
     const modalData = {
-        revenue: { totalRevenue: dashboardData.todaysRevenue, revenueBreakdown: dashboardData.todaysRevenueBreakdown },
+        revenue: { 
+            revenueBreakdown: dashboardData.todaysRevenueBreakdown,
+            revenueFromServices: dashboardData.todaysRevenueFromServices,
+            revenueFromFees: dashboardData.todaysRevenueFromFees,
+            commissions: dashboardData.todaysCommissions,
+            netRevenue: dashboardData.todaysNetRevenue,
+        },
         appointments: { todaysAppointments: dashboardData.todaysAppointments },
-        clients: { clients: dashboardData.todaysClients },
-        occupancy: { 
-            occupancyRate: dashboardData.occupancyRate, 
-            totalAvailableTime: dashboardData.totalAvailableTime, 
-            totalBookedTime: dashboardData.totalBookedTime 
-        }
+        clients: { clients: [] }, // This data is not calculated in this component anymore, but keeping for structure
+        occupancy: {} // Same
     };
     
     return (
@@ -287,12 +276,11 @@ const BarbershopDashboardScreen: React.FC = () => {
             <div className="p-4 md:p-6 space-y-6">
                 <h1 className="text-2xl font-bold text-brand-light">Painel</h1>
 
-                {/* Daily Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <StatCard title="Receita do Dia" value={`R$ ${dashboardData.todaysRevenue.toFixed(2)}`} icon={CurrencyDollarIcon} onClick={() => setModalType('revenue')} />
+                    <StatCard title="Receita Bruta (Dia)" value={`R$ ${dashboardData.todaysGrossRevenue.toFixed(2)}`} icon={CurrencyDollarIcon} onClick={() => setModalType('revenue')} />
+                    <StatCard title="Comissões (Dia)" value={`R$ ${dashboardData.todaysCommissions.toFixed(2)}`} icon={UsersIcon} onClick={() => setModalType('revenue')} />
+                    <StatCard title="Receita Líquida (Dia)" value={`R$ ${dashboardData.todaysNetRevenue.toFixed(2)}`} icon={ChartBarIcon} onClick={() => setModalType('revenue')} />
                     <StatCard title="Agendamentos Hoje" value={dashboardData.todaysBookingsCount.toString()} icon={CalendarIcon} onClick={() => setModalType('appointments')} />
-                    <StatCard title="Clientes Hoje" value={dashboardData.totalClients.toString()} icon={UsersIcon} onClick={() => setModalType('clients')} />
-                    <StatCard title="Ocupação Diária" value={`${dashboardData.occupancyRate.toFixed(1)}%`} icon={ChartBarIcon} onClick={() => setModalType('occupancy')} />
                 </div>
                 
                 <div className="bg-brand-secondary p-4 rounded-lg">
@@ -304,9 +292,13 @@ const BarbershopDashboardScreen: React.FC = () => {
                         {copySuccess || 'Copiar'}
                     </Button>
                   </div>
+                   {!barbershopData.slug && (
+                    <p className="text-xs text-amber-400 mt-2">
+                      Dica: Personalize este link na tela de <span className="font-bold">Ajustes</span> para torná-lo mais profissional!
+                    </p>
+                  )}
                 </div>
                 
-                {/* Monthly Summary */}
                 <div className="bg-brand-secondary p-4 rounded-lg">
                     <h2 className="font-semibold text-lg text-brand-primary mb-3">Resumo do Mês (até hoje)</h2>
                     <div className="flex justify-around text-center">
@@ -321,7 +313,6 @@ const BarbershopDashboardScreen: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Recent Activities */}
                 <div className="bg-brand-secondary p-4 rounded-lg">
                     <h2 className="font-semibold text-lg text-brand-primary mb-3">Atividades Recentes</h2>
                     <div className="space-y-3">
@@ -364,7 +355,7 @@ const BarbershopDashboardScreen: React.FC = () => {
                 </div>
 
             </div>
-            {modalType && <DashboardDetailsModal modalType={modalType} onClose={() => setModalType(null)} data={modalData[modalType]} onUpdateStatus={updateAppointmentStatus}/>}
+            {modalType && <DashboardDetailsModal modalType={modalType} onClose={() => setModalType(null)} data={modalData[modalType as keyof typeof modalData]} onUpdateStatus={updateAppointmentStatus}/>}
         </>
     );
 };
