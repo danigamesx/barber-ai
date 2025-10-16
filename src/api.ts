@@ -179,7 +179,22 @@ export const updateAppointment = async (appointmentId: string, updates: { start_
 
 export const updateAppointmentStatus = async (appointment: Appointment, status: string, barbershopData: Barbershop | null, googleToken: string | null) => {
     if (!supabase) throw new Error(supabaseInitializationError!);
-    const { error } = await supabase.from('appointments').update({ status }).eq('id', appointment.id);
+
+    const updates: Partial<TablesUpdate<'appointments'>> = { status };
+
+    if (status === 'completed' && barbershopData && appointment.price && appointment.barber_id) {
+        const barbers = (barbershopData.barbers as Barber[]) || [];
+        const barber = barbers.find(b => b.id === appointment.barber_id);
+        
+        if (barber && typeof barber.commissionPercentage === 'number') {
+            const commission = appointment.price * (barber.commissionPercentage / 100);
+            updates.commission_amount = commission;
+        } else {
+            updates.commission_amount = 0;
+        }
+    }
+
+    const { error } = await supabase.from('appointments').update(updates).eq('id', appointment.id);
     if (error) throw error;
 
     const integrations = barbershopData?.integrations as IntegrationSettings;

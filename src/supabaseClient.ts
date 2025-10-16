@@ -1,8 +1,4 @@
 
-
-
-
-
 // FIX: Correctly augmented the global ImportMetaEnv interface to include all Vite's environment variables.
 // This avoids conflicts with Vite's default typings by augmenting the correct interface.
 declare global {
