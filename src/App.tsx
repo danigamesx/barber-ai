@@ -1,5 +1,3 @@
-
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { User, Appointment, Barbershop, Review, ClientNotification, Session, Barber, FinancialRecord, Json, IntegrationSettings, CancellationPolicy } from './types';
 import LoginScreen from './screens/LoginScreen';
@@ -197,6 +195,7 @@ const App: React.FC = () => {
       const paramsString = currentHash.includes('?') ? currentHash.substring(currentHash.indexOf('?')) : '';
       const params = new URLSearchParams(paramsString);
       const status = params.get('payment_status') as 'success' | 'failure' | 'pending' | null;
+      const returnTo = params.get('return_to');
 
       if (status && ['success', 'failure', 'pending'].includes(status)) {
         setPaymentStatus(status);
@@ -206,15 +205,20 @@ const App: React.FC = () => {
         }
       }
 
+      if (returnTo && user?.user_type === 'BARBERSHOP') {
+        setActiveBarbershopScreen(returnTo);
+      }
+
       // Clean the hash
       params.delete('payment_status');
+      params.delete('return_to');
       const path = currentHash.split('?')[0];
       const newParamsString = params.toString();
       const newHash = newParamsString ? `${path}?${newParamsString}` : path;
       window.history.replaceState(null, '', newHash);
       setCurrentHash(newHash); // Update state to reflect the cleaned URL
     }
-  }, [currentHash]);
+  }, [currentHash, user]);
 
   useEffect(() => {
     const handleHashChange = () => setCurrentHash(window.location.hash);
@@ -658,7 +662,7 @@ const App: React.FC = () => {
   const renderContent = () => {
     // Correctly parse slug (path) vs. ID (query param)
     const hash = currentHash;
-    const slugMatch = hash.match(/^#\/([^?&=]+)$/);
+    const slugMatch = hash.match(/^#\/([^?&=]+)/);
     const idMatch = hash.match(/barbershopId=([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/);
     const identifier = slugMatch ? slugMatch[1] : (idMatch ? idMatch[1] : null);
 

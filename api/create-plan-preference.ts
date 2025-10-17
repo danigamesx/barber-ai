@@ -1,4 +1,3 @@
-
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { createClient } from '@supabase/supabase-js';
@@ -66,9 +65,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 },
             ],
             back_urls: {
-                success: `${req.headers.origin}/#/?payment_status=success`,
-                failure: `${req.headers.origin}/#/?payment_status=failure`,
-                pending: `${req.headers.origin}/#/?payment_status=pending`,
+                success: `${req.headers.origin}/#/?payment_status=success&return_to=settings`,
+                failure: `${req.headers.origin}/#/?payment_status=failure&return_to=settings`,
+                pending: `${req.headers.origin}/#/?payment_status=pending&return_to=settings`,
             },
             auto_return: 'approved' as 'approved',
             notification_url: `https://${req.headers.host}/api/plan-webhook`,
