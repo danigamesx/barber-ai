@@ -656,8 +656,11 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
-    const identifierMatch = currentHash.match(/#\/(.+)/) || currentHash.match(/#\/\?barbershopId=(.+)/);
-    const identifier = identifierMatch ? identifierMatch[1].split('&')[0] : null;
+    // Correctly parse slug (path) vs. ID (query param)
+    const hash = currentHash;
+    const slugMatch = hash.match(/^#\/([^?&=]+)$/);
+    const idMatch = hash.match(/barbershopId=([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/);
+    const identifier = slugMatch ? slugMatch[1] : (idMatch ? idMatch[1] : null);
 
     if (identifier) {
         return <BarbershopPublicPage identifier={identifier} />;
