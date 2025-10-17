@@ -123,17 +123,13 @@ const AnalyticsScreen: React.FC = () => {
         const completed = filteredAppointments.filter(a => a.status === 'completed');
         const cancelledWithFee = filteredAppointments.filter(a => a.status === 'cancelled' && a.cancellation_fee && a.cancellation_fee > 0);
         
-        // FIX: Explicitly specify the accumulator type in reduce to avoid incorrect type inference.
         const revenueFromServices = completed.reduce<number>((sum, app) => sum + (app.price || 0), 0);
-        // FIX: Explicitly specify the accumulator type in reduce to avoid incorrect type inference.
         const revenueFromFees = cancelledWithFee.reduce<number>((sum, app) => sum + (app.cancellation_fee || 0), 0);
-        // FIX: Explicitly specify the accumulator type in reduce to avoid incorrect type inference.
         const totalCommissions = completed.reduce<number>((sum, app) => sum + (app.commission_amount || 0), 0);
         
         const totalRevenue = revenueFromServices + revenueFromFees;
         const netRevenue = (revenueFromServices - totalCommissions) + revenueFromFees;
         
-        // FIX: Explicitly typed the accumulator in the reduce function to ensure correct type inference for serviceCounts.
         const serviceCounts = completed.reduce<{[key: string]: number}>((counts, app) => {
             if (app.service_name) {
                 counts[app.service_name] = (counts[app.service_name] || 0) + 1;
@@ -141,7 +137,8 @@ const AnalyticsScreen: React.FC = () => {
             return counts;
         }, {});
         
-        const mostPopularService = Object.entries(serviceCounts).sort((a,b) => b[1] - a[1])[0]?.[0] || 'N/A';
+        // FIX: Explicitly cast array values to Number before subtraction to satisfy TypeScript's strict arithmetic operation rules, which may fail with inferred types from Object.entries.
+        const mostPopularService = Object.entries(serviceCounts).sort((a,b) => Number(b[1]) - Number(a[1]))[0]?.[0] || 'N/A';
 
         return {
             totalRevenue,
