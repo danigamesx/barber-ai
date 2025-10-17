@@ -137,7 +137,6 @@ const AnalyticsScreen: React.FC = () => {
             return counts;
         }, {});
         
-        // FIX: Explicitly cast array values to Number before subtraction to satisfy TypeScript's strict arithmetic operation rules, which may fail with inferred types from Object.entries.
         const mostPopularService = Object.entries(serviceCounts).sort((a,b) => Number(b[1]) - Number(a[1]))[0]?.[0] || 'N/A';
 
         return {
