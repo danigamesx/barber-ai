@@ -1,4 +1,3 @@
-
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { MercadoPagoConfig, Payment } from 'mercadopago';
 import { createClient } from '@supabase/supabase-js';
@@ -100,7 +99,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const currentPackages = (userProfile.purchased_packages as UserPurchasedPackage[] || []);
                 const updatedPackages = [...currentPackages, newPurchase];
                 
-                // FIX: Cast to 'unknown' before 'Json' to satisfy TypeScript's strict type checking for complex object arrays.
                 const { error: updateError } = await supabaseAdmin
                     .from('profiles').update({ purchased_packages: updatedPackages as unknown as Json }).eq('id', userId);
                 if (updateError) throw updateError;
@@ -115,7 +113,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const currentSubs = (userProfile.active_subscriptions as UserActiveSubscription[] || []);
                 const updatedSubs = [...currentSubs, newSubscription];
 
-                // FIX: Cast to 'unknown' before 'Json' to satisfy TypeScript's strict type checking for complex object arrays.
                 const { error: updateError } = await supabaseAdmin
                     .from('profiles').update({ active_subscriptions: updatedSubs as unknown as Json }).eq('id', userId);
                 if (updateError) throw updateError;
@@ -150,21 +147,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
             const appointmentForDb: TablesInsert<'appointments'> = {
                 client_id: appointmentData.client_id,
-                client_name: appointmentData.client_name,
+                client_name: appointmentData.client_name ?? null,
                 barbershop_id: appointmentData.barbershop_id,
-                barber_id: appointmentData.barber_id,
-                barber_name: appointmentData.barber_name,
-                service_id: appointmentData.service_id,
-                service_name: appointmentData.service_name,
-                price: Number(appointmentData.price),
+                barber_id: appointmentData.barber_id ?? null,
+                barber_name: appointmentData.barber_name ?? null,
+                service_id: appointmentData.service_id ?? null,
+                service_name: appointmentData.service_name ?? null,
+                price: Number(appointmentData.price) ?? null,
                 start_time: appointmentData.start_time,
                 end_time: appointmentData.end_time,
-                notes: appointmentData.notes,
+                notes: appointmentData.notes ?? null,
                 status: 'paid',
-                is_reward: appointmentData.is_reward,
+                is_reward: appointmentData.is_reward ?? false,
                 mp_preference_id: preference_id,
-                package_usage_id: appointmentData.package_usage_id,
-                subscription_usage_id: appointmentData.subscription_usage_id,
+                package_usage_id: appointmentData.package_usage_id ?? null,
+                subscription_usage_id: appointmentData.subscription_usage_id ?? null,
             };
             
             const { error: insertError } = await supabaseAdmin.from('appointments').insert(appointmentForDb);
