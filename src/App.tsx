@@ -28,6 +28,7 @@ import { supabaseInitializationError } from './supabaseClient';
 import PlanPaymentModal from './screens/barbershop/PlanPaymentModal';
 import { PackagePaymentModal } from './screens/client/PaymentModal';
 
+// FIX: Added missing properties to the AppContext to make them available to child components.
 export const AppContext = React.createContext<{
   user: User | null;
   users: User[];
@@ -63,10 +64,9 @@ export const AppContext = React.createContext<{
   removeFromWaitingList: (barbershopId: string, date: string, clientId: string) => Promise<void>;
   setGoogleToken: (token: string | null) => void;
   patchUser: (user: User) => void;
-  // FIX: Added missing properties to the context type to resolve useContext errors in child components.
   deleteBarbershopAccount: () => Promise<void>;
   setPurchaseIntent: (intent: { planId: string, billingCycle: 'monthly' | 'annual' } | null) => void;
-  setPackageSubscriptionIntent: (intent: { type: 'package' | 'subscription', itemId: string, barbershopId: string } | null) => void;
+  setPackageSubscriptionIntent: (intent: { type: 'package' | 'subscription', itemId: string, barbershop: Barbershop } | null) => void;
 }>({
   user: null,
   users: [],
@@ -97,7 +97,6 @@ export const AppContext = React.createContext<{
   removeFromWaitingList: async () => {},
   setGoogleToken: () => {},
   patchUser: () => {},
-  // FIX: Added default values for the new context properties.
   deleteBarbershopAccount: async () => {},
   setPurchaseIntent: () => {},
   setPackageSubscriptionIntent: () => {},
@@ -139,9 +138,8 @@ const App: React.FC = () => {
   const [loginAccountType, setLoginAccountType] = useState<'client' | 'barbershop' | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'failure' | 'pending' | null>(null);
   const [currentHash, setCurrentHash] = useState(window.location.hash);
-  // FIX: Added state management for purchase intents to handle payment modal logic.
   const [purchaseIntent, setPurchaseIntent] = useState<{ planId: string, billingCycle: 'monthly' | 'annual' } | null>(null);
-  const [packageSubscriptionIntent, setPackageSubscriptionIntent] = useState<{ type: 'package' | 'subscription', itemId: string, barbershopId: string } | null>(null);
+  const [packageSubscriptionIntent, setPackageSubscriptionIntent] = useState<{ type: 'package' | 'subscription', itemId: string, barbershop: Barbershop } | null>(null);
 
 
   const [activeClientScreen, setActiveClientScreen] = useState('home');
@@ -202,18 +200,16 @@ const App: React.FC = () => {
       if (status && ['success', 'failure', 'pending'].includes(status)) {
         setPaymentStatus(status);
         if (status === 'success') {
-          // Give time for webhook to process before reloading data
           setTimeout(() => loadInitialData(), 3000);
         }
       }
-
-      // Clean the hash
+      
       params.delete('payment_status');
       const path = currentHash.split('?')[0];
-      const newParamsString = params.toString();
-      const newHash = newParamsString ? `${path}?${newParamsString}` : path;
+      const newParamsString = params.toString().replace(/&$/, '');
+      const newHash = newParamsString ? `${path}?${newParamsString}`.replace('?&','?') : path;
       window.history.replaceState(null, '', newHash);
-      setCurrentHash(newHash); // Update state to reflect the cleaned URL
+      setCurrentHash(newHash); 
     }
   }, [currentHash]);
 
@@ -481,7 +477,6 @@ const App: React.FC = () => {
         const clients = users.filter(u => u.user_type === 'CLIENT');
         await api.sendPromotion(barbershopId, title, message, clients, barbershops);
         setBarbershops(await api.getBarbershops());
-        // To see the notification badge update in realtime for the client (if testing in same browser)
         const updatedUsers = await api.getAllUsers();
         setUsers(updatedUsers);
     },
@@ -501,7 +496,6 @@ const App: React.FC = () => {
     },
     deleteBarbershopAccount: async () => {
       await api.deleteBarbershopAccount();
-      // On success, the auth listener will trigger a logout and state cleanup.
     },
     setGoogleToken,
     patchUser,
@@ -510,7 +504,6 @@ const App: React.FC = () => {
   const appContextValue = { 
       user, users, barbershops, barbershopData, appointments, allAppointments: appointments, reviews, googleToken, isSuperAdmin, accessStatus,
       ...contextFunctions,
-      // FIX: Pass state setters to the context value.
       setPurchaseIntent,
       setPackageSubscriptionIntent,
   };
@@ -646,11 +639,23 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
-    const identifierMatch = currentHash.match(/#\/(.+)/) || currentHash.match(/#\/\?barbershopId=(.+)/);
-    const identifier = identifierMatch ? identifierMatch[1].split('&')[0] : null;
+    const hash = currentHash;
+    let publicPageIdentifier: string | null = null;
+    
+    const slugMatch = hash.match(/^#\/([^?&]+)/);
+    if (slugMatch && slugMatch[1]) {
+        publicPageIdentifier = slugMatch[1];
+    }
+    
+    if (!publicPageIdentifier) {
+      const idMatch = hash.match(/#\/\?barbershopId=([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/);
+      if (idMatch && idMatch[1]) {
+          publicPageIdentifier = idMatch[1];
+      }
+    }
 
-    if (identifier) {
-        return <BarbershopPublicPage identifier={identifier} />;
+    if (publicPageIdentifier) {
+        return <BarbershopPublicPage identifier={publicPageIdentifier} />;
     }
 
     if (showLanding && !session) {
@@ -686,7 +691,7 @@ const App: React.FC = () => {
         return <BarbershopSetupScreen />;
       }
        if (!accessStatus.hasAccess && !accessStatus.isTrial) {
-            return <InactivePlanBanner />; // Or a dedicated expired screen
+            return <InactivePlanBanner />;
         }
       return renderBarbershopApp();
     }
