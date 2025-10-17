@@ -10,7 +10,7 @@ import * as api from '../../api';
 
 const statusTranslations: { [key in Appointment['status']]: string } = {
   pending: 'Pendente',
-  confirmed: 'Confirmado (a pagar)',
+  confirmed: 'Confirmado',
   completed: 'Concluído',
   cancelled: 'Cancelado',
   declined: 'Recusado',
@@ -82,7 +82,7 @@ const AppointmentCard: React.FC<{
 };
 
 const ClientAppointmentsScreen: React.FC = () => {
-  const { user, appointments, barbershops, updateAppointmentStatus, removeFromWaitingList } = useContext(AppContext);
+  const { user, appointments, barbershops, updateAppointmentStatus, removeFromWaitingList, setPackageSubscriptionIntent } = useContext(AppContext);
   const [reviewingAppointment, setReviewingAppointment] = useState<Appointment | null>(null);
   const [rebookingAppointment, setRebookingAppointment] = useState<Appointment | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
@@ -104,25 +104,31 @@ const ClientAppointmentsScreen: React.FC = () => {
 
   const handleInitiatePayment = async (appointmentData: NewAppointmentData) => {
     setRebookingAppointment(null);
-    setIsRedirecting(true);
-    try {
-        const { redirectUrl } = await api.createMercadoPagoPreference(appointmentData);
-        if (redirectUrl) {
-            window.location.href = redirectUrl;
-        } else {
-            alert('Não foi possível obter a URL de pagamento. Tente novamente.');
-            setIsRedirecting(false);
-        }
-    } catch (error: any) {
-        console.error('Falha ao iniciar pagamento:', error);
-        alert(`Erro ao iniciar pagamento: ${error.message}`);
-        setIsRedirecting(false);
+    if (!user) {
+        alert("Sessão expirada. Por favor, faça login novamente.");
+        return;
     }
+    
+    // As barbearias e o barbeiro devem estar disponíveis no contexto
+    const barbershop = barbershops.find(b => b.id === appointmentData.barbershop_id);
+    if (!barbershop) {
+        alert("Barbearia não encontrada.");
+        return;
+    }
+
+    // Set the intent in the app's main state to trigger the payment modal
+    setPackageSubscriptionIntent({ 
+        type: 'appointment', // A custom type to differentiate from packages
+        itemId: appointmentData.service_id!,
+        barbershop: barbershop,
+        appointmentDetails: appointmentData 
+    });
   };
   
   const clientAppointments = useMemo(() => {
+    if (!user) return [];
     return appointments
-      .filter(a => a.client_id === user?.id)
+      .filter(a => a.client_id === user.id)
       .sort((a, b) => b.start_time.getTime() - a.start_time.getTime());
   }, [appointments, user]);
 
