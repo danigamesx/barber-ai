@@ -229,7 +229,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
       };
   }
 
-  const handleRequestAndPayLater = async () => {
+  const handleConfirmFreeAppointment = async () => {
     if (!user) {
         alert("Por favor, faça login ou crie uma conta para agendar um horário.");
         return;
@@ -253,7 +253,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
                 });
             }
         } catch (err) {
-            console.error("Failed to add 'pay later' appointment", err);
+            console.error("Failed to add free appointment", err);
             alert("Ocorreu um erro ao solicitar o agendamento. Tente novamente.");
         }
     } else {
@@ -488,7 +488,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
                      <span>Total a Pagar:</span>
                      <span>R${finalPriceToPay.toFixed(2)}</span>
                  </div>
-                 {finalPriceToPay > 0 && <p className="text-xs text-gray-400 mt-2 text-center">Pague agora para confirmar seu horário instantaneamente ou pague no local após o serviço.</p>}
+                 {finalPriceToPay > 0 && <p className="text-xs text-gray-400 mt-2 text-center">O pagamento online é necessário para confirmar seu horário instantaneamente.</p>}
              </div>
           </div>
         );
@@ -507,13 +507,10 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
 
     if (finalPriceToPay > 0) {
         return (
-            <>
-                <Button onClick={handlePayNow}>Pagar Agora e Confirmar</Button>
-                <Button variant="secondary" onClick={handleRequestAndPayLater}>Agendar e Pagar no Local</Button>
-            </>
+            <Button onClick={handlePayNow}>Pagar Agora e Confirmar</Button>
         );
     }
-    return <Button onClick={handleRequestAndPayLater}>Confirmar Agendamento</Button>;
+    return <Button onClick={handleConfirmFreeAppointment}>Confirmar Agendamento</Button>;
   };
 
 
