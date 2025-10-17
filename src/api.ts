@@ -164,7 +164,6 @@ export const addAppointment = async (appointment: Omit<Appointment, 'id' | 'crea
     if (!supabase) throw new Error(supabaseInitializationError!);
     const initialStatus = appointment.status === 'paid' ? 'paid' : (appointment.status === 'confirmed' ? 'confirmed' : 'pending');
     
-    // Construct the object explicitly to ensure correct types and properties, preventing spread operator issues.
     const appointmentForDb: TablesInsert<'appointments'> = {
         client_id: appointment.client_id,
         client_name: appointment.client_name,
@@ -176,14 +175,14 @@ export const addAppointment = async (appointment: Omit<Appointment, 'id' | 'crea
         price: appointment.price,
         start_time: appointment.start_time.toISOString(),
         end_time: appointment.end_time.toISOString(),
-        notes: appointment.notes,
+        notes: appointment.notes || null,
         status: initialStatus,
-        is_reward: appointment.is_reward,
-        review_id: appointment.review_id,
-        cancellation_fee: appointment.cancellation_fee,
-        commission_amount: appointment.commission_amount,
-        package_usage_id: appointment.package_usage_id,
-        subscription_usage_id: appointment.subscription_usage_id
+        is_reward: appointment.is_reward || false,
+        review_id: appointment.review_id || null,
+        cancellation_fee: appointment.cancellation_fee || null,
+        commission_amount: appointment.commission_amount || null,
+        package_usage_id: appointment.package_usage_id || null,
+        subscription_usage_id: appointment.subscription_usage_id || null
     };
 
     const { data: newAppointmentRow, error: insertError } = await supabase.from('appointments').insert(appointmentForDb).select().single();
