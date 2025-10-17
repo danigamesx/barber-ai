@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { AppContext } from '../../App';
-import { Appointment, Barbershop, IntegrationSettings, ServicePackage, SubscriptionPlan } from '../../types';
+import { Appointment, IntegrationSettings, ServicePackage, SubscriptionPlan, UserActiveSubscription, UserPurchasedPackage } from '../../types';
 import { XCircleIcon } from '../../components/icons/OutlineIcons';
 import * as api from '../../api';
 
@@ -70,6 +71,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ appointmentData, onClose })
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [preferenceId, setPreferenceId] = useState<string | null>(null);
+    // FIX: Added state to store the public key for Mercado Pago.
     const [publicKey, setPublicKey] = useState<string | null>(null);
 
     const { service_name, price, barbershop_id } = appointmentData;
@@ -86,6 +88,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ appointmentData, onClose })
         }
 
         api.createMercadoPagoPreference(appointmentData)
+            // FIX: The API response is an object. Destructure `preferenceId` and `publicKey` from it.
             .then(({ preferenceId, publicKey }) => {
                 setPreferenceId(preferenceId);
                 setPublicKey(publicKey);
@@ -150,41 +153,44 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ appointmentData, onClose })
 
 export default PaymentModal;
 
+// --- New Component for Package/Subscription Payment ---
+
 interface PackagePaymentModalProps {
-  intent: { type: 'package' | 'subscription', itemId: string, barbershop: Barbershop };
+  intent: { type: 'package' | 'subscription', itemId: string, barbershopId: string };
   onClose: () => void;
 }
 
 export const PackagePaymentModal: React.FC<PackagePaymentModalProps> = ({ intent, onClose }) => {
-    const { user } = useContext(AppContext);
+    const { barbershops, user } = useContext(AppContext);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [preferenceId, setPreferenceId] = useState<string | null>(null);
     const [publicKey, setPublicKey] = useState<string | null>(null);
 
-    const { type, itemId, barbershop } = intent;
+    const { type, itemId, barbershopId } = intent;
     
-    const { item } = useMemo(() => {
-        if (!barbershop) return { item: null };
+    const { item, barbershop } = useMemo(() => {
+        const shop = barbershops.find(b => b.id === barbershopId);
+        if (!shop) return { item: null, barbershop: null };
         let foundItem = null;
         if (type === 'package') {
-            const packages = (barbershop.packages as ServicePackage[]) || [];
+            const packages = (shop.packages as ServicePackage[]) || [];
             foundItem = packages.find(p => p.id === itemId);
         } else {
-            const subscriptions = (barbershop.subscriptions as SubscriptionPlan[]) || [];
+            const subscriptions = (shop.subscriptions as SubscriptionPlan[]) || [];
             foundItem = subscriptions.find(s => s.id === itemId);
         }
-        return { item: foundItem };
-    }, [barbershop, itemId, type]);
+        return { item: foundItem, barbershop: shop };
+    }, [barbershops, barbershopId, itemId, type]);
 
     useEffect(() => {
         if (!user || !item || !barbershop) {
-            setError("Dados da compra inválidos. Por favor, tente novamente.");
+            setError("Dados da compra inválidos ou usuário não logado.");
             setIsLoading(false);
             return;
         }
 
-        api.createPackageSubscriptionPreference(type, itemId, barbershop.id, user)
+        api.createPackageSubscriptionPreference(type, itemId, barbershopId, user)
             .then(data => {
                 setPreferenceId(data.preferenceId);
                 setPublicKey(data.publicKey);
@@ -194,9 +200,10 @@ export const PackagePaymentModal: React.FC<PackagePaymentModalProps> = ({ intent
             })
             .finally(() => setIsLoading(false));
 
-    }, [type, itemId, user, item, barbershop]);
+    }, [type, itemId, barbershopId, user, item, barbershop]);
     
     if (!item) {
+        // This can happen briefly while data loads. A better UI would be a skeleton loader.
         return (
             <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
                 <div className="bg-brand-dark w-full max-w-md rounded-lg shadow-xl p-6 text-center">

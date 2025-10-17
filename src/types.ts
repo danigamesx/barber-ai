@@ -138,7 +138,6 @@ export interface SubscriptionPlanDetails {
     googleCalendar: boolean;
     onlinePayments: boolean;
     packagesAndSubscriptions: boolean;
-    // FIX: Added missing 'clientManagement' property to align with type definition.
     clientManagement: boolean;
   };
 }
