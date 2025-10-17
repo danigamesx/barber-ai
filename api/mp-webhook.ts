@@ -1,4 +1,3 @@
-
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { MercadoPagoConfig, Payment } from 'mercadopago';
 import { createClient } from '@supabase/supabase-js';
@@ -148,24 +147,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 return;
             }
 
+            // Build a robust object for insertion, handling potentially missing optional fields.
             const appointmentForDb: TablesInsert<'appointments'> = {
                 client_id: appointmentData.client_id,
-                client_name: appointmentData.client_name,
+                client_name: appointmentData.client_name ?? null,
                 barbershop_id: appointmentData.barbershop_id,
-                barber_id: appointmentData.barber_id,
-                barber_name: appointmentData.barber_name,
-                service_id: appointmentData.service_id,
-                service_name: appointmentData.service_name,
-                price: Number(appointmentData.price),
+                barber_id: appointmentData.barber_id ?? null,
+                barber_name: appointmentData.barber_name ?? null,
+                service_id: appointmentData.service_id ?? null,
+                service_name: appointmentData.service_name ?? null,
+                price: appointmentData.price ? Number(appointmentData.price) : null,
                 start_time: appointmentData.start_time,
                 end_time: appointmentData.end_time,
-                notes: appointmentData.notes,
+                notes: appointmentData.notes ?? null,
                 status: 'paid',
-                is_reward: appointmentData.is_reward,
+                is_reward: appointmentData.is_reward ?? null,
                 mp_preference_id: preference_id,
-                package_usage_id: appointmentData.package_usage_id,
-                subscription_usage_id: appointmentData.subscription_usage_id,
+                package_usage_id: appointmentData.package_usage_id ?? null,
+                subscription_usage_id: appointmentData.subscription_usage_id ?? null,
             };
+
+            // Final validation for required fields before inserting
+            if (!appointmentForDb.client_id || !appointmentForDb.barbershop_id || !appointmentForDb.start_time || !appointmentForDb.end_time) {
+                 console.error(`Webhook Error: Critical metadata missing for payment ${paymentId}. Cannot create appointment.`, appointmentData);
+                return;
+            }
             
             const { error: insertError } = await supabaseAdmin.from('appointments').insert(appointmentForDb);
             

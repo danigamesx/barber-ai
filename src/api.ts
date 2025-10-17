@@ -162,38 +162,41 @@ export const uploadImage = async (file: File, bucket: string, folder: string): P
 // === DATA MUTATION FUNCTIONS ===
 export const addAppointment = async (appointment: Omit<Appointment, 'id' | 'created_at' | 'start_time' | 'end_time'> & { start_time: Date, end_time: Date }): Promise<Appointment> => {
     if (!supabase) throw new Error(supabaseInitializationError!);
-
-    // Reimplementação: Constrói o objeto de forma defensiva para garantir que todos os campos existam.
+    
+    // Build the object explicitly to avoid issues with spread operator and extra/incorrectly typed fields.
     const appointmentForDb: TablesInsert<'appointments'> = {
         client_id: appointment.client_id,
-        client_name: 'client_name' in appointment ? appointment.client_name : null,
+        client_name: appointment.client_name,
         barbershop_id: appointment.barbershop_id,
-        barber_id: 'barber_id' in appointment ? appointment.barber_id : null,
-        barber_name: 'barber_name' in appointment ? appointment.barber_name : null,
-        service_id: 'service_id' in appointment ? appointment.service_id : null,
-        service_name: 'service_name' in appointment ? appointment.service_name : null,
-        price: 'price' in appointment ? appointment.price : null,
+        barber_id: appointment.barber_id,
+        barber_name: appointment.barber_name,
+        service_id: appointment.service_id,
+        service_name: appointment.service_name,
+        price: appointment.price,
         start_time: appointment.start_time.toISOString(),
         end_time: appointment.end_time.toISOString(),
-        notes: 'notes' in appointment ? appointment.notes : null,
-        status: 'status' in appointment ? appointment.status : 'pending',
-        is_reward: 'is_reward' in appointment ? appointment.is_reward : false,
-        review_id: 'review_id' in appointment ? appointment.review_id : null,
-        cancellation_fee: 'cancellation_fee' in appointment ? appointment.cancellation_fee : null,
-        commission_amount: 'commission_amount' in appointment ? appointment.commission_amount : null,
-        package_usage_id: 'package_usage_id' in appointment ? appointment.package_usage_id : null,
-        subscription_usage_id: 'subscription_usage_id' in appointment ? appointment.subscription_usage_id : null,
+        notes: appointment.notes,
+        status: appointment.status,
+        is_reward: appointment.is_reward,
+        package_usage_id: appointment.package_usage_id,
+        subscription_usage_id: appointment.subscription_usage_id,
     };
 
-    const { data: newAppointmentRow, error: insertError } = await supabase.from('appointments').insert(appointmentForDb).select().single();
+    const { data: newAppointmentRow, error: insertError } = await supabase
+        .from('appointments')
+        .insert(appointmentForDb)
+        .select()
+        .single();
+        
     if (insertError) {
         console.error('Supabase insert error:', insertError);
-        throw new Error('Ocorreu um erro ao solicitar o agendamento. Tente novamente.');
+        throw new Error(`Ocorreu um erro ao criar o agendamento: ${insertError.message}`);
     }
 
     let finalAppointment = appointmentFromRow(newAppointmentRow);
 
-    if (appointmentForDb.status === 'pending') {
+    // Auto-confirm logic (runs after successful insert)
+    if (finalAppointment.status === 'pending') {
         const { data: barbershop } = await supabase.from('barbershops').select('integrations').eq('id', appointment.barbershop_id).single();
         const integrations = barbershop?.integrations as IntegrationSettings | undefined;
 
@@ -205,6 +208,7 @@ export const addAppointment = async (appointment: Omit<Appointment, 'id' | 'crea
     }
     return finalAppointment;
 };
+
 
 export const updateAppointment = async (appointmentId: string, updates: { start_time: Date, end_time: Date }): Promise<Appointment> => {
     if (!supabase) throw new Error(supabaseInitializationError!);
