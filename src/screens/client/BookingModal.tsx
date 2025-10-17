@@ -1,6 +1,6 @@
 import React, { useState, useContext, useMemo } from 'react';
 import { AppContext } from '../../App';
-import { Barbershop, Barber, Service, Appointment, OpeningHours, BlockedTimeSlot, DayOpeningHours, UserPurchasedPackage, ServicePackage, UserActiveSubscription, SubscriptionPlan } from '../../types';
+import { Barbershop, Barber, Service, Appointment, OpeningHours, BlockedTimeSlot, DayOpeningHours } from '../../types';
 import Button from '../../components/Button';
 import { XCircleIcon, CheckCircleIcon, CalendarIcon } from '../../components/icons/OutlineIcons';
 import BarberProfileModal from './BarberProfileModal';
@@ -34,71 +34,10 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
   const [isUsingReward, setIsUsingReward] = useState(false);
   const [viewingBarber, setViewingBarber] = useState<Barber | null>(null);
   const [successInfo, setSuccessInfo] = useState<{ title: string; message: string; appointment: NewAppointmentData } | null>(null);
-  const [selectedCredit, setSelectedCredit] = useState<{
-      type: 'package' | 'subscription';
-      usageId: string;
-      planId: string;
-    } | null>(null);
 
 
   const hasReward = (user?.rewards as any)?.[barbershop.id]?.hasReward;
   
-  const availablePackageCredits = useMemo(() => {
-    if (!user || !barbershop) return [];
-
-    const userPackages = ((user.purchased_packages || []) as UserPurchasedPackage[])
-        .filter(p => p.barbershopId === barbershop.id && p.remainingUses > 0);
-
-    const allShopPackages = (barbershop.packages as ServicePackage[] || []);
-
-    return userPackages.map(userPkg => {
-        const pkgDetails = allShopPackages.find(p => p.id === userPkg.packageId);
-        if (!pkgDetails) return null;
-        return {
-            ...userPkg,
-            name: pkgDetails.name,
-            serviceIds: pkgDetails.serviceIds,
-        };
-    }).filter((p): p is NonNullable<typeof p> => p !== null);
-  }, [user, barbershop]);
-  
-  const availableSubscriptionCredits = useMemo(() => {
-    if (!user || !barbershop) return [];
-
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-    const userSubscriptions = ((user.active_subscriptions || []) as UserActiveSubscription[])
-        .filter(s => s.barbershopId === barbershop.id && s.status === 'active');
-        
-    const allShopSubscriptions = (barbershop.subscriptions as SubscriptionPlan[] || []);
-
-    return userSubscriptions.map(userSub => {
-        const subDetails = allShopSubscriptions.find(s => s.id === userSub.subscriptionId);
-        if (!subDetails) return null;
-
-        const usesThisMonth = allAppointments.filter(app => 
-            app.subscription_usage_id === userSub.id &&
-            app.start_time >= startOfMonth &&
-            app.start_time <= endOfMonth &&
-            app.status !== 'cancelled' && app.status !== 'declined'
-        ).length;
-
-        const remainingUses = subDetails.usesPerMonth - usesThisMonth;
-        
-        if (remainingUses <= 0) return null;
-
-        return {
-            ...userSub,
-            name: subDetails.name,
-            serviceIds: subDetails.serviceIds,
-            remainingUses,
-        };
-    }).filter((s): s is NonNullable<typeof s> => s !== null);
-  }, [user, barbershop, allAppointments]);
-
-
   const handleJoinWaitingList = () => {
     if (!user) {
         alert("Por favor, faça login ou crie uma conta para entrar na lista de espera.");
@@ -215,7 +154,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
         barber_name: selectedBarber.name,
         service_id: selectedService.id,
         service_name: isUsingReward ? `(Recompensa) ${selectedService.name}` : selectedService.name,
-        price: isUsingReward || selectedCredit ? 0 : selectedService.price, 
+        price: isUsingReward ? 0 : selectedService.price, 
         start_time: startTime,
         end_time: endTime,
         notes,
@@ -224,8 +163,6 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
         cancellation_fee: null,
         commission_amount: null,
         review_id: null,
-        package_usage_id: selectedCredit?.type === 'package' ? selectedCredit.usageId : null,
-        subscription_usage_id: selectedCredit?.type === 'subscription' ? selectedCredit.usageId : null,
       };
   }
 
@@ -318,19 +255,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
           </div>
         );
       case 2: { // Selecionar Serviço
-        const handleSelectCredit = (
-            service: Service, 
-            credit: { type: 'package' | 'subscription', usageId: string, planId: string }
-        ) => {
-            setSelectedService(service);
-            setSelectedCredit(credit);
-            setIsUsingReward(false);
-            handleNext();
-        };
-    
         const handleSelectRegularService = (service: Service) => {
             setSelectedService(service);
-            setSelectedCredit(null);
             setIsUsingReward(false);
             handleNext();
         };
@@ -338,57 +264,12 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
         return (
           <div>
             <h3 className="text-xl font-semibold mb-4 text-center">Selecione um Serviço</h3>
-            
-            {(availablePackageCredits.length > 0 || availableSubscriptionCredits.length > 0) && (
-                <div className="mb-6">
-                    <h4 className="text-lg font-semibold text-brand-primary mb-2">Meus Pacotes e Assinaturas</h4>
-                    <div className="space-y-3">
-                        {availablePackageCredits.map(pkgCredit => (
-                            <div key={pkgCredit.id} className="bg-gray-800 p-3 rounded-lg">
-                                <p className="font-semibold">{pkgCredit.name} <span className="text-xs font-normal text-gray-400">({pkgCredit.remainingUses} usos restantes)</span></p>
-                                <div className="mt-2 space-y-1">
-                                    {pkgCredit.serviceIds.map(serviceId => {
-                                        const service = services.find(s => s.id === serviceId);
-                                        if (!service) return null;
-                                        return (
-                                            <button key={service.id} onClick={() => handleSelectCredit(service, { type: 'package', usageId: pkgCredit.id, planId: pkgCredit.packageId })} className="w-full text-left flex justify-between items-center bg-brand-dark p-2 rounded-md hover:bg-gray-700">
-                                                <span>Usar: {service.name}</span>
-                                                <span className="text-sm font-bold text-green-400">CRÉDITO</span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        ))}
-
-                        {availableSubscriptionCredits.map(subCredit => (
-                             <div key={subCredit.id} className="bg-gray-800 p-3 rounded-lg">
-                                <p className="font-semibold">{subCredit.name} <span className="text-xs font-normal text-gray-400">({subCredit.remainingUses} usos este mês)</span></p>
-                                <div className="mt-2 space-y-1">
-                                    {subCredit.serviceIds.map(serviceId => {
-                                        const service = services.find(s => s.id === serviceId);
-                                        if (!service) return null;
-                                        return (
-                                            <button key={service.id} onClick={() => handleSelectCredit(service, { type: 'subscription', usageId: subCredit.id, planId: subCredit.subscriptionId })} className="w-full text-left flex justify-between items-center bg-brand-dark p-2 rounded-md hover:bg-gray-700">
-                                                <span>Usar: {service.name}</span>
-                                                <span className="text-sm font-bold text-green-400">CRÉDITO</span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-            
             <div>
-                <h4 className="text-lg font-semibold text-brand-primary mb-2">Serviços Avulsos</h4>
+                <h4 className="text-lg font-semibold text-brand-primary mb-2">Serviços</h4>
                 <div className="space-y-2">
                 {hasReward && (
                     <div onClick={() => {
                         setIsUsingReward(!isUsingReward);
-                        setSelectedCredit(null);
                     }} className={`flex justify-between p-3 border-2 rounded-lg cursor-pointer ${isUsingReward ? 'border-green-500 bg-green-500/10' : 'border-gray-600'}`}>
                         <div>
                             <p className="font-semibold text-green-400">Usar Recompensa</p>
@@ -398,7 +279,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
                     </div>
                 )}
                 {services.map(service => (
-                    <div key={service.id} onClick={() => handleSelectRegularService(service)} className={`flex justify-between p-3 border-2 rounded-lg cursor-pointer ${selectedService?.id === service.id && !selectedCredit && !isUsingReward ? 'border-brand-primary bg-brand-primary/10' : 'border-gray-600'}`}>
+                    <div key={service.id} onClick={() => handleSelectRegularService(service)} className={`flex justify-between p-3 border-2 rounded-lg cursor-pointer ${selectedService?.id === service.id && !isUsingReward ? 'border-brand-primary bg-brand-primary/10' : 'border-gray-600'}`}>
                     <div>
                         <p className="font-semibold">{service.name}</p>
                         <p className="text-sm text-gray-400">{service.duration} min</p>
@@ -441,7 +322,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
           </div>
         );
       case 4: { // Confirmar
-        const basePrice = isUsingReward || selectedCredit ? 0 : (selectedService?.price || 0);
+        const basePrice = isUsingReward ? 0 : (selectedService?.price || 0);
         const debt = (user?.outstanding_debts as any)?.[barbershop.id] || 0;
         const credit = (user?.store_credits as any)?.[barbershop.id] || 0;
         const creditToApply = Math.min(credit, basePrice + debt);
@@ -456,7 +337,6 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
               <p><strong>Data:</strong> {selectedDate.toLocaleDateString()}</p>
               <p><strong>Hora:</strong> {selectedTime}</p>
               {isUsingReward && <p className="font-bold text-green-400">Recompensa aplicada!</p>}
-              {selectedCredit && <p className="font-bold text-green-400">Usando 1 crédito de {selectedCredit.type === 'package' ? 'pacote' : 'assinatura'}.</p>}
               <textarea 
                 className="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg mt-2" 
                 rows={2} 
@@ -499,7 +379,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
   };
   
   const getConfirmationButtons = () => {
-    const basePrice = isUsingReward || selectedCredit ? 0 : (selectedService?.price || 0);
+    const basePrice = isUsingReward ? 0 : (selectedService?.price || 0);
     const debt = (user?.outstanding_debts as any)?.[barbershop.id] || 0;
     const credit = (user?.store_credits as any)?.[barbershop.id] || 0;
     const creditToApply = Math.min(credit, basePrice + debt);

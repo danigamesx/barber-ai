@@ -180,9 +180,7 @@ export const addAppointment = async (appointment: Omit<Appointment, 'id' | 'crea
         is_reward: appointment.is_reward || false,
         review_id: appointment.review_id || null,
         cancellation_fee: appointment.cancellation_fee || null,
-        commission_amount: appointment.commission_amount || null,
-        package_usage_id: appointment.package_usage_id || null,
-        subscription_usage_id: appointment.subscription_usage_id || null
+        commission_amount: appointment.commission_amount || null
     };
 
     const { data: newAppointmentRow, error: insertError } = await supabase.from('appointments').insert(appointmentForDb).select().single();

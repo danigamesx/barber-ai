@@ -266,8 +266,6 @@ export interface Appointment {
   commission_amount: number | null;
   google_event_id?: string | null;
   mp_preference_id?: string | null;
-  package_usage_id: string | null;
-  subscription_usage_id: string | null;
 }
 
 export interface Review {
