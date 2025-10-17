@@ -1,3 +1,4 @@
+
 import React, { useContext, useState, useEffect } from 'react';
 import { AppContext, PlanContext } from '../../App';
 import Button from '../../components/Button';
@@ -644,6 +645,7 @@ const BarbershopSettingsScreen: React.FC = () => {
       {modalState?.type === 'subscriptions' && (
         <ManageSubscriptionsModal
             currentSubscriptions={subscriptions}
+            // FIX: The 'availableServices' prop was missing, causing a TypeScript error. This prop is required for the modal to display the services that can be included in a subscription.
             availableServices={services}
             onClose={() => setModalState(null)}
             onSave={(subscriptions) => {

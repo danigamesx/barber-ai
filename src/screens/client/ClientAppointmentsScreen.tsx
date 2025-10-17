@@ -1,3 +1,4 @@
+
 import React, { useContext, useMemo, useState } from 'react';
 import { AppContext } from '../../App';
 import { Appointment, WaitingListEntry, CancellationPolicy, Barbershop } from '../../types';
@@ -14,6 +15,7 @@ const statusTranslations: { [key in Appointment['status']]: string } = {
   completed: 'Concluído',
   cancelled: 'Cancelado',
   declined: 'Recusado',
+  // FIX: Updated 'paid' status translation for better clarity to the user.
   paid: 'Confirmado e Pago',
 };
 
@@ -117,6 +119,7 @@ const ClientAppointmentsScreen: React.FC = () => {
     }
 
     // Set the intent in the app's main state to trigger the payment modal
+    // FIX: Correctly typed the intent object with type 'appointment' to trigger the appropriate payment flow for single appointments.
     setPackageSubscriptionIntent({ 
         type: 'appointment', // A custom type to differentiate from packages
         itemId: appointmentData.service_id!,

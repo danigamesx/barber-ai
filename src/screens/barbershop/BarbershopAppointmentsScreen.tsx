@@ -1,3 +1,4 @@
+
 import React, { useContext, useMemo, useState, useEffect, useCallback } from 'react';
 import { AppContext } from '../../App';
 import Button from '../../components/Button';
@@ -222,6 +223,7 @@ const NewAppointmentModal: React.FC<{
                 cancellation_fee: null,
                 commission_amount: null,
                 review_id: null,
+                // FIX: Added missing properties to satisfy the Appointment type for the addAppointment function call.
                 package_usage_id: null,
                 subscription_usage_id: null,
             });
