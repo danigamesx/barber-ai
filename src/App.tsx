@@ -27,7 +27,7 @@ import { supabaseInitializationError } from './supabaseClient';
 import PlanPaymentModal from './screens/barbershop/PlanPaymentModal';
 import { PackagePaymentModal } from './screens/client/PaymentModal';
 
-// FIX: Added missing properties to the context type definition.
+// FIX: Added missing properties `deleteBarbershopAccount`, `setPurchaseIntent`, and `setPackageSubscriptionIntent` to the context type definition.
 export const AppContext = React.createContext<{
   user: User | null;
   users: User[];

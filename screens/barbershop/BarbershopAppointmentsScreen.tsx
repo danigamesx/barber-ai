@@ -222,6 +222,9 @@ const NewAppointmentModal: React.FC<{
                 cancellation_fee: null,
                 commission_amount: null,
                 review_id: null,
+                // FIX: Added missing properties to satisfy the Appointment type for the addAppointment function call.
+                package_usage_id: null,
+                subscription_usage_id: null,
             });
             onClose();
         } catch (error: any) {

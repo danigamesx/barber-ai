@@ -7,7 +7,6 @@ import ManageServiceModal from './ManageServiceModal';
 import ManageBarberModal from './ManageBarberModal';
 import ManageScheduleModal from './ManageScheduleModal';
 import IntegrationsModal from './IntegrationsModal';
-import ManageLoyaltyModal from './ManageLoyaltyModal';
 import ManagePackagesModal from './ManagePackagesModal';
 import ManageSubscriptionsModal from './ManageSubscriptionsModal';
 import { states, cities } from '../../data/brazil-locations';
@@ -16,6 +15,7 @@ import SearchableSelect from '../../components/SearchableSelect';
 import UpgradePlanModal from './UpgradePlanModal';
 import PlansModal from './PlansModal';
 import * as api from '../../api';
+import Accordion from '../../components/Accordion';
 
 
 const dayTranslations: { [key: string]: string } = {
@@ -33,24 +33,17 @@ type ModalState =
   | { type: 'barber'; data: Barber | null }
   | { type: 'schedule' }
   | { type: 'integrations' }
-  | { type: 'loyalty' }
   | { type: 'packages' }
   | { type: 'subscriptions' }
   | { type: 'upgrade', feature: string, plan: string }
   | null;
 
-// The App component now controls the plan purchase flow
-declare global {
-  interface Window {
-    setPurchaseIntent: (planId: string, billingCycle: 'monthly' | 'annual') => void;
-  }
-}
-
 const BarbershopSettingsScreen: React.FC = () => {
-  const { barbershopData, updateBarbershopData, logout, accessStatus } = useContext(AppContext);
+  const { barbershopData, updateBarbershopData, logout, accessStatus, deleteBarbershopAccount, setPurchaseIntent } = useContext(AppContext);
   const { plan, features } = useContext(PlanContext);
   const [modalState, setModalState] = useState<ModalState>(null);
   const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const [policy, setPolicy] = useState<CancellationPolicy>({
     enabled: false, feePercentage: 50, timeLimitHours: 2
@@ -58,6 +51,7 @@ const BarbershopSettingsScreen: React.FC = () => {
   
   const [autoConfirm, setAutoConfirm] = useState(false);
   const [name, setName] = useState('');
+  const [slug, setSlug] = useState('');
   const [phone, setPhone] = useState('');
   const [description, setDescription] = useState('');
   const [socialMedia, setSocialMedia] = useState<SocialMedia>({});
@@ -71,6 +65,7 @@ const BarbershopSettingsScreen: React.FC = () => {
   useEffect(() => {
     if(barbershopData) {
         setName(barbershopData.name || '');
+        setSlug(barbershopData.slug || '');
         setPhone(barbershopData.phone || '');
         setDescription(barbershopData.description || '');
         setSocialMedia((barbershopData.social_media as SocialMedia) || {});
@@ -84,6 +79,16 @@ const BarbershopSettingsScreen: React.FC = () => {
   if (!barbershopData) {
     return <div className="p-4">Carregando...</div>;
   }
+
+  const handleAccountDelete = async () => {
+    try {
+        await deleteBarbershopAccount();
+        // O AppContext irá lidar com o logout e limpeza do estado após a exclusão bem-sucedida.
+    } catch (error: any) {
+        alert(error.message);
+        setIsDeleteModalOpen(false); // Fecha o modal em caso de erro para permitir nova tentativa.
+    }
+  };
   
   const getStatusInfo = () => {
     const integrations = barbershopData.integrations as IntegrationSettings;
@@ -109,6 +114,17 @@ const BarbershopSettingsScreen: React.FC = () => {
         label: 'Plano gratuito sem data de expiração',
         color: 'text-gray-400'
     };
+  };
+  
+  const slugify = (text: string) => {
+    return text
+      .toString()
+      .toLowerCase()
+      .replace(/\s+/g, '-')           // Replace spaces with -
+      .replace(/[^\w-]+/g, '')       // Remove all non-word chars
+      .replace(/--+/g, '-')         // Replace multiple - with single -
+      .replace(/^-+/, '')             // Trim - from start of text
+      .replace(/-+$/, '');            // Trim - from end of text
   };
 
   const statusInfo = getStatusInfo();
@@ -164,7 +180,8 @@ const BarbershopSettingsScreen: React.FC = () => {
         }
 
         await updateBarbershopData(barbershopData.id, { 
-            name, 
+            name,
+            slug,
             phone,
             description,
             social_media: socialMedia as Json,
@@ -174,9 +191,9 @@ const BarbershopSettingsScreen: React.FC = () => {
 
         setNewGalleryFiles([]);
         alert('Informações salvas com sucesso!');
-    } catch (error) {
+    } catch (error: any) {
         console.error("Failed to save barbershop info:", error);
-        alert("Ocorreu um erro ao salvar as informações.");
+        alert(error.message);
     } finally {
         setIsUploading(false);
     }
@@ -271,10 +288,10 @@ const BarbershopSettingsScreen: React.FC = () => {
           setModalState({ type: feature });
       }
   };
-  
+
   const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
+    setPurchaseIntent({ planId, billingCycle });
     setIsPlansModalOpen(false);
-    window.setPurchaseIntent(planId, billingCycle);
   };
 
   return (
@@ -288,36 +305,33 @@ const BarbershopSettingsScreen: React.FC = () => {
       <div className="p-4 pb-24">
         <h1 className="text-2xl font-bold mb-6 text-brand-light">Ajustes</h1>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           
-          <div className="bg-brand-secondary p-4 rounded-lg">
-            <h2 className="text-lg font-semibold text-brand-primary mb-3">Meu Plano</h2>
-            <div className="space-y-2 text-sm mb-4">
-                <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Plano Atual:</span>
-                    <span className="font-bold text-lg text-white">{plan.name}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Status:</span>
-                    <span className={`font-semibold ${statusInfo.color}`}>{statusInfo.status}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                     <span className="text-gray-400">{statusInfo.label}:</span>
-                     <span className="font-semibold text-white">{statusInfo.date ? statusInfo.date.toLocaleDateString('pt-BR') : 'N/A'}</span>
-                </div>
-            </div>
-            <Button onClick={() => setIsPlansModalOpen(true)} variant="secondary">Ver ou Alterar Plano</Button>
-          </div>
+          <Accordion title="Plano e Assinatura" initialOpen={true}>
+              <div className="space-y-2 text-sm mb-4">
+                  <div className="flex justify-between items-center">
+                      <span className="text-gray-400">Plano Atual:</span>
+                      <span className="font-bold text-lg text-white">{plan.name}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                      <span className="text-gray-400">Status:</span>
+                      <span className={`font-semibold ${statusInfo.color}`}>{statusInfo.status}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                       <span className="text-gray-400">{statusInfo.label}:</span>
+                       <span className="font-semibold text-white">{statusInfo.date ? statusInfo.date.toLocaleDateString('pt-BR') : 'N/A'}</span>
+                  </div>
+              </div>
+              <Button onClick={() => setIsPlansModalOpen(true)} variant="secondary">Ver ou Alterar Plano</Button>
+          </Accordion>
           
-          <div className="bg-brand-secondary p-4 rounded-lg">
-             <h2 className="text-lg font-semibold text-brand-primary mb-3">Página da Barbearia</h2>
-             <div className="space-y-3">
-                
+          <Accordion title="Página da Barbearia">
+             <div className="space-y-6">
                  <div className="flex items-center gap-4">
                     <img 
                         src={barbershopData.image_url || `https://placehold.co/400x400/1F2937/FBBF24?text=Logo`} 
                         alt="Logo da Barbearia"
-                        className="w-24 h-24 rounded-lg object-cover bg-brand-secondary"
+                        className="w-24 h-24 rounded-lg object-cover bg-brand-dark"
                     />
                     <div>
                         <label htmlFor="logo-upload" className="text-md font-semibold text-gray-300">Logo e Imagem de Capa</label>
@@ -328,6 +342,23 @@ const BarbershopSettingsScreen: React.FC = () => {
                 </div>
 
                 <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Nome da Barbearia" className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
+                
+                <div>
+                    <label htmlFor="slug" className="block text-sm font-medium text-gray-400">Link Personalizado</label>
+                    <div className="flex items-center mt-1">
+                        <span className="text-gray-500 bg-brand-dark px-3 py-2 rounded-l-lg border border-r-0 border-gray-600 truncate">{window.location.origin}/#/</span>
+                        <input
+                            id="slug"
+                            type="text"
+                            value={slug}
+                            onChange={e => setSlug(slugify(e.target.value))}
+                            placeholder="nome-da-sua-barbearia"
+                            className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-r-lg"
+                        />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Use apenas letras minúsculas, números e hifens.</p>
+                </div>
+
                 <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Sobre sua barbearia..." rows={3} className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
                 <input type="tel" value={phone} onChange={e => setPhone(formatPhone(e.target.value))} placeholder="Telefone para Contato" maxLength={15} className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"/>
                 
@@ -383,155 +414,160 @@ const BarbershopSettingsScreen: React.FC = () => {
                     {isUploading ? 'Salvando...' : 'Salvar Informações'}
                 </Button>
              </div>
-          </div>
+          </Accordion>
 
-          <div className="bg-brand-secondary p-4 rounded-lg">
-            <div className="flex justify-between items-center mb-3">
-              <h2 className="text-lg font-semibold text-brand-primary">Gerenciar Serviços</h2>
-              <button onClick={() => setModalState({ type: 'service', data: null })} className="text-brand-primary hover:text-amber-300">
-                <PlusCircleIcon className="w-7 h-7" />
-              </button>
-            </div>
-            <div className="space-y-2">
-              {services.map(service => (
-                <div key={service.id} className="flex justify-between items-center bg-brand-dark p-3 rounded-md">
-                  <div>
-                    <p>{service.name}</p>
-                    <p className="text-xs text-gray-400">{service.duration} min</p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <p className="font-semibold">R${service.price}</p>
-                    <button onClick={() => setModalState({ type: 'service', data: service })} className="text-gray-400 hover:text-brand-primary"><PencilIcon className="w-5 h-5"/></button>
-                    <button onClick={() => handleDeleteService(service.id)} className="text-gray-400 hover:text-red-500"><TrashIcon className="w-5 h-5"/></button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-brand-secondary p-4 rounded-lg">
-             <div className="flex justify-between items-center mb-3">
-                <h2 className="text-lg font-semibold text-brand-primary">Gerenciar Barbeiros ({barbers.length}/{plan.maxBarbers === Infinity ? '∞' : plan.maxBarbers})</h2>
-                <button onClick={handleAddBarberClick} className="text-brand-primary hover:text-amber-300">
+          <Accordion title="Serviços e Equipe">
+            <div className="space-y-6">
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-lg font-semibold text-white">Gerenciar Serviços</h3>
+                  <button onClick={() => setModalState({ type: 'service', data: null })} className="text-brand-primary hover:text-amber-300">
                     <PlusCircleIcon className="w-7 h-7" />
-                </button>
-            </div>
-            <div className="space-y-2">
-              {barbers.map(barber => (
-                <div key={barber.id} className="flex justify-between items-center bg-brand-dark p-2 rounded-md">
-                   <div className="flex items-center space-x-3">
-                    <img src={barber.avatarUrl} alt={barber.name} className="w-10 h-10 rounded-full" />
-                    <p>{barber.name}</p>
-                   </div>
-                   <div className="flex items-center gap-4 mr-2">
-                    <button onClick={() => setModalState({ type: 'barber', data: barber })} className="text-gray-400 hover:text-brand-primary"><PencilIcon className="w-5 h-5"/></button>
-                    <button onClick={() => handleDeleteBarber(barber.id)} className="text-gray-400 hover:text-red-500"><TrashIcon className="w-5 h-5"/></button>
-                  </div>
+                  </button>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-brand-secondary p-4 rounded-lg">
-            <h2 className="text-lg font-semibold text-brand-primary mb-3">Agenda</h2>
-             <div className="space-y-2 text-sm mb-4">
-              {Object.keys((barbershopData.opening_hours as OpeningHours) || {}).map((day) => {
-                const hours = (barbershopData.opening_hours as OpeningHours)[day] as DayOpeningHours | null;
-                return (
-                  <div key={day} className="flex justify-between items-center">
-                    <p className="capitalize">{dayTranslations[day]}</p>
-                    <p className="text-gray-300 text-right text-xs">
-                        {hours ? `Manhã: ${hours.morning_open}-${hours.morning_close} | Tarde: ${hours.afternoon_open}-${hours.afternoon_close}` : 'Fechado'}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-            <Button onClick={() => setModalState({type: 'schedule'})} variant="secondary">Gerenciar Agenda</Button>
-          </div>
-          
-          <div className="bg-brand-secondary p-4 rounded-lg">
-            <h2 className="text-lg font-semibold text-brand-primary mb-3">Preferências de Agendamento</h2>
-            <div className="flex justify-between items-center mb-3">
-                <div>
-                    <label htmlFor="autoConfirmToggle" className="font-semibold">Confirmar agendamentos automaticamente</label>
-                    <p className="text-xs text-gray-400 font-normal mt-1">Se ativado, novos pedidos são aceitos na hora. Se desativado, você precisa confirmá-los manualmente.</p>
+                <div className="space-y-2">
+                  {services.map(service => (
+                    <div key={service.id} className="flex justify-between items-center bg-brand-dark p-3 rounded-md">
+                      <div>
+                        <p>{service.name}</p>
+                        <p className="text-xs text-gray-400">{service.duration} min</p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <p className="font-semibold">R${service.price}</p>
+                        <button onClick={() => setModalState({ type: 'service', data: service })} className="text-gray-400 hover:text-brand-primary"><PencilIcon className="w-5 h-5"/></button>
+                        <button onClick={() => handleDeleteService(service.id)} className="text-gray-400 hover:text-red-500"><TrashIcon className="w-5 h-5"/></button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <input 
-                  id="autoConfirmToggle" 
-                  type="checkbox" 
-                  className="toggle-checkbox" 
-                  checked={autoConfirm}
-                  onChange={e => setAutoConfirm(e.target.checked)}
-                />
-            </div>
-            <Button onClick={handleSaveAutoConfirm} variant="secondary">Salvar Preferência</Button>
-          </div>
+              </div>
 
-           <div className="bg-brand-secondary p-4 rounded-lg">
-            <h2 className="text-lg font-semibold text-brand-primary mb-3">Recursos Adicionais</h2>
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-lg font-semibold text-white">Gerenciar Barbeiros ({barbers.length}/{plan.maxBarbers === Infinity ? '∞' : plan.maxBarbers})</h3>
+                  <button onClick={handleAddBarberClick} className="text-brand-primary hover:text-amber-300">
+                      <PlusCircleIcon className="w-7 h-7" />
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {barbers.map(barber => (
+                    <div key={barber.id} className="flex justify-between items-center bg-brand-dark p-2 rounded-md">
+                      <div className="flex items-center space-x-3">
+                        <img src={barber.avatarUrl} alt={barber.name} className="w-10 h-10 rounded-full" />
+                        <p>{barber.name}</p>
+                      </div>
+                      <div className="flex items-center gap-4 mr-2">
+                        <button onClick={() => setModalState({ type: 'barber', data: barber })} className="text-gray-400 hover:text-brand-primary"><PencilIcon className="w-5 h-5"/></button>
+                        <button onClick={() => handleDeleteBarber(barber.id)} className="text-gray-400 hover:text-red-500"><TrashIcon className="w-5 h-5"/></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </Accordion>
+
+          <Accordion title="Agenda e Políticas">
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-3">Horário de Funcionamento</h3>
+                <div className="space-y-2 text-sm mb-4">
+                  {Object.keys((barbershopData.opening_hours as OpeningHours) || {}).map((day) => {
+                    const hours = (barbershopData.opening_hours as OpeningHours)[day] as DayOpeningHours | null;
+                    return (
+                      <div key={day} className="flex justify-between items-center">
+                        <p className="capitalize">{dayTranslations[day]}</p>
+                        <p className="text-gray-300 text-right text-xs">
+                            {hours ? `Manhã: ${hours.morning_open}-${hours.morning_close} | Tarde: ${hours.afternoon_open}-${hours.afternoon_close}` : 'Fechado'}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+                <Button onClick={() => setModalState({type: 'schedule'})} variant="secondary">Gerenciar Agenda Completa</Button>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-3">Preferências de Agendamento</h3>
+                <div className="flex justify-between items-center mb-3">
+                    <div>
+                        <label htmlFor="autoConfirmToggle" className="font-semibold">Confirmar agendamentos automaticamente</label>
+                        <p className="text-xs text-gray-400 font-normal mt-1">Se ativado, novos pedidos são aceitos na hora. Se desativado, você precisa confirmá-los manualmente.</p>
+                    </div>
+                    <input 
+                      id="autoConfirmToggle" 
+                      type="checkbox" 
+                      className="toggle-checkbox" 
+                      checked={autoConfirm}
+                      onChange={e => setAutoConfirm(e.target.checked)}
+                    />
+                </div>
+                <Button onClick={handleSaveAutoConfirm} variant="secondary">Salvar Preferência</Button>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-3">Política de Cancelamento</h3>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <label htmlFor="enablePolicy" className="font-semibold flex-1 pr-4">Cobrar por cancelamentos tardios</label>
+                    <input 
+                      id="enablePolicy" 
+                      type="checkbox" 
+                      className="toggle-checkbox" 
+                      checked={policy.enabled}
+                      onChange={e => setPolicy(p => ({ ...p, enabled: e.target.checked }))}
+                    />
+                  </div>
+                  {policy.enabled && (
+                    <>
+                      <div>
+                        <label htmlFor="feePercentage" className="block text-sm font-medium text-gray-400 mb-1">
+                          Percentual da multa (%)
+                        </label>
+                        <input
+                          id="feePercentage"
+                          type="number"
+                          value={policy.feePercentage}
+                          onChange={e => setPolicy(p => ({ ...p, feePercentage: parseInt(e.target.value) || 0 }))}
+                          className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"
+                          placeholder="Ex: 50"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="timeLimit" className="block text-sm font-medium text-gray-400 mb-1">
+                          Cancelar sem custo até (horas antes)
+                        </label>
+                        <input
+                          id="timeLimit"
+                          type="number"
+                          value={policy.timeLimitHours}
+                          onChange={e => setPolicy(p => ({ ...p, timeLimitHours: parseInt(e.target.value) || 0 }))}
+                          className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"
+                          placeholder="Ex: 2"
+                        />
+                      </div>
+                    </>
+                  )}
+                  <Button onClick={handleSavePolicy} variant="secondary">Salvar Política</Button>
+                </div>
+              </div>
+            </div>
+          </Accordion>
+
+          <Accordion title="Recursos Adicionais (Marketing)">
             <div className="space-y-4">
-              <Button variant="secondary" onClick={() => setModalState({type: 'loyalty'})}>Gerenciar Fidelidade</Button>
               <Button variant="secondary" onClick={() => handleFeatureClick('packages', 'Premium', 'Gerenciar Pacotes')}>Gerenciar Pacotes</Button>
               <Button variant="secondary" onClick={() => handleFeatureClick('subscriptions', 'Premium', 'Gerenciar Assinaturas')}>Gerenciar Assinaturas</Button>
             </div>
-          </div>
-
-          <div className="bg-brand-secondary p-4 rounded-lg">
-            <h2 className="text-lg font-semibold text-brand-primary mb-3">Política de Cancelamento</h2>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <label htmlFor="enablePolicy" className="font-semibold flex-1 pr-4">Cobrar por cancelamentos tardios</label>
-                <input 
-                  id="enablePolicy" 
-                  type="checkbox" 
-                  className="toggle-checkbox" 
-                  checked={policy.enabled}
-                  onChange={e => setPolicy(p => ({ ...p, enabled: e.target.checked }))}
-                />
-              </div>
-              {policy.enabled && (
-                <>
-                  <div>
-                    <label htmlFor="feePercentage" className="block text-sm font-medium text-gray-400 mb-1">
-                      Percentual da multa (%)
-                    </label>
-                    <input
-                      id="feePercentage"
-                      type="number"
-                      value={policy.feePercentage}
-                      onChange={e => setPolicy(p => ({ ...p, feePercentage: parseInt(e.target.value) || 0 }))}
-                      className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"
-                      placeholder="Ex: 50"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="timeLimit" className="block text-sm font-medium text-gray-400 mb-1">
-                      Cancelar sem custo até (horas antes)
-                    </label>
-                    <input
-                      id="timeLimit"
-                      type="number"
-                      value={policy.timeLimitHours}
-                      onChange={e => setPolicy(p => ({ ...p, timeLimitHours: parseInt(e.target.value) || 0 }))}
-                      className="w-full px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg"
-                      placeholder="Ex: 2"
-                    />
-                  </div>
-                </>
-              )}
-              <Button onClick={handleSavePolicy} variant="secondary">Salvar Política</Button>
-            </div>
-          </div>
+          </Accordion>
           
-          <div className="bg-brand-secondary p-4 rounded-lg">
-            <h2 className="text-lg font-semibold text-brand-primary mb-3">Integrações</h2>
+          <Accordion title="Integrações">
             <p className="text-gray-400 text-sm mb-4">Sincronize sua agenda e receba pagamentos.</p>
             <div className="space-y-3">
                <div className="flex justify-between items-center">
-                <span>Pagamentos Online (Stripe)</span>
-                <span className={`px-2 py-1 text-xs rounded-full ${(barbershopData.integrations as IntegrationSettings)?.stripeAccountOnboarded ? 'bg-green-500/20 text-green-400' : 'bg-gray-600'}`}>
-                  {(barbershopData.integrations as IntegrationSettings)?.stripeAccountOnboarded ? 'Conectado' : 'Desconectado'}
+                <span>Pagamentos Online (Mercado Pago)</span>
+                <span className={`px-2 py-1 text-xs rounded-full ${((barbershopData.integrations as IntegrationSettings)?.mercadopagoAccessToken && (barbershopData.integrations as IntegrationSettings)?.mercadopagoPublicKey) ? 'bg-green-500/20 text-green-400' : 'bg-gray-600'}`}>
+                  {((barbershopData.integrations as IntegrationSettings)?.mercadopagoAccessToken && (barbershopData.integrations as IntegrationSettings)?.mercadopagoPublicKey) ? 'Conectado' : 'Desconectado'}
                 </span>
               </div>
               <div className="flex justify-between items-center">
@@ -548,11 +584,14 @@ const BarbershopSettingsScreen: React.FC = () => {
               </div>
               <Button onClick={() => setModalState({type: 'integrations'})} className="mt-4" variant="secondary">Gerenciar Integrações</Button>
             </div>
-          </div>
-
-          <div className="mt-6">
-            <Button variant="danger" onClick={logout}>Sair da Conta</Button>
-          </div>
+          </Accordion>
+          
+          <Accordion title="Conta">
+             <div className="space-y-4">
+                <Button variant="secondary" onClick={logout}>Sair da Conta</Button>
+                <Button variant="danger" onClick={() => setIsDeleteModalOpen(true)}>Excluir Conta Permanentemente</Button>
+             </div>
+          </Accordion>
         </div>
       </div>
       
@@ -589,17 +628,6 @@ const BarbershopSettingsScreen: React.FC = () => {
             onSave={handleSaveIntegrations}
         />
       )}
-      
-       {modalState?.type === 'loyalty' && (
-        <ManageLoyaltyModal
-            currentSettings={barbershopData.loyalty_program}
-            onClose={() => setModalState(null)}
-            onSave={(settings) => {
-              updateBarbershopData(barbershopData.id, { loyalty_program: settings as unknown as Json });
-              setModalState(null);
-            }}
-        />
-      )}
 
       {modalState?.type === 'packages' && (
         <ManagePackagesModal
@@ -616,6 +644,8 @@ const BarbershopSettingsScreen: React.FC = () => {
       {modalState?.type === 'subscriptions' && (
         <ManageSubscriptionsModal
             currentSubscriptions={subscriptions}
+            // FIX: The 'availableServices' prop was missing, which is required by ManageSubscriptionsModal.
+            availableServices={services}
             onClose={() => setModalState(null)}
             onSave={(subscriptions) => {
               updateBarbershopData(barbershopData.id, { subscriptions: subscriptions as unknown as Json });
@@ -632,8 +662,72 @@ const BarbershopSettingsScreen: React.FC = () => {
         />
       )}
       {isPlansModalOpen && <PlansModal onClose={() => setIsPlansModalOpen(false)} onInitiatePurchase={handleInitiatePurchase} />}
+      {isDeleteModalOpen && (
+        <DeleteAccountModal 
+            onClose={() => setIsDeleteModalOpen(false)}
+            onConfirmDelete={handleAccountDelete}
+        />
+      )}
     </>
   );
+};
+
+const DeleteAccountModal: React.FC<{ onClose: () => void; onConfirmDelete: () => void; }> = ({ onClose, onConfirmDelete }) => {
+    const [isConfirmed, setIsConfirmed] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleDelete = () => {
+        setIsLoading(true);
+        onConfirmDelete();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+            <div className="bg-brand-dark w-full max-w-md rounded-lg shadow-xl p-6 relative">
+                <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white">
+                    <XCircleIcon className="w-8 h-8" />
+                </button>
+                <h2 className="text-xl font-bold text-red-500 text-center">Atenção! Ação Irreversível</h2>
+                <div className="my-4 text-gray-300 text-center space-y-2">
+                    <p>Você está prestes a excluir sua conta e todos os dados associados à sua barbearia.</p>
+                    <p className="font-bold">Isso inclui:</p>
+                    <ul className="text-sm list-disc list-inside text-left mx-auto max-w-xs">
+                        <li>Seu perfil de usuário</li>
+                        <li>Todas as informações da barbearia</li>
+                        <li>Histórico de agendamentos</li>
+                        <li>Dados de clientes e avaliações</li>
+                    </ul>
+                    <p className="font-bold text-amber-400 mt-2">Esta ação não pode ser desfeita.</p>
+                </div>
+
+                <div className="my-6">
+                    <label className="flex items-center justify-center gap-2 cursor-pointer text-sm">
+                        <input 
+                            type="checkbox"
+                            checked={isConfirmed}
+                            onChange={() => setIsConfirmed(!isConfirmed)}
+                            className="w-5 h-5 accent-brand-primary bg-brand-secondary border-gray-600 rounded"
+                        />
+                        <span>Estou ciente e quero excluir minha conta permanentemente.</span>
+                    </label>
+                </div>
+                
+                <div className="flex flex-col gap-3">
+                    <Button 
+                        variant="danger" 
+                        onClick={handleDelete} 
+                        disabled={!isConfirmed || isLoading}
+                        className="disabled:bg-red-900 disabled:text-gray-500 disabled:cursor-not-allowed"
+                    >
+                        {isLoading ? 'Excluindo...' : 'Confirmar Exclusão'}
+                    </Button>
+                    <Button variant="secondary" onClick={onClose} disabled={isLoading}>
+                        Cancelar
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 export default BarbershopSettingsScreen;
