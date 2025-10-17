@@ -1,4 +1,3 @@
-
 import { supabase, supabaseInitializationError } from './supabaseClient';
 import { User, Barbershop, Appointment, Review, Barber, FinancialRecord, Promotion, ClientNotification, WaitingListEntry, Json, IntegrationSettings, Address } from './types';
 import { TablesInsert, TablesUpdate } from './types/database';
@@ -164,15 +163,34 @@ export const uploadImage = async (file: File, bucket: string, folder: string): P
 export const addAppointment = async (appointment: Omit<Appointment, 'id' | 'created_at' | 'start_time' | 'end_time'> & { start_time: Date, end_time: Date }): Promise<Appointment> => {
     if (!supabase) throw new Error(supabaseInitializationError!);
     const initialStatus = appointment.status === 'paid' ? 'paid' : (appointment.status === 'confirmed' ? 'confirmed' : 'pending');
+    
+    // Construct the object explicitly to ensure correct types and properties, preventing spread operator issues.
     const appointmentForDb: TablesInsert<'appointments'> = {
-        ...appointment,
+        client_id: appointment.client_id,
+        client_name: appointment.client_name,
+        barbershop_id: appointment.barbershop_id,
+        barber_id: appointment.barber_id,
+        barber_name: appointment.barber_name,
+        service_id: appointment.service_id,
+        service_name: appointment.service_name,
+        price: appointment.price,
         start_time: appointment.start_time.toISOString(),
         end_time: appointment.end_time.toISOString(),
+        notes: appointment.notes,
         status: initialStatus,
+        is_reward: appointment.is_reward,
+        review_id: appointment.review_id,
+        cancellation_fee: appointment.cancellation_fee,
+        commission_amount: appointment.commission_amount,
+        package_usage_id: appointment.package_usage_id,
+        subscription_usage_id: appointment.subscription_usage_id
     };
 
     const { data: newAppointmentRow, error: insertError } = await supabase.from('appointments').insert(appointmentForDb).select().single();
-    if (insertError) throw insertError;
+    if (insertError) {
+        console.error('Supabase insert error:', insertError);
+        throw insertError;
+    }
 
     let finalAppointment = appointmentFromRow(newAppointmentRow);
 
