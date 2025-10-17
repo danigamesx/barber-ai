@@ -164,31 +164,32 @@ export const addAppointment = async (appointment: Omit<Appointment, 'id' | 'crea
     if (!supabase) throw new Error(supabaseInitializationError!);
     const initialStatus = appointment.status === 'paid' ? 'paid' : (appointment.status === 'confirmed' ? 'confirmed' : 'pending');
     
+    // This robust object construction prevents errors from `undefined` properties.
     const appointmentForDb: TablesInsert<'appointments'> = {
         client_id: appointment.client_id,
-        client_name: appointment.client_name,
+        client_name: appointment.client_name ?? null,
         barbershop_id: appointment.barbershop_id,
-        barber_id: appointment.barber_id,
-        barber_name: appointment.barber_name,
-        service_id: appointment.service_id,
-        service_name: appointment.service_name,
-        price: appointment.price,
+        barber_id: appointment.barber_id ?? null,
+        barber_name: appointment.barber_name ?? null,
+        service_id: appointment.service_id ?? null,
+        service_name: appointment.service_name ?? null,
+        price: appointment.price ?? null,
         start_time: appointment.start_time.toISOString(),
         end_time: appointment.end_time.toISOString(),
-        notes: appointment.notes || null,
+        notes: appointment.notes ?? null,
         status: initialStatus,
-        is_reward: appointment.is_reward || false,
-        review_id: appointment.review_id || null,
-        cancellation_fee: appointment.cancellation_fee || null,
-        commission_amount: appointment.commission_amount || null,
-        package_usage_id: appointment.package_usage_id || null,
-        subscription_usage_id: appointment.subscription_usage_id || null
+        is_reward: appointment.is_reward ?? false,
+        review_id: appointment.review_id ?? null,
+        cancellation_fee: appointment.cancellation_fee ?? null,
+        commission_amount: appointment.commission_amount ?? null,
+        package_usage_id: appointment.package_usage_id ?? null,
+        subscription_usage_id: appointment.subscription_usage_id ?? null
     };
 
     const { data: newAppointmentRow, error: insertError } = await supabase.from('appointments').insert(appointmentForDb).select().single();
     if (insertError) {
         console.error('Supabase insert error:', insertError);
-        throw insertError;
+        throw new Error('Ocorreu um erro ao solicitar o agendamento. Tente novamente.');
     }
 
     let finalAppointment = appointmentFromRow(newAppointmentRow);
