@@ -161,7 +161,10 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
         is_reward: isUsingReward,
         cancellation_fee: null,
         commission_amount: null,
-        review_id: null
+        review_id: null,
+        // FIX: Added missing properties to satisfy the Appointment type.
+        package_usage_id: null,
+        subscription_usage_id: null,
       };
   }
 

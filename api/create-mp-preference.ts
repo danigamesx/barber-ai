@@ -27,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Helper function to build back_urls correctly
     const buildBackUrls = (path: string, origin: string) => {
         const baseUrl = `${origin}/#${path}`;
-        const separator = path.includes('?') ? '&' : '?';
+        const separator = baseUrl.includes('?') ? '&' : '?';
         return {
             success: `${baseUrl}${separator}payment_status=success`,
             failure: `${baseUrl}${separator}payment_status=failure`,

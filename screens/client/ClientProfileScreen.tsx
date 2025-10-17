@@ -1,16 +1,18 @@
 import React, { useContext, useMemo, useState } from 'react';
 import { AppContext } from '../../App';
 import Button from '../../components/Button';
-import { ServicePackage, SubscriptionPlan } from '../../types';
+import { Service, ServicePackage, SubscriptionPlan, UserActiveSubscription, UserPurchasedPackage } from '../../types';
 
 interface LegacyUserFields {
     activeSubscriptions?: {
+        id: string; // Add id to match UserActiveSubscription
         subscriptionId: string;
         barbershopId: string;
         startDate: string;
         status: 'active' | 'cancelled';
     }[];
     purchasedPackages?: {
+        id: string; // Add id to match UserPurchasedPackage
         packageId: string;
         barbershopId: string;
         purchaseDate: string;
@@ -102,6 +104,10 @@ const ClientProfileScreen: React.FC = () => {
         setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
+    const activeSubscriptions = Array.isArray(user.active_subscriptions) ? user.active_subscriptions as UserActiveSubscription[] : [];
+    const purchasedPackages = Array.isArray(user.purchased_packages) ? user.purchased_packages as UserPurchasedPackage[] : [];
+
+
     return (
         <div className="p-4 space-y-8 pb-24">
             <header>
@@ -126,29 +132,36 @@ const ClientProfileScreen: React.FC = () => {
             <section>
                 <h2 className="text-lg font-semibold mb-4 text-brand-primary">Minhas Assinaturas e Pacotes</h2>
                 <div className="space-y-3">
-                    {user.activeSubscriptions?.map(sub => {
+                    {activeSubscriptions.map(sub => {
                         const shop = barbershops.find(b => b.id === sub.barbershopId);
+                        // FIX: Get all services from the shop to map service IDs to names.
+                        const allServices = Array.isArray(shop?.services) ? shop.services as Service[] : [];
                         const subscriptions = Array.isArray(shop?.subscriptions) ? shop.subscriptions as SubscriptionPlan[] : [];
                         const subDetails = subscriptions.find(s => s.id === sub.subscriptionId);
                         if (!subDetails) return null;
                         return (
-                            <div key={sub.subscriptionId} className="bg-brand-secondary p-4 rounded-lg">
+                            <div key={sub.id} className="bg-brand-secondary p-4 rounded-lg">
                                 <p className="font-bold">{subDetails.name}</p>
                                 <p className="text-xs text-gray-400 mb-2">{getBarbershopName(sub.barbershopId)}</p>
                                 <ul className="text-sm list-disc list-inside space-y-1 text-gray-300">
-                                    {subDetails.benefits.map(b => <li key={b}>{b}</li>)}
+                                    {/* FIX: Changed 'benefits' to 'serviceIds' and added logic to display service names and uses per month. */}
+                                    {subDetails.serviceIds.map(serviceId => {
+                                        const service = allServices.find(s => s.id === serviceId);
+                                        return <li key={serviceId}>{service ? service.name : 'Serviço desconhecido'}</li>;
+                                    })}
+                                    <li>{subDetails.usesPerMonth} uso(s) por mês</li>
                                 </ul>
                                 <p className="text-xs text-green-400 mt-2">Ativa desde: {new Date(sub.startDate).toLocaleDateString()}</p>
                             </div>
                         )
                     })}
-                     {user.purchasedPackages?.map(pkg => {
+                     {purchasedPackages.map(pkg => {
                         const shop = barbershops.find(b => b.id === pkg.barbershopId);
                         const packages = Array.isArray(shop?.packages) ? shop.packages as ServicePackage[] : [];
                         const pkgDetails = packages.find(p => p.id === pkg.packageId);
                         if (!pkgDetails) return null;
                         return (
-                            <div key={pkg.packageId} className="bg-brand-secondary p-4 rounded-lg">
+                            <div key={pkg.id} className="bg-brand-secondary p-4 rounded-lg">
                                 <div className="flex justify-between items-center">
                                     <div>
                                         <p className="font-bold">{pkgDetails.name}</p>
@@ -162,7 +175,7 @@ const ClientProfileScreen: React.FC = () => {
                             </div>
                         )
                     })}
-                    {(!user.activeSubscriptions || user.activeSubscriptions.length === 0) && (!user.purchasedPackages || user.purchasedPackages.length === 0) && (
+                    {(!user.active_subscriptions || activeSubscriptions.length === 0) && (!user.purchased_packages || purchasedPackages.length === 0) && (
                         <p className="text-gray-400 text-center text-sm py-4">Você não possui assinaturas ou pacotes ativos.</p>
                     )}
                 </div>
@@ -175,7 +188,6 @@ const ClientProfileScreen: React.FC = () => {
                          <select name="barbershopId" value={filters.barbershopId} onChange={handleFilterChange} className="bg-brand-dark p-2 rounded-md border border-gray-600">
                             <option value="all">Todas as Barbearias</option>
                             {[...new Set(expenseHistory.map(e => e.barbershopId))].map(id => (
-                                // FIX: Explicitly cast 'id' to string to satisfy TypeScript's strict type checking for key, value, and function arguments.
                                 <option key={id as string} value={id as string}>{getBarbershopName(id as string)}</option>
                             ))}
                         </select>
