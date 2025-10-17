@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { User, Appointment, Barbershop, Review, ClientNotification, Session, Barber, FinancialRecord, Json, IntegrationSettings, CancellationPolicy } from './types';
 import LoginScreen from './screens/LoginScreen';
@@ -28,6 +29,7 @@ import { supabaseInitializationError } from './supabaseClient';
 import PlanPaymentModal from './screens/barbershop/PlanPaymentModal';
 import { PackagePaymentModal } from './screens/client/PaymentModal';
 
+// FIX: Added missing properties to the context type definition.
 export const AppContext = React.createContext<{
   user: User | null;
   users: User[];
@@ -63,10 +65,9 @@ export const AppContext = React.createContext<{
   removeFromWaitingList: (barbershopId: string, date: string, clientId: string) => Promise<void>;
   setGoogleToken: (token: string | null) => void;
   patchUser: (user: User) => void;
-  // FIX: Added missing properties to the context type to resolve useContext errors in child components.
   deleteBarbershopAccount: () => Promise<void>;
   setPurchaseIntent: (intent: { planId: string, billingCycle: 'monthly' | 'annual' } | null) => void;
-  setPackageSubscriptionIntent: (intent: { type: 'package' | 'subscription', itemId: string, barbershopId: string } | null) => void;
+  setPackageSubscriptionIntent: (intent: { type: 'package' | 'subscription', itemId: string, barbershop: Barbershop } | null) => void;
 }>({
   user: null,
   users: [],
@@ -97,7 +98,6 @@ export const AppContext = React.createContext<{
   removeFromWaitingList: async () => {},
   setGoogleToken: () => {},
   patchUser: () => {},
-  // FIX: Added default values for the new context properties.
   deleteBarbershopAccount: async () => {},
   setPurchaseIntent: () => {},
   setPackageSubscriptionIntent: () => {},
@@ -139,9 +139,8 @@ const App: React.FC = () => {
   const [loginAccountType, setLoginAccountType] = useState<'client' | 'barbershop' | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'failure' | 'pending' | null>(null);
   const [currentHash, setCurrentHash] = useState(window.location.hash);
-  // FIX: Added state management for purchase intents to handle payment modal logic.
   const [purchaseIntent, setPurchaseIntent] = useState<{ planId: string, billingCycle: 'monthly' | 'annual' } | null>(null);
-  const [packageSubscriptionIntent, setPackageSubscriptionIntent] = useState<{ type: 'package' | 'subscription', itemId: string, barbershopId: string } | null>(null);
+  const [packageSubscriptionIntent, setPackageSubscriptionIntent] = useState<{ type: 'package' | 'subscription', itemId: string, barbershop: Barbershop } | null>(null);
 
 
   const [activeClientScreen, setActiveClientScreen] = useState('home');
@@ -231,15 +230,25 @@ const App: React.FC = () => {
 
         if (userJustLoggedIn) {
             const bookingIntentIdentifier = sessionStorage.getItem('bookingIntentIdentifier');
+            const returnToIdentifier = sessionStorage.getItem('returnToIdentifier');
+            const purchaseIntentStr = sessionStorage.getItem('purchaseIntent');
+
             if (bookingIntentIdentifier) {
                 const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(bookingIntentIdentifier);
-                if (isUUID) {
-                    window.location.hash = `/?barbershopId=${bookingIntentIdentifier}&openBooking=true`;
-                } else {
-                    window.location.hash = `/${bookingIntentIdentifier}?openBooking=true`;
-                }
+                window.location.hash = isUUID ? `/?barbershopId=${bookingIntentIdentifier}&openBooking=true` : `/${bookingIntentIdentifier}?openBooking=true`;
                 sessionStorage.removeItem('bookingIntentIdentifier');
+            } else if (returnToIdentifier) {
+                 const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(returnToIdentifier);
+                 window.location.hash = isUUID ? `/?barbershopId=${returnToIdentifier}` : `/${returnToIdentifier}`;
+                 sessionStorage.removeItem('returnToIdentifier');
+            } else if (purchaseIntentStr) {
+                 const intent = JSON.parse(purchaseIntentStr);
+                 if (intent.identifier) {
+                    const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(intent.identifier);
+                    window.location.hash = isUUID ? `/?barbershopId=${intent.identifier}` : `/${intent.identifier}`;
+                 }
             }
+
 
             loadInitialData();
         } else if (userJustLoggedOut) {
@@ -250,6 +259,8 @@ const App: React.FC = () => {
             setReviews([]);
             setGoogleToken(null);
             sessionStorage.removeItem('bookingIntentIdentifier');
+            sessionStorage.removeItem('returnToIdentifier');
+            sessionStorage.removeItem('purchaseIntent');
             setShowLanding(true); 
             setLoginAccountType(null);
         }
@@ -510,7 +521,6 @@ const App: React.FC = () => {
   const appContextValue = { 
       user, users, barbershops, barbershopData, appointments, allAppointments: appointments, reviews, googleToken, isSuperAdmin, accessStatus,
       ...contextFunctions,
-      // FIX: Pass state setters to the context value.
       setPurchaseIntent,
       setPackageSubscriptionIntent,
   };

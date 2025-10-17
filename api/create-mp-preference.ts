@@ -33,7 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
             const { data: barbershop, error: fetchError } = await supabaseAdmin
                 .from('barbershops')
-                .select('integrations, name, packages, subscriptions')
+                .select('integrations, name, packages, subscriptions, slug')
                 .eq('id', barbershopId)
                 .single();
             if (fetchError) throw new Error('Barbearia não encontrada.');
@@ -63,6 +63,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const preferenceClient = new Preference(client);
             
             const transactionId = randomUUID();
+            const returnPath = barbershop.slug ? `/${barbershop.slug}` : `/?barbershopId=${barbershopId}`;
 
             const preferenceBody = {
                 items: [{
@@ -75,12 +76,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 }],
                 payer: { name: userName, email: userEmail },
                 back_urls: {
-                    success: `${req.headers.origin}/#/?payment_status=success`,
-                    failure: `${req.headers.origin}/#/?payment_status=failure`,
-                    pending: `${req.headers.origin}/#/?payment_status=pending`,
+                    success: `${req.headers.origin}/#${returnPath}?payment_status=success`,
+                    failure: `${req.headers.origin}/#${returnPath}?payment_status=failure`,
+                    pending: `${req.headers.origin}/#${returnPath}?payment_status=pending`,
                 },
                 auto_return: 'approved' as 'approved',
-                notification_url: `https://${req.headers.host}/api/mp-webhook?purchase_type=${type}`,
+                notification_url: `https://${req.headers.host}/api/mp-webhook?purchase_type=${type}&barbershop_id=${barbershopId}`,
                 external_reference: transactionId,
                 metadata: { userId, barbershopId, itemId, type },
             };
@@ -97,7 +98,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         try {
             const { data: barbershop, error: fetchError } = await supabaseAdmin
                 .from('barbershops')
-                .select('integrations, name')
+                .select('integrations, name, slug')
                 .eq('id', appointmentData.barbershop_id)
                 .single();
 
@@ -117,6 +118,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const preferenceClient = new Preference(client);
             
             const transactionId = randomUUID();
+            const returnPath = barbershop.slug ? `/${barbershop.slug}` : `/?barbershopId=${appointmentData.barbershop_id}`;
+
 
             const preferenceBody = {
                 items: [
@@ -134,9 +137,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     email: '',
                 },
                 back_urls: {
-                    success: `${req.headers.origin}/#/?payment_status=success`,
-                    failure: `${req.headers.origin}/#/?payment_status=failure`,
-                    pending: `${req.headers.origin}/#/?payment_status=pending`,
+                    success: `${req.headers.origin}/#${returnPath}?payment_status=success`,
+                    failure: `${req.headers.origin}/#${returnPath}?payment_status=failure`,
+                    pending: `${req.headers.origin}/#${returnPath}?payment_status=pending`,
                 },
                 auto_return: 'approved' as 'approved',
                 notification_url: `https://${req.headers.host}/api/mp-webhook?purchase_type=appointment&barbershop_id=${appointmentData.barbershop_id}`,

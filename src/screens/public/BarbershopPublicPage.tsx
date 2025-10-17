@@ -1,4 +1,5 @@
 
+
 import React, { useState, useContext, useMemo, useEffect } from 'react';
 import { Barbershop, Service, Barber, Address, SocialMedia, Review, IntegrationSettings, ServicePackage, SubscriptionPlan } from '../../types';
 import { AppContext } from '../../App';
@@ -15,7 +16,6 @@ interface BarbershopPublicPageProps {
 }
 
 const BarbershopPublicPage: React.FC<BarbershopPublicPageProps> = ({ identifier }) => {
-    // FIX: Add setPackageSubscriptionIntent to context destructuring
     const { reviews, user, setPackageSubscriptionIntent } = useContext(AppContext);
     const [barbershop, setBarbershop] = useState<Barbershop | null>(null);
     const [loading, setLoading] = useState(true);
@@ -63,14 +63,14 @@ const BarbershopPublicPage: React.FC<BarbershopPublicPageProps> = ({ identifier 
     
      useEffect(() => {
         const purchaseIntentStr = sessionStorage.getItem('purchaseIntent');
-        if (user && purchaseIntentStr && setPackageSubscriptionIntent) {
+        if (user && barbershop && purchaseIntentStr && setPackageSubscriptionIntent) {
             const intent = JSON.parse(purchaseIntentStr);
             if (intent.identifier === identifier) {
-                setPackageSubscriptionIntent({ type: intent.type, itemId: intent.itemId, barbershopId: intent.barbershopId });
+                setPackageSubscriptionIntent({ type: intent.type, itemId: intent.itemId, barbershop: barbershop });
                 sessionStorage.removeItem('purchaseIntent');
             }
         }
-    }, [user, identifier, setPackageSubscriptionIntent]);
+    }, [user, barbershop, identifier, setPackageSubscriptionIntent]);
 
 
     const isAcceptingAppointments = useMemo(() => {
@@ -110,7 +110,7 @@ const BarbershopPublicPage: React.FC<BarbershopPublicPageProps> = ({ identifier 
     
     const handlePurchaseClick = (type: 'package' | 'subscription', itemId: string) => {
         if (user && barbershop && setPackageSubscriptionIntent) {
-            setPackageSubscriptionIntent({ type, itemId, barbershopId: barbershop.id });
+            setPackageSubscriptionIntent({ type, itemId, barbershop });
         } else {
             sessionStorage.setItem('purchaseIntent', JSON.stringify({ type, itemId, barbershopId: barbershop?.id, identifier }));
             setShowLoginPrompt(true);

@@ -21,6 +21,7 @@ const ClientProfileScreen: React.FC = () => {
     };
 
     const expenseHistory = useMemo(() => {
+        // FIX: Replaced 'any[]' with a specific type to help TypeScript infer types correctly down the line.
         const history: {
             id: string;
             date: Date;

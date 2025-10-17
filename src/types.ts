@@ -1,4 +1,5 @@
 
+
 import type { Session as SupabaseSession } from '@supabase/supabase-js';
 
 export type Json =
@@ -138,6 +139,7 @@ export interface SubscriptionPlanDetails {
     googleCalendar: boolean;
     onlinePayments: boolean;
     packagesAndSubscriptions: boolean;
+    // FIX: Added missing 'clientManagement' property to align with type definition.
     clientManagement: boolean;
   };
 }
