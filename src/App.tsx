@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { User, Appointment, Barbershop, Review, ClientNotification, Session, Barber, FinancialRecord, Json, IntegrationSettings, CancellationPolicy } from './types';
 import LoginScreen from './screens/LoginScreen';
@@ -27,9 +26,6 @@ import InactivePlanBanner from './components/InactivePlanBanner';
 import { supabaseInitializationError } from './supabaseClient';
 import PlanPaymentModal from './screens/barbershop/PlanPaymentModal';
 import { PackagePaymentModal } from './screens/client/PaymentModal';
-
-// FIX: Defined NewAppointmentData type to be used for payment intents in context.
-type NewAppointmentData = Omit<Appointment, 'id' | 'start_time' | 'end_time' | 'created_at'> & { start_time: Date, end_time: Date };
 
 // FIX: Added missing properties to the context type definition.
 export const AppContext = React.createContext<{
@@ -68,10 +64,8 @@ export const AppContext = React.createContext<{
   setGoogleToken: (token: string | null) => void;
   patchUser: (user: User) => void;
   deleteBarbershopAccount: () => Promise<void>;
-  // FIX: Added setPurchaseIntent to context type to handle plan purchases.
   setPurchaseIntent: (intent: { planId: string, billingCycle: 'monthly' | 'annual' } | null) => void;
-  // FIX: Updated setPackageSubscriptionIntent type to include appointment payment intents.
-  setPackageSubscriptionIntent: (intent: ({ type: 'package' | 'subscription', itemId: string, barbershop: Barbershop } | { type: 'appointment', itemId: string, barbershop: Barbershop, appointmentDetails: NewAppointmentData }) | null) => void;
+  setPackageSubscriptionIntent: (intent: { type: 'package' | 'subscription', itemId: string, barbershop: Barbershop } | null) => void;
 }>({
   user: null,
   users: [],
@@ -144,8 +138,7 @@ const App: React.FC = () => {
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'failure' | 'pending' | null>(null);
   const [currentHash, setCurrentHash] = useState(window.location.hash);
   const [purchaseIntent, setPurchaseIntent] = useState<{ planId: string, billingCycle: 'monthly' | 'annual' } | null>(null);
-  // FIX: Updated state type to match the new context type for handling appointments, packages, and subscriptions.
-  const [packageSubscriptionIntent, setPackageSubscriptionIntent] = useState<({ type: 'package' | 'subscription', itemId: string, barbershop: Barbershop } | { type: 'appointment', itemId: string, barbershop: Barbershop, appointmentDetails: NewAppointmentData }) | null>(null);
+  const [packageSubscriptionIntent, setPackageSubscriptionIntent] = useState<{ type: 'package' | 'subscription', itemId: string, barbershop: Barbershop } | null>(null);
 
 
   const [activeClientScreen, setActiveClientScreen] = useState('home');

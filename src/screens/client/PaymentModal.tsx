@@ -1,8 +1,6 @@
 
-
 import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { AppContext } from '../../App';
-// FIX: Import Appointment to define NewAppointmentData type, and related types for package/subscription handling.
 import { Appointment, Barbershop, IntegrationSettings, ServicePackage, SubscriptionPlan } from '../../types';
 import { XCircleIcon } from '../../components/icons/OutlineIcons';
 import * as api from '../../api';
@@ -13,7 +11,6 @@ declare global {
     }
 }
 
-// FIX: Define NewAppointmentData type for use in component props and logic.
 type NewAppointmentData = Omit<Appointment, 'id' | 'start_time' | 'end_time' | 'created_at'> & { start_time: Date, end_time: Date };
 
 interface PaymentModalProps {
@@ -156,9 +153,8 @@ export default PaymentModal;
 
 // --- New Component for Package/Subscription Payment ---
 
-// FIX: Updated PackagePaymentModalProps to accept a union type for different payment intents.
 interface PackagePaymentModalProps {
-  intent: ({ type: 'package' | 'subscription', itemId: string, barbershop: Barbershop } | { type: 'appointment', itemId: string, barbershop: Barbershop, appointmentDetails: NewAppointmentData });
+  intent: { type: 'package' | 'subscription', itemId: string, barbershop: Barbershop };
   onClose: () => void;
 }
 
@@ -169,25 +165,21 @@ export const PackagePaymentModal: React.FC<PackagePaymentModalProps> = ({ intent
     const [preferenceId, setPreferenceId] = useState<string | null>(null);
     const [publicKey, setPublicKey] = useState<string | null>(null);
 
-    const { barbershop } = intent;
+    const { type, itemId, barbershop } = intent;
     
-    // FIX: Updated useMemo to handle the 'appointment' intent type and extract correct item details.
     const item = useMemo(() => {
         if (!barbershop) return null;
-        let foundItem: { name: string, price: number } | null = null;
-        if (intent.type === 'package') {
+        let foundItem = null;
+        if (type === 'package') {
             const packages = (barbershop.packages as ServicePackage[]) || [];
-            foundItem = packages.find(p => p.id === intent.itemId);
-        } else if (intent.type === 'subscription') {
+            foundItem = packages.find(p => p.id === itemId);
+        } else {
             const subscriptions = (barbershop.subscriptions as SubscriptionPlan[]) || [];
-            foundItem = subscriptions.find(s => s.id === intent.itemId);
-        } else if (intent.type === 'appointment') {
-            foundItem = { name: intent.appointmentDetails.service_name || 'Serviço', price: intent.appointmentDetails.price || 0 };
+            foundItem = subscriptions.find(s => s.id === itemId);
         }
         return foundItem;
-    }, [barbershop, intent]);
+    }, [barbershop, itemId, type]);
 
-    // FIX: Updated useEffect to call the appropriate API endpoint based on the intent type ('appointment' vs. 'package'/'subscription').
     useEffect(() => {
         if (!user || !item || !barbershop) {
             setError("Dados da compra inválidos ou usuário não logado.");
@@ -195,28 +187,17 @@ export const PackagePaymentModal: React.FC<PackagePaymentModalProps> = ({ intent
             return;
         }
 
-        if (intent.type === 'appointment') {
-            api.createMercadoPagoPreference(intent.appointmentDetails)
-                .then(data => {
-                    setPreferenceId(data.preferenceId);
-                    setPublicKey(data.publicKey);
-                })
-                .catch(err => {
-                    setError(err.message || "Falha ao criar a preferência de pagamento.");
-                })
-                .finally(() => setIsLoading(false));
-        } else {
-            api.createPackageSubscriptionPreference(intent.type, intent.itemId, barbershop.id, user)
-                .then(data => {
-                    setPreferenceId(data.preferenceId);
-                    setPublicKey(data.publicKey);
-                })
-                .catch(err => {
-                    setError(err.message || "Falha ao criar a preferência de pagamento.");
-                })
-                .finally(() => setIsLoading(false));
-        }
-    }, [user, item, barbershop, intent]);
+        api.createPackageSubscriptionPreference(type, itemId, barbershop.id, user)
+            .then(data => {
+                setPreferenceId(data.preferenceId);
+                setPublicKey(data.publicKey);
+            })
+            .catch(err => {
+                setError(err.message || "Falha ao criar a preferência de pagamento.");
+            })
+            .finally(() => setIsLoading(false));
+
+    }, [type, itemId, user, item, barbershop]);
     
     if (!item) {
         return (
