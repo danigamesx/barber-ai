@@ -118,7 +118,10 @@ export interface SubscriptionPlan {
   id: string;
   name: string;
   price: number;
-  benefits: string[];
+  // FIX: Changed 'benefits' to 'serviceIds' to match component usage.
+  serviceIds: string[];
+  // FIX: Added 'usesPerMonth' to match component usage.
+  usesPerMonth: number;
 }
 
 export interface SubscriptionPlanDetails {
@@ -134,6 +137,8 @@ export interface SubscriptionPlanDetails {
     googleCalendar: boolean;
     onlinePayments: boolean;
     packagesAndSubscriptions: boolean;
+    // FIX: Added missing 'clientManagement' property to align with type definition.
+    clientManagement: boolean;
   };
 }
 
@@ -170,6 +175,24 @@ export interface WaitingListEntry {
   requestedAt: string; // ISO Date string
 }
 
+// Specific types for structured JSON data on User profile
+export interface UserPurchasedPackage {
+  id: string; // A unique ID for this specific purchase instance
+  packageId: string; // ID of the ServicePackage template
+  barbershopId: string;
+  purchaseDate: string; // ISO Date string
+  remainingUses: number;
+}
+
+export interface UserActiveSubscription {
+  id: string; // A unique ID for this specific subscription instance
+  subscriptionId: string; // ID of the SubscriptionPlan template
+  barbershopId: string;
+  startDate: string; // ISO Date string
+  status: 'active' | 'cancelled';
+}
+
+
 // Main application types, mirroring Supabase tables
 export interface User {
   id: string;
@@ -184,12 +207,17 @@ export interface User {
   outstanding_debts: Json | null;
   rewards: Json | null;
   store_credits: Json | null;
+  // FIX: Added purchased_packages and active_subscriptions to User type
+  purchased_packages: Json | UserPurchasedPackage[] | null;
+  active_subscriptions: Json | UserActiveSubscription[] | null;
 }
 
 export interface Barbershop {
   id: string;
   owner_id: string;
   name: string;
+  // FIX: Added missing 'slug' property to align with database schema and component usage.
+  slug: string | null;
   phone: string | null;
   description: string | null;
   image_url: string | null;
@@ -236,6 +264,8 @@ export interface Appointment {
   commission_amount: number | null;
   google_event_id?: string | null;
   mp_preference_id?: string | null;
+  package_usage_id: string | null;
+  subscription_usage_id: string | null;
 }
 
 export interface Review {

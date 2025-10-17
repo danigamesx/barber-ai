@@ -24,6 +24,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { appointmentData, packageData } = req.body;
 
+    // Helper function to build back_urls correctly
+    const buildBackUrls = (path: string, origin: string) => {
+        const baseUrl = `${origin}/#${path}`;
+        const separator = path.includes('?') ? '&' : '?';
+        return {
+            success: `${baseUrl}${separator}payment_status=success`,
+            failure: `${baseUrl}${separator}payment_status=failure`,
+            pending: `${baseUrl}${separator}payment_status=pending`,
+        };
+    };
+
     if (packageData) {
         try {
             const { type, itemId, barbershopId, userId, userName, userEmail } = packageData;
@@ -75,11 +86,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     unit_price: Number(itemDetails.price),
                 }],
                 payer: { name: userName, email: userEmail },
-                back_urls: {
-                    success: `${req.headers.origin}/#${returnPath}?payment_status=success`,
-                    failure: `${req.headers.origin}/#${returnPath}?payment_status=failure`,
-                    pending: `${req.headers.origin}/#${returnPath}?payment_status=pending`,
-                },
+                back_urls: buildBackUrls(returnPath, req.headers.origin as string),
                 auto_return: 'approved' as 'approved',
                 notification_url: `https://${req.headers.host}/api/mp-webhook?purchase_type=${type}&barbershop_id=${barbershopId}`,
                 external_reference: transactionId,
@@ -136,11 +143,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     name: appointmentData.client_name,
                     email: '',
                 },
-                back_urls: {
-                    success: `${req.headers.origin}/#${returnPath}?payment_status=success`,
-                    failure: `${req.headers.origin}/#${returnPath}?payment_status=failure`,
-                    pending: `${req.headers.origin}/#${returnPath}?payment_status=pending`,
-                },
+                back_urls: buildBackUrls(returnPath, req.headers.origin as string),
                 auto_return: 'approved' as 'approved',
                 notification_url: `https://${req.headers.host}/api/mp-webhook?purchase_type=appointment&barbershop_id=${appointmentData.barbershop_id}`,
                 external_reference: transactionId,
