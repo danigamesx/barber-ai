@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { User, Appointment, Barbershop, Review, ClientNotification, Session, Barber, FinancialRecord, Json, IntegrationSettings, CancellationPolicy } from './types';
 import LoginScreen from './screens/LoginScreen';
@@ -28,7 +29,17 @@ import { supabaseInitializationError } from './supabaseClient';
 import PlanPaymentModal from './screens/barbershop/PlanPaymentModal';
 import { PackagePaymentModal } from './screens/client/PaymentModal';
 
-// FIX: Added missing properties `deleteBarbershopAccount`, `setPurchaseIntent`, and `setPackageSubscriptionIntent` to the context type definition.
+// A type for the BeforeInstallPromptEvent
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
+}
+
+// FIX: Added missing properties `deleteBarbershopAccount`, `setPurchaseIntent`, `setPackageSubscriptionIntent`, and PWA install properties to the context type definition.
 export const AppContext = React.createContext<{
   user: User | null;
   users: User[];
@@ -67,6 +78,8 @@ export const AppContext = React.createContext<{
   deleteBarbershopAccount: () => Promise<void>;
   setPurchaseIntent: (intent: { planId: string, billingCycle: 'monthly' | 'annual' } | null) => void;
   setPackageSubscriptionIntent: (intent: { type: 'package' | 'subscription', itemId: string, barbershop: Barbershop } | null) => void;
+  installPrompt: BeforeInstallPromptEvent | null;
+  triggerInstall: () => void;
 }>({
   user: null,
   users: [],
@@ -100,6 +113,8 @@ export const AppContext = React.createContext<{
   deleteBarbershopAccount: async () => {},
   setPurchaseIntent: () => {},
   setPackageSubscriptionIntent: () => {},
+  installPrompt: null,
+  triggerInstall: () => {},
 });
 
 export const PlanContext = React.createContext<{
@@ -140,6 +155,7 @@ const App: React.FC = () => {
   const [currentHash, setCurrentHash] = useState(window.location.hash);
   const [purchaseIntent, setPurchaseIntent] = useState<{ planId: string, billingCycle: 'monthly' | 'annual' } | null>(null);
   const [packageSubscriptionIntent, setPackageSubscriptionIntent] = useState<{ type: 'package' | 'subscription', itemId: string, barbershop: Barbershop } | null>(null);
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
 
 
   const [activeClientScreen, setActiveClientScreen] = useState('home');
@@ -189,6 +205,31 @@ const App: React.FC = () => {
       } finally {
           setLoading(false);
       }
+  };
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e as BeforeInstallPromptEvent);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const triggerInstall = () => {
+    if (installPrompt) {
+      installPrompt.prompt();
+      installPrompt.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === 'accepted') {
+          console.log('User accepted the install prompt');
+        } else {
+          console.log('User dismissed the install prompt');
+        }
+        setInstallPrompt(null);
+      });
+    }
   };
 
   useEffect(() => {
@@ -535,6 +576,8 @@ const App: React.FC = () => {
       ...contextFunctions,
       setPurchaseIntent,
       setPackageSubscriptionIntent,
+      installPrompt,
+      triggerInstall,
   };
   
   const handleEnterApp = (type: 'client' | 'barbershop') => {

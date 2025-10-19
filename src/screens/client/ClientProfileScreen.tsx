@@ -4,14 +4,13 @@ import Button from '../../components/Button';
 import { Service, ServicePackage, SubscriptionPlan, UserActiveSubscription, UserPurchasedPackage } from '../../types';
 
 const ClientProfileScreen: React.FC = () => {
-    const { user, barbershops, appointments, logout } = useContext(AppContext);
+    const { user, barbershops, appointments, logout, installPrompt, triggerInstall } = useContext(AppContext);
     const [filters, setFilters] = useState({
         startDate: '',
         endDate: '',
         barbershopId: 'all',
         type: 'all' // 'all', 'service', 'fee'
     });
-
 
     if (!user) {
         return null;
@@ -118,6 +117,7 @@ const ClientProfileScreen: React.FC = () => {
                 <div className="space-y-3">
                     {activeSubscriptions.map(sub => {
                         const shop = barbershops.find(b => b.id === sub.barbershopId);
+                        // FIX: Get all services from the shop to map service IDs to names.
                         const allServices = Array.isArray(shop?.services) ? shop.services as Service[] : [];
                         const subscriptions = Array.isArray(shop?.subscriptions) ? shop.subscriptions as SubscriptionPlan[] : [];
                         const subDetails = subscriptions.find(s => s.id === sub.subscriptionId);
@@ -205,7 +205,12 @@ const ClientProfileScreen: React.FC = () => {
                 </div>
             </section>
 
-            <div className="pt-4">
+            <div className="pt-4 space-y-3">
+                 {installPrompt && (
+                    <Button variant="primary" onClick={triggerInstall}>
+                        Instalar Aplicativo
+                    </Button>
+                 )}
                  <Button variant="secondary" onClick={logout}>Sair da Conta</Button>
             </div>
         </div>

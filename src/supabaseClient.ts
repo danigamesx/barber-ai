@@ -1,5 +1,4 @@
 
-
 // FIX: Correctly augmented the global ImportMetaEnv interface to include all Vite's environment variables.
 // This avoids conflicts with Vite's default typings by augmenting the correct interface.
 declare global {
@@ -7,7 +6,6 @@ declare global {
     readonly VITE_SUPABASE_URL: string;
     readonly VITE_SUPABASE_ANON_KEY: string;
     readonly VITE_MERCADO_PAGO_APP_ID: string;
-    // FIX: Added missing environment variable for Mercado Pago Platform Public Key.
     readonly VITE_MERCADO_PAGO_PLATFORM_PUBLIC_KEY: string;
     // FIX: Added missing VAPID key for push notifications to fix error in api.ts.
     readonly VITE_VAPID_PUBLIC_KEY: string;
