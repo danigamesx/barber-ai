@@ -209,7 +209,6 @@ export interface User {
   // FIX: Added purchased_packages and active_subscriptions to User type
   purchased_packages: Json | UserPurchasedPackage[] | null;
   active_subscriptions: Json | UserActiveSubscription[] | null;
-  // FIX: Added missing 'push_subscriptions' property to align with the database schema and fix type errors.
   push_subscriptions: Json | null;
 }
 
@@ -268,6 +267,7 @@ export interface Appointment {
   // FIX: Added missing properties to align with database schema and logic in other components.
   package_usage_id: string | null;
   subscription_usage_id: string | null;
+  reminder_sent_at?: string | null;
 }
 
 export interface Review {

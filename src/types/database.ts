@@ -25,14 +25,14 @@ export type Database = {
           is_reward: boolean | null
           mp_preference_id: string | null
           notes: string | null
+          package_usage_id: string | null
           price: number | null
+          reminder_sent_at: string | null
           review_id: string | null
           service_id: string | null
           service_name: string | null
           start_time: string
           status: string
-          // FIX: Added missing properties to match database schema.
-          package_usage_id: string | null
           subscription_usage_id: string | null
         }
         Insert: {
@@ -50,14 +50,14 @@ export type Database = {
           is_reward?: boolean | null
           mp_preference_id?: string | null
           notes?: string | null
+          package_usage_id?: string | null
           price?: number | null
+          reminder_sent_at?: string | null
           review_id?: string | null
           service_id?: string | null
           service_name?: string | null
           start_time: string
           status?: string
-          // FIX: Added missing properties to match database schema.
-          package_usage_id?: string | null
           subscription_usage_id?: string | null
         }
         Update: {
@@ -75,14 +75,14 @@ export type Database = {
           is_reward?: boolean | null
           mp_preference_id?: string | null
           notes?: string | null
+          package_usage_id?: string | null
           price?: number | null
+          reminder_sent_at?: string | null
           review_id?: string | null
           service_id?: string | null
           service_name?: string | null
           start_time?: string
           status?: string
-          // FIX: Added missing properties to match database schema.
-          package_usage_id?: string | null
           subscription_usage_id?: string | null
         }
         Relationships: [

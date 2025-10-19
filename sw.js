@@ -1,5 +1,4 @@
-
-const CACHE_NAME = 'barberai-v3';
+const CACHE_NAME = 'barberai-v4';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
