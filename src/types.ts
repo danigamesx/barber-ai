@@ -209,6 +209,8 @@ export interface User {
   // FIX: Added purchased_packages and active_subscriptions to User type
   purchased_packages: Json | UserPurchasedPackage[] | null;
   active_subscriptions: Json | UserActiveSubscription[] | null;
+  // FIX: Added missing 'push_subscriptions' property to align with the database schema and fix type errors.
+  push_subscriptions: Json | null;
 }
 
 export interface Barbershop {

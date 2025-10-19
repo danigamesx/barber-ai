@@ -234,6 +234,10 @@ const App: React.FC = () => {
         setSession(newSession);
 
         if (userJustLoggedIn) {
+            if (newSession.user) {
+                api.subscribeToPushNotifications(newSession.user.id);
+            }
+
             const bookingIntentIdentifier = sessionStorage.getItem('bookingIntentIdentifier');
             const returnToIdentifier = sessionStorage.getItem('returnToIdentifier');
             const purchaseIntentStr = sessionStorage.getItem('purchaseIntent');
@@ -382,6 +386,9 @@ const App: React.FC = () => {
         await loadInitialData();
     },
     logout: async () => {
+      if (session?.user) {
+        await api.unsubscribeFromPushNotifications(session.user.id);
+      }
       await api.signOutUser();
       setUser(null);
       setAppointments([]);

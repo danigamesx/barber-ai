@@ -19,11 +19,14 @@ const ClientsScreen: React.FC = () => {
             if (app.client_id !== owner.id) {
                 if (!clientMap.has(app.client_id)) {
                     const fullProfile = users.find(u => u.id === app.client_id);
-                    // FIX: Ensure the created user object matches the full User type, including nullable fields.
                     clientMap.set(app.client_id, fullProfile || {
                         id: app.client_id,
                         name: app.client_name || 'Cliente Desconhecido',
-                        email: null, phone: null, user_type: 'CLIENT', birth_date: null, favorite_barbershop_ids: null, loyalty_stamps: null, notifications: null, outstanding_debts: null, rewards: null, store_credits: null, purchased_packages: null, active_subscriptions: null
+                        email: null, phone: null, user_type: 'CLIENT', birth_date: null, favorite_barbershop_ids: null, loyalty_stamps: null, notifications: null, outstanding_debts: null, rewards: null, store_credits: null,
+                        // FIX: Added missing properties to match the User type.
+                        purchased_packages: null, active_subscriptions: null,
+                        // FIX: Added missing 'push_subscriptions' property to match the User type.
+                        push_subscriptions: null,
                     });
                 }
             } 
@@ -31,14 +34,17 @@ const ClientsScreen: React.FC = () => {
             else if (app.client_name) { 
                 const walkInId = `walk-in|${app.client_name}`;
                 if (!clientMap.has(walkInId)) {
-                    // FIX: Ensure the created user object matches the full User type, including nullable fields.
                     clientMap.set(walkInId, {
                         id: walkInId,
                         name: app.client_name,
                         email: 'Cliente de balcão',
                         phone: null,
                         user_type: 'CLIENT',
-                         birth_date: null, favorite_barbershop_ids: null, loyalty_stamps: null, notifications: null, outstanding_debts: null, rewards: null, store_credits: null, purchased_packages: null, active_subscriptions: null
+                         birth_date: null, favorite_barbershop_ids: null, loyalty_stamps: null, notifications: null, outstanding_debts: null, rewards: null, store_credits: null,
+                         // FIX: Added missing properties to match the User type.
+                         purchased_packages: null, active_subscriptions: null,
+                         // FIX: Added missing 'push_subscriptions' property to match the User type.
+                         push_subscriptions: null,
                     });
                 }
             }

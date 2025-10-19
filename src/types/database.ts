@@ -231,6 +231,7 @@ export type Database = {
           outstanding_debts: Json | null
           phone: string | null
           purchased_packages: Json | null
+          push_subscriptions: Json | null
           rewards: Json | null
           store_credits: Json | null
           user_type: string
@@ -247,6 +248,7 @@ export type Database = {
           outstanding_debts?: Json | null
           phone?: string | null
           purchased_packages?: Json | null
+          push_subscriptions?: Json | null
           rewards?: Json | null
           store_credits?: Json | null
           user_type: string
@@ -263,6 +265,7 @@ export type Database = {
           outstanding_debts?: Json | null
           phone?: string | null
           purchased_packages?: Json | null
+          push_subscriptions?: Json | null
           rewards?: Json | null
           store_credits?: Json | null
           user_type?: string

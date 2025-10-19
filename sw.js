@@ -84,3 +84,45 @@ self.addEventListener('fetch', event => {
     })
   );
 });
+
+// Listener for push notifications
+self.addEventListener('push', event => {
+  console.log('[Service Worker] Push Received.');
+  let data = { title: 'Nova Notificação', body: 'Algo novo aconteceu no BarberAI!' };
+  try {
+    if (event.data) {
+      data = event.data.json();
+    }
+  } catch (e) {
+    console.error('[Service Worker] Push event contains invalid JSON.', e);
+  }
+
+  const title = data.title;
+  const options = {
+    body: data.body,
+    icon: '/icon-192.png',
+    badge: '/icon-192.png'
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Listener for notification click
+self.addEventListener('notificationclick', event => {
+  console.log('[Service Worker] Notification click Received.');
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then(clientList => {
+      // If a window is already open, focus it.
+      for (const client of clientList) {
+        if (client.url === '/' && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Otherwise, open a new window.
+      if (clients.openWindow) {
+        return clients.openWindow('/');
+      }
+    })
+  );
+});
