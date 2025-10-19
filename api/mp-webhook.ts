@@ -160,8 +160,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 status: 'paid',
                 is_reward: appointmentData.is_reward ?? false,
                 mp_preference_id: preference_id,
-                package_usage_id: appointmentData.package_usage_id ?? null,
-                subscription_usage_id: appointmentData.subscription_usage_id ?? null,
+                // FIX: Removed properties that do not exist in the 'appointments' table schema.
+                // package_usage_id: appointmentData.package_usage_id ?? null,
+                // subscription_usage_id: appointmentData.subscription_usage_id ?? null,
             };
             
             const { error: insertError } = await supabaseAdmin.from('appointments').insert(appointmentForDb);

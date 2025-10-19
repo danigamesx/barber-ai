@@ -1,6 +1,4 @@
-
-
-import type { Session as SupabaseSession } from '@supabase/supabase-js';
+import { Session as SupabaseSession } from '@supabase/supabase-js';
 
 export type Json =
   | string
@@ -124,7 +122,6 @@ export interface SubscriptionPlan {
   // FIX: Added 'usesPerMonth' to match component usage.
   usesPerMonth: number;
 }
-
 
 export interface SubscriptionPlanDetails {
   id: string; 
@@ -266,6 +263,9 @@ export interface Appointment {
   commission_amount: number | null;
   google_event_id?: string | null;
   mp_preference_id?: string | null;
+  // FIX: Added missing properties to align with database schema and logic in other components.
+  package_usage_id: string | null;
+  subscription_usage_id: string | null;
 }
 
 export interface Review {
