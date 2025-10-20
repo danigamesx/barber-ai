@@ -5,8 +5,6 @@ import { Json } from '../src/types/database';
 import { IntegrationSettings } from '../src/types';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-    // FIX: Dynamically construct the redirect URI based on request headers to ensure it matches the original URI,
-    // especially when using custom domains on platforms like Vercel.
     const host = req.headers['x-forwarded-host'] || req.headers.host;
     const proto = req.headers['x-forwarded-proto'] || 'http';
     const baseUrl = `${proto}://${host}`;
@@ -87,9 +85,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             throw new Error('Failed to save credentials to the database.');
         }
 
-        // Redirect user back to the settings page
-        // Use the same dynamic base URL to ensure redirection works correctly.
-        res.redirect(302, `${baseUrl}/#settings`);
+        res.redirect(302, `${baseUrl}/#/settings`);
 
     } catch (error: any) {
         console.error('OAuth Callback Error:', error);

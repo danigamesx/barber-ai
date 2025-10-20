@@ -6,7 +6,6 @@ declare global {
       readonly VITE_SUPABASE_URL: string;
       readonly VITE_SUPABASE_ANON_KEY: string;
       readonly VITE_MERCADO_PAGO_APP_ID: string;
-      // FIX: Removed VITE_MERCADO_PAGO_PLATFORM_PUBLIC_KEY to resolve type conflict. This variable is not used in the application.
     }
   }
 }

@@ -23,10 +23,7 @@ const ClientsScreen: React.FC = () => {
                         id: app.client_id,
                         name: app.client_name || 'Cliente Desconhecido',
                         email: null, phone: null, user_type: 'CLIENT', birth_date: null, favorite_barbershop_ids: null, loyalty_stamps: null, notifications: null, outstanding_debts: null, rewards: null, store_credits: null,
-                        // FIX: Added missing properties to match the User type.
-                        purchased_packages: null, active_subscriptions: null,
-                        // FIX: Add missing 'push_subscriptions' property to align with the User type.
-                        push_subscriptions: null,
+                        purchased_packages: null, active_subscriptions: null, push_subscriptions: null,
                     });
                 }
             } 
@@ -41,10 +38,7 @@ const ClientsScreen: React.FC = () => {
                         phone: null,
                         user_type: 'CLIENT',
                          birth_date: null, favorite_barbershop_ids: null, loyalty_stamps: null, notifications: null, outstanding_debts: null, rewards: null, store_credits: null,
-                         // FIX: Added missing properties to match the User type.
-                         purchased_packages: null, active_subscriptions: null,
-                         // FIX: Added missing 'push_subscriptions' property to match the User type.
-                         push_subscriptions: null,
+                         purchased_packages: null, active_subscriptions: null, push_subscriptions: null,
                     });
                 }
             }

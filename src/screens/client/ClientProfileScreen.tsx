@@ -21,7 +21,6 @@ const ClientProfileScreen: React.FC = () => {
     };
 
     const expenseHistory = useMemo(() => {
-        // FIX: Replaced 'any[]' with a specific type to help TypeScript infer types correctly down the line.
         const history: {
             id: string;
             date: Date;
@@ -117,7 +116,6 @@ const ClientProfileScreen: React.FC = () => {
                 <div className="space-y-3">
                     {activeSubscriptions.map(sub => {
                         const shop = barbershops.find(b => b.id === sub.barbershopId);
-                        // FIX: Get all services from the shop to map service IDs to names.
                         const allServices = Array.isArray(shop?.services) ? shop.services as Service[] : [];
                         const subscriptions = Array.isArray(shop?.subscriptions) ? shop.subscriptions as SubscriptionPlan[] : [];
                         const subDetails = subscriptions.find(s => s.id === sub.subscriptionId);
@@ -126,7 +124,6 @@ const ClientProfileScreen: React.FC = () => {
                             <div key={sub.id} className="bg-brand-secondary p-4 rounded-lg">
                                 <p className="font-bold">{subDetails.name}</p>
                                 <p className="text-xs text-gray-400 mb-2">{getBarbershopName(sub.barbershopId)}</p>
-                                {/* FIX: Updated to use serviceIds and usesPerMonth from the corrected SubscriptionPlan type. */}
                                 <ul className="text-sm list-disc list-inside space-y-1 text-gray-300">
                                     {subDetails.serviceIds.map(serviceId => {
                                         const service = allServices.find(s => s.id === serviceId);
@@ -158,7 +155,7 @@ const ClientProfileScreen: React.FC = () => {
                             </div>
                         )
                     })}
-                    {(!user.active_subscriptions || activeSubscriptions.length === 0) && (!user.purchased_packages || purchasedPackages.length === 0) && (
+                    {activeSubscriptions.length === 0 && purchasedPackages.length === 0 && (
                         <p className="text-gray-400 text-center text-sm py-4">Você não possui assinaturas ou pacotes ativos.</p>
                     )}
                 </div>

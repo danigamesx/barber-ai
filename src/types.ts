@@ -117,9 +117,7 @@ export interface SubscriptionPlan {
   id: string;
   name: string;
   price: number;
-  // FIX: Changed 'benefits' to 'serviceIds' to match component usage.
   serviceIds: string[];
-  // FIX: Added 'usesPerMonth' to match component usage.
   usesPerMonth: number;
 }
 
@@ -136,7 +134,6 @@ export interface SubscriptionPlanDetails {
     googleCalendar: boolean;
     onlinePayments: boolean;
     packagesAndSubscriptions: boolean;
-    // FIX: Added missing 'clientManagement' property to align with type definition.
     clientManagement: boolean;
   };
 }
@@ -191,6 +188,15 @@ export interface UserActiveSubscription {
   status: 'active' | 'cancelled';
 }
 
+export interface PushSubscriptionJSON {
+  endpoint: string;
+  expirationTime?: number | null;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+}
+
 
 // Main application types, mirroring Supabase tables
 export interface User {
@@ -206,18 +212,15 @@ export interface User {
   outstanding_debts: Json | null;
   rewards: Json | null;
   store_credits: Json | null;
-  // FIX: Added purchased_packages and active_subscriptions to User type
   purchased_packages: Json | UserPurchasedPackage[] | null;
   active_subscriptions: Json | UserActiveSubscription[] | null;
-  // FIX: Add missing 'push_subscriptions' property to User type to support web push notifications.
-  push_subscriptions: Json | null;
+  push_subscriptions: Json | PushSubscriptionJSON[] | null;
 }
 
 export interface Barbershop {
   id: string;
   owner_id: string;
   name: string;
-  // FIX: Added missing 'slug' property to align with database schema and component usage.
   slug: string | null;
   phone: string | null;
   description: string | null;
@@ -265,9 +268,9 @@ export interface Appointment {
   commission_amount: number | null;
   google_event_id?: string | null;
   mp_preference_id?: string | null;
-  // FIX: Added missing properties to align with database schema and logic in other components.
   package_usage_id: string | null;
   subscription_usage_id: string | null;
+  reminder_sent_at?: string | null;
 }
 
 export interface Review {

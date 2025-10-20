@@ -2,18 +2,21 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import webpush from 'web-push';
 import { Database } from '../src/types/database';
-import { Barbershop, ClientNotification, Json, Promotion, User } from '../src/types';
+import { Barbershop, ClientNotification, Json, Promotion, User, PushSubscriptionJSON } from '../src/types';
 
 const supabaseAdmin = createClient<Database>(process.env.VITE_SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT!,
-  process.env.VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
+if (process.env.VAPID_SUBJECT && process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    webpush.setVapidDetails(
+      process.env.VAPID_SUBJECT,
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY
+    );
+}
 
-async function getUserIdFromToken(req: VercelRequest, supabase: SupabaseClient<Database>): Promise<string | null> {
-    const authHeader = req.headers.authorization;
+
+async function getUserIdFromToken(_req: VercelRequest, supabase: SupabaseClient<Database>): Promise<string | null> {
+    const authHeader = _req.headers.authorization;
     if (!authHeader) return null;
     const token = authHeader.split(' ')[1];
     if (!token) return null;
@@ -21,19 +24,19 @@ async function getUserIdFromToken(req: VercelRequest, supabase: SupabaseClient<D
     return user?.id || null;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-    if (req.method !== 'POST') {
+export default async function handler(_req: VercelRequest, res: VercelResponse) {
+    if (_req.method !== 'POST') {
         res.setHeader('Allow', 'POST');
         return res.status(405).end('Method Not Allowed');
     }
 
     try {
-        const userId = await getUserIdFromToken(req, supabaseAdmin);
+        const userId = await getUserIdFromToken(_req, supabaseAdmin);
         if (!userId) {
             return res.status(401).json({ error: 'Não autorizado: token inválido.' });
         }
 
-        const { barbershopId, title, message } = req.body;
+        const { barbershopId, title, message } = _req.body;
         if (!barbershopId || !title || !message) {
             return res.status(400).json({ error: 'Dados da promoção incompletos.' });
         }

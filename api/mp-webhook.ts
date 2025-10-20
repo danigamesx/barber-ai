@@ -82,7 +82,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
 
             if (type === 'package') {
-                const packages = barbershop.packages as ServicePackage[] || [];
+                const packages = (barbershop.packages as unknown as ServicePackage[]) || [];
                 const pkgDetails = packages.find(p => p.id === itemId);
                 if (!pkgDetails) {
                     console.error(`Webhook Error: Package ${itemId} not found in barbershop ${barbershopId}.`);
@@ -96,7 +96,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     purchaseDate: new Date().toISOString(),
                     remainingUses: pkgDetails.totalUses,
                 };
-                const currentPackages = (userProfile.purchased_packages as UserPurchasedPackage[] || []);
+                const currentPackages = (userProfile.purchased_packages as unknown as UserPurchasedPackage[]) || [];
                 const updatedPackages = [...currentPackages, newPurchase];
                 
                 const { error: updateError } = await supabaseAdmin
@@ -110,7 +110,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     startDate: new Date().toISOString(),
                     status: 'active',
                 };
-                const currentSubs = (userProfile.active_subscriptions as UserActiveSubscription[] || []);
+                const currentSubs = (userProfile.active_subscriptions as unknown as UserActiveSubscription[]) || [];
                 const updatedSubs = [...currentSubs, newSubscription];
 
                 const { error: updateError } = await supabaseAdmin
@@ -160,9 +160,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 status: 'paid',
                 is_reward: appointmentData.is_reward ?? false,
                 mp_preference_id: preference_id,
-                // FIX: Removed properties that do not exist in the 'appointments' table schema.
-                // package_usage_id: appointmentData.package_usage_id ?? null,
-                // subscription_usage_id: appointmentData.subscription_usage_id ?? null,
+                package_usage_id: appointmentData.package_usage_id ?? null,
+                subscription_usage_id: appointmentData.subscription_usage_id ?? null,
             };
             
             const { error: insertError } = await supabaseAdmin.from('appointments').insert(appointmentForDb);
