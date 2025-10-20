@@ -25,7 +25,7 @@ const ClientsScreen: React.FC = () => {
                         email: null, phone: null, user_type: 'CLIENT', birth_date: null, favorite_barbershop_ids: null, loyalty_stamps: null, notifications: null, outstanding_debts: null, rewards: null, store_credits: null,
                         // FIX: Added missing properties to match the User type.
                         purchased_packages: null, active_subscriptions: null,
-                        // FIX: Added missing 'push_subscriptions' property to match the User type.
+                        // FIX: Add missing 'push_subscriptions' property to align with the User type.
                         push_subscriptions: null,
                     });
                 }
