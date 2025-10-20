@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { User, Appointment, Barbershop, Review, ClientNotification, Session, Barber, FinancialRecord, Json, IntegrationSettings, CancellationPolicy } from './types';
 import LoginScreen from './screens/LoginScreen';
@@ -28,6 +29,7 @@ import InactivePlanBanner from './components/InactivePlanBanner';
 import { supabaseInitializationError } from './supabaseClient';
 import PlanPaymentModal from './screens/barbershop/PlanPaymentModal';
 import { PackagePaymentModal } from './screens/client/PaymentModal';
+import InstallPwaButton from './components/InstallPwaButton';
 
 // A type for the BeforeInstallPromptEvent
 interface BeforeInstallPromptEvent extends Event {
@@ -654,6 +656,9 @@ const App: React.FC = () => {
                  </div>
             )
         ))}
+        <div className="px-3 pt-4 mt-auto border-t border-gray-700">
+             <InstallPwaButton className="py-2 text-sm w-full" />
+        </div>
       </nav>
     );
 

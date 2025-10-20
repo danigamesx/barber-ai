@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Button from '../components/Button';
 import { CalendarDaysIcon, UsersIcon, MegaphoneIcon, ChartBarIcon, CurrencyDollarIcon, CreditCardIcon, CheckIcon, MenuIcon, XCircleIcon } from '../components/icons/OutlineIcons';
 import { WHATSAPP_CONTACT } from '../constants';
+import InstallPwaButton from '../components/InstallPwaButton';
 
 interface LandingScreenProps {
   onEnter: (type: 'client' | 'barbershop') => void;
@@ -93,6 +94,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
 
     {/* BOTÕES DESKTOP - canto direito */}
     <div className="hidden lg:flex items-center gap-x-4 flex-shrink-0 whitespace-nowrap">
+      <InstallPwaButton className="py-2 px-4 text-sm w-auto" />
       <Button
         onClick={() => onEnter('client')}
         variant="secondary"
@@ -111,6 +113,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
 
     {/* BOTÕES MOBILE + menu hambúrguer */}
     <div className="flex lg:hidden items-center gap-x-2">
+      <InstallPwaButton className="py-2 px-3 text-sm w-auto" />
       <Button
         onClick={() => onEnter('client')}
         variant="secondary"
