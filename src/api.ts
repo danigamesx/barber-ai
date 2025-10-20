@@ -1,3 +1,4 @@
+
 import { supabase, supabaseInitializationError } from './supabaseClient';
 import { User, Barbershop, Appointment, Review, Barber, FinancialRecord, Promotion, ClientNotification, WaitingListEntry, Json, IntegrationSettings, Address } from './types';
 import { TablesInsert, TablesUpdate } from './types/database';
@@ -18,33 +19,28 @@ const reviewFromRow = (row: any): Review => ({
 // === AUTH FUNCTIONS ===
 export const getSession = () => {
     if (!supabase) return Promise.resolve({ data: { session: null }, error: new Error(supabaseInitializationError!) });
-    // FIX: Cast to any to bypass incorrect type errors for Supabase auth methods.
-    return (supabase.auth as any).getSession();
+    return supabase.auth.getSession();
 }
 export const onAuthStateChange = (callback: (event: string, session: any) => void) => {
     if (!supabase) return { data: { subscription: { unsubscribe: () => {} } } };
-    // FIX: Cast to any to bypass incorrect type errors for Supabase auth methods.
-    return (supabase.auth as any).onAuthStateChange(callback);
+    return supabase.auth.onAuthStateChange(callback);
 }
 
 export const signInUser = async (email: string, password: string) => {
     if (!supabase) throw new Error(supabaseInitializationError!);
-    // FIX: Cast to any to bypass incorrect type errors for Supabase auth methods.
-    const { error } = await (supabase.auth as any).signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
 };
 
 export const signOutUser = async () => {
     if (!supabase) throw new Error(supabaseInitializationError!);
-    // FIX: Cast to any to bypass incorrect type errors for Supabase auth methods.
-    const { error } = await (supabase.auth as any).signOut();
+    const { error } = await supabase.auth.signOut();
     if (error) throw error;
 };
 
 export const signUpUser = async (name: string, email: string, password: string, accountType: 'client' | 'barbershop', phone: string, birthDate?: string, barbershopName?: string) => {
     if (!supabase) throw new Error(supabaseInitializationError!);
-    // FIX: Cast to any to bypass incorrect type errors for Supabase auth methods.
-    const { data: authData, error: authError } = await (supabase.auth as any).signUp({ 
+    const { data: authData, error: authError } = await supabase.auth.signUp({ 
         email, 
         password,
         options: {
@@ -80,6 +76,13 @@ export const signUpUser = async (name: string, email: string, password: string, 
     }
 };
 
+export const deleteUserAndBarbershop = async () => {
+    if (!supabase) throw new Error(supabaseInitializationError!);
+    const { error } = await supabase.rpc('delete_user_and_barbershop');
+    if (error) throw error;
+}
+
+
 // === DATA FETCHING FUNCTIONS ===
 export const getUserProfile = async (userId: string): Promise<User> => {
     if (!supabase) throw new Error(supabaseInitializationError!);
@@ -106,24 +109,19 @@ export const getBarbershops = async (): Promise<Barbershop[]> => {
 export const getBarbershopById = async (id: string): Promise<Barbershop> => {
     if (!supabase) throw new Error(supabaseInitializationError!);
     const { data, error } = await supabase.from('barbershops').select('*').eq('id', id).single();
-    if (error) {
-        console.error(`Error fetching barbershop ${id}:`, error);
-        throw error;
-    }
-    if (!data) throw new Error(`Barbershop with id ${id} not found.`);
-    return data;
+    if (error) throw error;
+    if (!data) throw new Error("Barbershop not found.");
+    return data as Barbershop;
 };
 
 export const getBarbershopBySlug = async (slug: string): Promise<Barbershop> => {
     if (!supabase) throw new Error(supabaseInitializationError!);
     const { data, error } = await supabase.from('barbershops').select('*').eq('slug', slug).single();
-    if (error) {
-        console.error(`Error fetching barbershop with slug ${slug}:`, error);
-        throw error;
-    }
-    if (!data) throw new Error(`Barbershop with slug ${slug} not found.`);
-    return data;
+    if (error) throw error;
+    if (!data) throw new Error("Barbershop not found.");
+    return data as Barbershop;
 };
+
 
 export const getAppointments = async (): Promise<Appointment[]> => {
     if (!supabase) throw new Error(supabaseInitializationError!);
@@ -163,31 +161,15 @@ export const uploadImage = async (file: File, bucket: string, folder: string): P
 export const addAppointment = async (appointment: Omit<Appointment, 'id' | 'created_at' | 'start_time' | 'end_time'> & { start_time: Date, end_time: Date }): Promise<Appointment> => {
     if (!supabase) throw new Error(supabaseInitializationError!);
     const initialStatus = appointment.status === 'paid' ? 'paid' : (appointment.status === 'confirmed' ? 'confirmed' : 'pending');
-    
     const appointmentForDb: TablesInsert<'appointments'> = {
-        client_id: appointment.client_id,
-        client_name: appointment.client_name,
-        barbershop_id: appointment.barbershop_id,
-        barber_id: appointment.barber_id,
-        barber_name: appointment.barber_name,
-        service_id: appointment.service_id,
-        service_name: appointment.service_name,
-        price: appointment.price,
+        ...appointment,
         start_time: appointment.start_time.toISOString(),
         end_time: appointment.end_time.toISOString(),
-        notes: appointment.notes || null,
         status: initialStatus,
-        is_reward: appointment.is_reward || false,
-        review_id: appointment.review_id || null,
-        cancellation_fee: appointment.cancellation_fee || null,
-        commission_amount: appointment.commission_amount || null
     };
 
     const { data: newAppointmentRow, error: insertError } = await supabase.from('appointments').insert(appointmentForDb).select().single();
-    if (insertError) {
-        console.error('Supabase insert error:', insertError);
-        throw insertError;
-    }
+    if (insertError) throw insertError;
 
     let finalAppointment = appointmentFromRow(newAppointmentRow);
 
@@ -217,22 +199,7 @@ export const updateAppointment = async (appointmentId: string, updates: { start_
 
 export const updateAppointmentStatus = async (appointment: Appointment, status: string, barbershopData: Barbershop | null, googleToken: string | null) => {
     if (!supabase) throw new Error(supabaseInitializationError!);
-
-    const updates: Partial<TablesUpdate<'appointments'>> = { status };
-
-    if (status === 'completed' && barbershopData && appointment.price && appointment.barber_id) {
-        const barbers = (barbershopData.barbers as Barber[]) || [];
-        const barber = barbers.find(b => b.id === appointment.barber_id);
-        
-        if (barber && typeof barber.commissionPercentage === 'number') {
-            const commission = appointment.price * (barber.commissionPercentage / 100);
-            updates.commission_amount = commission;
-        } else {
-            updates.commission_amount = 0;
-        }
-    }
-
-    const { error } = await supabase.from('appointments').update(updates).eq('id', appointment.id);
+    const { error } = await supabase.from('appointments').update({ status }).eq('id', appointment.id);
     if (error) throw error;
 
     const integrations = barbershopData?.integrations as IntegrationSettings;
@@ -253,12 +220,7 @@ export const updateAppointmentStatus = async (appointment: Appointment, status: 
 export const updateBarbershop = async (id: string, fields: Partial<Omit<Barbershop, 'id'>>) => {
     if (!supabase) throw new Error(supabaseInitializationError!);
     const { error } = await supabase.from('barbershops').update(fields as TablesUpdate<'barbershops'>).eq('id', id);
-    if (error) {
-        if (error.message.includes('duplicate key value violates unique constraint "barbershops_slug_key"')) {
-            throw new Error('Este link personalizado já está em uso. Por favor, escolha outro.');
-        }
-        throw error;
-    }
+    if (error) throw error;
 };
 
 export const addReview = async (review: Omit<Review, 'id' | 'created_at'>, appointmentId: string) => {
@@ -423,7 +385,6 @@ export const setAppointmentGoogleEventId = async (appointmentId: string, googleE
 };
 
 // === MERCADO PAGO PAYMENT INTEGRATION ===
-// FIX: Updated return type to include 'publicKey' as it is returned by the API endpoint.
 export const createMercadoPagoPreference = async (appointmentData: Omit<Appointment, 'id' | 'created_at'> & { start_time: Date, end_time: Date }): Promise<{ redirectUrl: string, preferenceId: string, publicKey: string }> => {
     const response = await fetch(`/api/create-mp-preference`, {
         method: 'POST',
@@ -438,31 +399,18 @@ export const createMercadoPagoPreference = async (appointmentData: Omit<Appointm
     return data;
 };
 
-export const createPackageSubscriptionPreference = async (
-  type: 'package' | 'subscription',
-  itemId: string,
-  barbershopId: string,
-  user: User
-): Promise<{ preferenceId: string, publicKey: string }> => {
-  const response = await fetch(`/api/create-mp-preference`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        packageData: { 
-          type, 
-          itemId, 
-          barbershopId, 
-          userId: user.id, 
-          userName: user.name, 
-          userEmail: user.email 
-        } 
-      }),
-  });
-  if (!response.ok) {
-      const errorBody = await response.json();
-      throw new Error(errorBody.error || 'Falha ao criar preferência de pagamento.');
-  }
-  return await response.json();
+export const createPackageSubscriptionPreference = async (type: 'package' | 'subscription', itemId: string, barbershopId: string, user: User): Promise<{ preferenceId: string; publicKey: string; }> => {
+    const response = await fetch(`/api/create-mp-preference`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ packageData: { type, itemId, barbershopId, userId: user.id, userName: user.name, userEmail: user.email } }),
+    });
+    if (!response.ok) {
+        const errorBody = await response.json();
+        throw new Error(errorBody.error || 'Falha ao criar preferência de pagamento de pacote/assinatura.');
+    }
+    const data = await response.json();
+    return data;
 };
 
 export const createPlanPreference = async (planId: string, billingCycle: 'monthly' | 'annual', barbershopId: string): Promise<{ preferenceId: string, publicKey: string }> => {
@@ -471,19 +419,10 @@ export const createPlanPreference = async (planId: string, billingCycle: 'monthl
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ planId, billingCycle, barbershopId }),
     });
-    
     if (!response.ok) {
-        // Handle non-JSON error responses gracefully
-        const errorText = await response.text();
-        try {
-            const errorBody = JSON.parse(errorText);
-            throw new Error(errorBody.error || `Falha ao criar preferência de pagamento do plano (status: ${response.status}).`);
-        } catch (e) {
-            // If parsing fails, the error response was not JSON
-            throw new Error(errorText || `Falha ao criar preferência de pagamento do plano (status: ${response.status}).`);
-        }
+        const errorBody = await response.json();
+        throw new Error(errorBody.error || 'Falha ao criar preferência de pagamento do plano.');
     }
-    
     const data = await response.json();
     return data;
 };
@@ -501,11 +440,38 @@ export const disconnectMercadoPago = async (barbershopId: string): Promise<void>
     }
 };
 
-export const deleteBarbershopAccount = async () => {
+// --- PLATFORM-SPECIFIC API CALLS ---
+
+async function getAuthHeaders() {
     if (!supabase) throw new Error(supabaseInitializationError!);
-    const { error } = await supabase.rpc('delete_user_and_barbershop');
-    if (error) {
-        console.error('Error calling delete_user_and_barbershop RPC:', error);
-        throw new Error('Não foi possível excluir a conta. Certifique-se de que a função `delete_user_and_barbershop` existe no seu banco de dados ou entre em contato com o suporte.');
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("Usuário não autenticado.");
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+    };
+}
+
+export const getPlatformMpStatus = async (): Promise<{ connected: boolean }> => {
+    const response = await fetch('/api/get-platform-mp-status', {
+        method: 'GET',
+        headers: await getAuthHeaders(),
+    });
+    if (!response.ok) {
+        const errorBody = await response.json();
+        throw new Error(errorBody.error || 'Falha ao verificar status do Mercado Pago.');
+    }
+    return response.json();
+};
+
+export const disconnectPlatformMercadoPago = async (): Promise<void> => {
+    const response = await fetch('/api/mp-platform-oauth-disconnect', {
+        method: 'POST',
+        headers: await getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.json();
+        throw new Error(errorBody.error || 'Falha ao desconectar a conta da plataforma.');
     }
 };

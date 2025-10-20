@@ -1,7 +1,6 @@
 
-
 import React, { useState, useMemo, useEffect } from 'react';
-import { User, Appointment, Barbershop, Review, ClientNotification, Session, Barber, FinancialRecord, Json, IntegrationSettings, CancellationPolicy } from './types';
+import { User, Appointment, Barbershop, Review, ClientNotification, Session, Barber, FinancialRecord, Json, IntegrationSettings, CancellationPolicy, ServicePackage, SubscriptionPlan } from './types';
 import LoginScreen from './screens/LoginScreen';
 import ClientHomeScreen from './screens/client/ClientHomeScreen';
 import BarbershopDashboardScreen from './screens/barbershop/BarbershopDashboardScreen';
@@ -28,18 +27,10 @@ import InactivePlanBanner from './components/InactivePlanBanner';
 import { supabaseInitializationError } from './supabaseClient';
 import PlanPaymentModal from './screens/barbershop/PlanPaymentModal';
 import { PackagePaymentModal } from './screens/client/PaymentModal';
+import NotificationPermissionManager from './components/NotificationPermissionManager';
+import TrialExpiredScreen from './screens/barbershop/TrialExpiredScreen';
 
-// A type for the BeforeInstallPromptEvent
-interface BeforeInstallPromptEvent extends Event {
-  readonly platforms: string[];
-  readonly userChoice: Promise<{
-    outcome: 'accepted' | 'dismissed';
-    platform: string;
-  }>;
-  prompt(): Promise<void>;
-}
 
-// FIX: Added missing properties `deleteBarbershopAccount`, `setPurchaseIntent`, `setPackageSubscriptionIntent`, and PWA install properties to the context type definition.
 export const AppContext = React.createContext<{
   user: User | null;
   users: User[];
@@ -56,6 +47,11 @@ export const AppContext = React.createContext<{
     planId: string;
     trialEndDate: Date | null;
   };
+  installPrompt: any;
+  triggerInstall: () => void;
+  setPurchaseIntent: React.Dispatch<React.SetStateAction<{ planId: string; billingCycle: 'monthly' | 'annual'; } | null>>;
+  setPackageSubscriptionIntent: React.Dispatch<React.SetStateAction<{ type: "package" | "subscription"; itemId: string; barbershop: Barbershop; } | null>>;
+  deleteBarbershopAccount: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   signup: (name: string, email: string, password: string, accountType: 'client' | 'barbershop', phone: string, birthDate?: string, barbershopName?: string) => Promise<void>;
@@ -75,11 +71,6 @@ export const AppContext = React.createContext<{
   removeFromWaitingList: (barbershopId: string, date: string, clientId: string) => Promise<void>;
   setGoogleToken: (token: string | null) => void;
   patchUser: (user: User) => void;
-  deleteBarbershopAccount: () => Promise<void>;
-  setPurchaseIntent: (intent: { planId: string, billingCycle: 'monthly' | 'annual' } | null) => void;
-  setPackageSubscriptionIntent: (intent: { type: 'package' | 'subscription', itemId: string, barbershop: Barbershop } | null) => void;
-  installPrompt: BeforeInstallPromptEvent | null;
-  triggerInstall: () => void;
 }>({
   user: null,
   users: [],
@@ -91,6 +82,11 @@ export const AppContext = React.createContext<{
   googleToken: null,
   isSuperAdmin: false,
   accessStatus: { hasAccess: false, isTrial: false, planId: 'BASIC', trialEndDate: null },
+  installPrompt: null,
+  triggerInstall: () => {},
+  setPurchaseIntent: () => {},
+  setPackageSubscriptionIntent: () => {},
+  deleteBarbershopAccount: async () => {},
   login: async () => {},
   logout: async () => {},
   signup: async () => {},
@@ -110,11 +106,6 @@ export const AppContext = React.createContext<{
   removeFromWaitingList: async () => {},
   setGoogleToken: () => {},
   patchUser: () => {},
-  deleteBarbershopAccount: async () => {},
-  setPurchaseIntent: () => {},
-  setPackageSubscriptionIntent: () => {},
-  installPrompt: null,
-  triggerInstall: () => {},
 });
 
 export const PlanContext = React.createContext<{
@@ -153,10 +144,9 @@ const App: React.FC = () => {
   const [loginAccountType, setLoginAccountType] = useState<'client' | 'barbershop' | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'failure' | 'pending' | null>(null);
   const [currentHash, setCurrentHash] = useState(window.location.hash);
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [purchaseIntent, setPurchaseIntent] = useState<{ planId: string, billingCycle: 'monthly' | 'annual' } | null>(null);
   const [packageSubscriptionIntent, setPackageSubscriptionIntent] = useState<{ type: 'package' | 'subscription', itemId: string, barbershop: Barbershop } | null>(null);
-  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-
 
   const [activeClientScreen, setActiveClientScreen] = useState('home');
   const [activeBarbershopScreen, setActiveBarbershopScreen] = useState('dashboard');
@@ -170,85 +160,46 @@ const App: React.FC = () => {
     planId: string;
     trialEndDate: Date | null;
   }>({ hasAccess: true, isTrial: false, planId: 'BASIC', trialEndDate: null });
-  
-  const loadInitialData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-          const [barbershopsData, usersData, reviewsData] = await Promise.all([
-              api.getBarbershops(),
-              api.getAllUsers(),
-              api.getReviews(),
-          ]);
-          setBarbershops(barbershopsData);
-          setUsers(usersData);
-          setReviews(reviewsData);
-
-          const { data: { session: currentSession } } = await api.getSession();
-          setSession(currentSession);
-
-          if (currentSession?.user) {
-              const [appointmentsData, userProfile] = await Promise.all([
-                  api.getAppointments(),
-                  api.getUserProfile(currentSession.user.id),
-              ]);
-              setAppointments(appointmentsData);
-              setUser(userProfile);
-          } else {
-              setUser(null);
-              setAppointments([]);
-              setGoogleToken(null);
-          }
-      } catch (err: any) {
-          console.error("Falha ao carregar dados iniciais:", err);
-          setError("Não foi possível carregar os dados. Verifique sua conexão.");
-      } finally {
-          setLoading(false);
-      }
-  };
 
   useEffect(() => {
-    const handleBeforeInstallPrompt = (e: Event) => {
+    const handler = (e: Event) => {
       e.preventDefault();
-      setInstallPrompt(e as BeforeInstallPromptEvent);
+      setInstallPrompt(e);
     };
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
-  }, []);
+    window.addEventListener('beforeinstallprompt', handler);
 
+    const checkLoginIntent = () => {
+        const intent = sessionStorage.getItem('bookingIntentBarbershopId') || sessionStorage.getItem('purchaseIntent');
+        if (intent) {
+            setShowLanding(false);
+        }
+    };
+    checkLoginIntent();
+
+
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+  
   const triggerInstall = () => {
     if (installPrompt) {
-      installPrompt.prompt();
-      installPrompt.userChoice.then((choiceResult) => {
-        if (choiceResult.outcome === 'accepted') {
-          console.log('User accepted the install prompt');
-        } else {
-          console.log('User dismissed the install prompt');
-        }
-        setInstallPrompt(null);
-      });
+        installPrompt.prompt();
+        installPrompt.userChoice.then(() => {
+            setInstallPrompt(null);
+        });
     }
   };
-
+  
   useEffect(() => {
     if (currentHash.includes('payment_status')) {
       const paramsString = currentHash.includes('?') ? currentHash.substring(currentHash.indexOf('?')) : '';
       const params = new URLSearchParams(paramsString);
       const status = params.get('payment_status') as 'success' | 'failure' | 'pending' | null;
-      const returnTo = params.get('return_to');
 
       if (status && ['success', 'failure', 'pending'].includes(status)) {
         setPaymentStatus(status);
-        if (status === 'success') {
-          // Give time for webhook to process before reloading data
-          setTimeout(() => loadInitialData(), 3000);
+        if (status === 'success' && params.get('return_to') === 'settings') {
+            setActiveBarbershopScreen('settings');
         }
-      }
-
-      if (returnTo && user?.user_type === 'BARBERSHOP') {
-        setActiveBarbershopScreen(returnTo);
       }
 
       // Clean the hash
@@ -260,11 +211,46 @@ const App: React.FC = () => {
       window.history.replaceState(null, '', newHash);
       setCurrentHash(newHash); // Update state to reflect the cleaned URL
     }
-  }, [currentHash, user]);
+  }, [currentHash]);
 
   useEffect(() => {
     const handleHashChange = () => setCurrentHash(window.location.hash);
     window.addEventListener('hashchange', handleHashChange);
+
+    const loadInitialData = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const { data: { session: currentSession } } = await api.getSession();
+            setSession(currentSession);
+
+            if (currentSession?.user) {
+                const [barbershopsData, usersData, reviewsData, appointmentsData, userProfile] = await Promise.all([
+                    api.getBarbershops(),
+                    api.getAllUsers(),
+                    api.getReviews(),
+                    api.getAppointments(),
+                    api.getUserProfile(currentSession.user.id),
+                ]);
+                setBarbershops(barbershopsData);
+                setUsers(usersData);
+                setReviews(reviewsData);
+                setAppointments(appointmentsData);
+                setUser(userProfile);
+            } else {
+                setUser(null);
+                setAppointments([]);
+                setGoogleToken(null);
+                const barbershopsData = await api.getBarbershops();
+                setBarbershops(barbershopsData);
+            }
+        } catch (err: any) {
+            console.error("Falha ao carregar dados iniciais:", err);
+            setError("Não foi possível carregar os dados. Verifique sua conexão.");
+        } finally {
+            setLoading(false);
+        }
+    };
     
     loadInitialData();
 
@@ -275,40 +261,14 @@ const App: React.FC = () => {
         setSession(newSession);
 
         if (userJustLoggedIn) {
-            const bookingIntentIdentifier = sessionStorage.getItem('bookingIntentIdentifier');
-            const returnToIdentifier = sessionStorage.getItem('returnToIdentifier');
-            const purchaseIntentStr = sessionStorage.getItem('purchaseIntent');
-
-            if (bookingIntentIdentifier) {
-                const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(bookingIntentIdentifier);
-                window.location.hash = isUUID ? `/?barbershopId=${bookingIntentIdentifier}&openBooking=true` : `/${bookingIntentIdentifier}?openBooking=true`;
-                sessionStorage.removeItem('bookingIntentIdentifier');
-            } else if (returnToIdentifier) {
-                 const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(returnToIdentifier);
-                 window.location.hash = isUUID ? `/?barbershopId=${returnToIdentifier}` : `/${returnToIdentifier}`;
-                 sessionStorage.removeItem('returnToIdentifier');
-            } else if (purchaseIntentStr) {
-                 const intent = JSON.parse(purchaseIntentStr);
-                 if (intent.identifier) {
-                    const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(intent.identifier);
-                    window.location.hash = isUUID ? `/?barbershopId=${intent.identifier}` : `/${intent.identifier}`;
-                 }
-            }
-
-
             loadInitialData();
         } else if (userJustLoggedOut) {
             setUser(null);
             setAppointments([]);
             setUsers([]);
-            setBarbershops([]);
             setReviews([]);
             setGoogleToken(null);
-            sessionStorage.removeItem('bookingIntentIdentifier');
-            sessionStorage.removeItem('returnToIdentifier');
-            sessionStorage.removeItem('purchaseIntent');
-            setShowLanding(true); 
-            setLoginAccountType(null);
+            setShowLanding(true);
         }
     });
 
@@ -334,37 +294,27 @@ const App: React.FC = () => {
       const integrations = barbershopData.integrations as IntegrationSettings;
       const now = new Date();
       
-      let finalPlanId = 'INACTIVE';
+      let hasAccess = false;
       let isTrial = false;
+      let finalPlanId = 'INACTIVE';
       let trialEndDate: Date | null = null;
       
       if (integrations?.plan_status === 'suspended') {
+          hasAccess = true; // Still has access to basic features
           finalPlanId = 'INACTIVE';
-          setAccessStatus({ hasAccess: false, isTrial: false, planId: finalPlanId, trialEndDate: null });
-          return;
-      }
-  
-      if (barbershopData.trial_ends_at) {
-          const trialEnd = new Date(barbershopData.trial_ends_at);
-          if (trialEnd > now) {
-              isTrial = true;
-              trialEndDate = trialEnd;
-              finalPlanId = 'PREMIUM'; 
-              setAccessStatus({ hasAccess: true, isTrial, planId: finalPlanId, trialEndDate });
-              return;
-          }
-      }
-  
-      if (integrations?.plan_expires_at) {
-          const planEndDate = new Date(integrations.plan_expires_at);
-          if (planEndDate > now) {
-              finalPlanId = integrations.plan || 'BASIC';
-              setAccessStatus({ hasAccess: true, isTrial: false, planId: finalPlanId, trialEndDate: null });
-              return;
-          }
+      } else if (barbershopData.trial_ends_at && new Date(barbershopData.trial_ends_at) > now) {
+          hasAccess = true;
+          isTrial = true;
+          trialEndDate = new Date(barbershopData.trial_ends_at);
+          finalPlanId = 'PREMIUM';
+      } else if (integrations?.plan_expires_at && new Date(integrations.plan_expires_at) > now) {
+          hasAccess = true;
+          finalPlanId = integrations.plan || 'INACTIVE';
+      } else if (barbershopData.trial_ends_at && new Date(barbershopData.trial_ends_at) <= now) {
+          hasAccess = false; // Trial has expired, no active plan
       }
       
-      setAccessStatus({ hasAccess: false, isTrial: false, planId: 'INACTIVE', trialEndDate: null });
+      setAccessStatus({ hasAccess, isTrial, planId: finalPlanId, trialEndDate });
   
   }, [user, barbershopData]);
 
@@ -376,12 +326,7 @@ const App: React.FC = () => {
         return { 
             plan: {}, 
             features: {
-                analytics: false,
-                marketing: false,
-                googleCalendar: false,
-                onlinePayments: false,
-                packagesAndSubscriptions: false,
-                clientManagement: false,
+                analytics: false, marketing: false, googleCalendar: false, onlinePayments: false, packagesAndSubscriptions: false, clientManagement: false,
             } 
         };
     }
@@ -400,7 +345,6 @@ const App: React.FC = () => {
   
   const signupAndRefetch = async (name: string, email: string, password: string, accountType: 'client' | 'barbershop', phone: string, birthDate?: string, barbershopName?: string) => {
     await api.signUpUser(name, email, password, accountType, phone, birthDate, barbershopName);
-    await loadInitialData();
   };
   
   const patchUser = (updatedUser: User) => {
@@ -418,21 +362,8 @@ const App: React.FC = () => {
   };
 
   const contextFunctions = {
-    login: async (email: string, password: string) => {
-        await api.signInUser(email, password);
-        await loadInitialData();
-    },
-    logout: async () => {
-      await api.signOutUser();
-      setUser(null);
-      setAppointments([]);
-      setUsers([]);
-      setBarbershops([]);
-      setReviews([]);
-      setGoogleToken(null);
-      setShowLanding(true); 
-      setLoginAccountType(null);
-    },
+    login: api.signInUser,
+    logout: api.signOutUser,
     signup: signupAndRefetch,
     addAppointment: async (data: Omit<Appointment, 'id' | 'start_time' | 'end_time' | 'created_at'> & { start_time: Date, end_time: Date }): Promise<Appointment> => {
         const newAppointment = await api.addAppointment(data);
@@ -450,7 +381,7 @@ const App: React.FC = () => {
         setAppointments(updatedAppointments);
     
         try {
-            let clientProfile = await api.getUserProfile(appointment.client_id);
+            let clientProfile = users.find(u => u.id === appointment.client_id) || await api.getUserProfile(appointment.client_id);
         
             if (status === 'cancelled' && user && clientProfile) {
                 const barbershop = barbershops.find(b => b.id === appointment.barbershop_id);
@@ -481,10 +412,13 @@ const App: React.FC = () => {
                     if (debtUpdate > 0) updates.outstanding_debts = { ...currentDebts, [shopId]: (currentDebts[shopId] || 0) + debtUpdate } as Json;
         
                     if (Object.keys(updates).length > 0) {
-                        const updatedProfile = await api.updateUserProfile(clientProfile.id, updates);
-                        patchUser(updatedProfile);
+                        clientProfile = await api.updateUserProfile(clientProfile.id, updates);
                     }
                 }
+            }
+        
+            if (clientProfile) {
+                patchUser(clientProfile);
             }
         } catch (error) {
              console.error(`Falha ao buscar ou atualizar o perfil do cliente ${appointment.client_id} após a atualização de status.`, error);
@@ -493,13 +427,11 @@ const App: React.FC = () => {
     updateBarbershopData: async (id: string, fields: Partial<Omit<Barbershop, 'id'>>) => {
       try {
         await api.updateBarbershop(id, fields);
-        const updatedBarbershops = await api.getBarbershops();
-        setBarbershops(updatedBarbershops);
-      } catch (error: any) {
+      } catch (error) {
         console.error("Falha ao atualizar barbearia:", error);
-        alert(`Ocorreu um erro ao salvar as alterações: ${error.message}`);
-        const updatedBarbershops = await api.getBarbershops();
-        setBarbershops(updatedBarbershops);
+        alert("Ocorreu um erro ao salvar as alterações. A interface será atualizada para refletir os dados reais do servidor.");
+      } finally {
+        setBarbershops(await api.getBarbershops());
       }
     },
     updateBarberData: async (barbershopId: string, barberId: string, fields: Partial<Omit<Barber, 'id'>>) => {
@@ -538,9 +470,6 @@ const App: React.FC = () => {
         const clients = users.filter(u => u.user_type === 'CLIENT');
         await api.sendPromotion(barbershopId, title, message, clients, barbershops);
         setBarbershops(await api.getBarbershops());
-        // To see the notification badge update in realtime for the client (if testing in same browser)
-        const updatedUsers = await api.getAllUsers();
-        setUsers(updatedUsers);
     },
     markNotificationsAsRead: async (notificationIds: string[]) => {
         if (!user) return;
@@ -557,8 +486,12 @@ const App: React.FC = () => {
       setBarbershops(await api.getBarbershops());
     },
     deleteBarbershopAccount: async () => {
-      await api.deleteBarbershopAccount();
-      // On success, the auth listener will trigger a logout and state cleanup.
+        if (barbershopData) {
+            await api.deleteUserAndBarbershop();
+            await api.signOutUser();
+        } else {
+            throw new Error("Nenhuma barbearia encontrada para excluir.");
+        }
     },
     setGoogleToken,
     patchUser,
@@ -566,11 +499,8 @@ const App: React.FC = () => {
 
   const appContextValue = { 
       user, users, barbershops, barbershopData, appointments, allAppointments: appointments, reviews, googleToken, isSuperAdmin, accessStatus,
-      ...contextFunctions,
-      setPurchaseIntent,
-      setPackageSubscriptionIntent,
-      installPrompt,
-      triggerInstall,
+      installPrompt, triggerInstall, setPurchaseIntent, setPackageSubscriptionIntent,
+      ...contextFunctions
   };
   
   const handleEnterApp = (type: 'client' | 'barbershop') => {
@@ -610,10 +540,15 @@ const App: React.FC = () => {
           <span className="text-xs mt-1">Perfil</span>
         </button>
       </nav>
+      <NotificationPermissionManager />
     </div>
   )};
 
   const renderBarbershopApp = () => {
+    if (!accessStatus.hasAccess && !accessStatus.isTrial) {
+        return <TrialExpiredScreen />;
+    }
+    
     let navItems = [
       { id: 'dashboard', label: 'Painel', icon: HomeIcon, enabled: true },
       { id: 'appointments', label: 'Agenda', icon: CalendarIcon, enabled: true },
@@ -704,11 +639,7 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
-    // Correctly parse slug (path) vs. ID (query param)
-    const hash = currentHash;
-    const slugMatch = hash.match(/^#\/([^?&=]+)/);
-    const idMatch = hash.match(/barbershopId=([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/);
-    const identifier = slugMatch ? slugMatch[1] : (idMatch ? idMatch[1] : null);
+    const identifier = currentHash.startsWith('#/') ? currentHash.substring(2).split('?')[0] : new URLSearchParams(currentHash.substring(currentHash.indexOf('?'))).get('barbershopId');
 
     if (identifier) {
         return <BarbershopPublicPage identifier={identifier} />;
@@ -746,32 +677,20 @@ const App: React.FC = () => {
       if (barbershopData && !barbershopData.has_completed_setup) {
         return <BarbershopSetupScreen />;
       }
-       if (!accessStatus.hasAccess && !accessStatus.isTrial) {
-            return <InactivePlanBanner />; // Or a dedicated expired screen
-        }
       return renderBarbershopApp();
     }
     return <LoginScreen initialAccountType={loginAccountType} />;
   };
 
+  const finalAppContextValue = { ...appContextValue };
+
   return (
-    <AppContext.Provider value={appContextValue}>
+    <AppContext.Provider value={finalAppContextValue}>
       <PlanContext.Provider value={planContextValue}>
         <div className="antialiased font-sans bg-brand-dark min-h-screen">
           {renderContent()}
-          {purchaseIntent && barbershopData && (
-            <PlanPaymentModal
-              planId={purchaseIntent.planId}
-              billingCycle={purchaseIntent.billingCycle}
-              onClose={() => setPurchaseIntent(null)}
-            />
-          )}
-          {packageSubscriptionIntent && (
-            <PackagePaymentModal
-              intent={packageSubscriptionIntent}
-              onClose={() => setPackageSubscriptionIntent(null)}
-            />
-          )}
+          {purchaseIntent && <PlanPaymentModal planId={purchaseIntent.planId} billingCycle={purchaseIntent.billingCycle} onClose={() => setPurchaseIntent(null)} />}
+          {packageSubscriptionIntent && <PackagePaymentModal intent={packageSubscriptionIntent} onClose={() => setPackageSubscriptionIntent(null)} />}
           {paymentStatus && (
               <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[100]">
                   <div className="bg-brand-dark w-full max-w-md rounded-lg shadow-xl p-8 text-center">
@@ -779,14 +698,14 @@ const App: React.FC = () => {
                           <>
                               <CheckCircleIcon className="w-20 h-20 text-green-500 mx-auto mb-4" />
                               <h2 className="text-2xl font-bold mb-2">Pagamento Aprovado!</h2>
-                              <p className="text-gray-400 mb-6">Sua compra foi concluída com sucesso e os detalhes foram atualizados no seu perfil.</p>
+                              <p className="text-gray-400 mb-6">Sua compra foi concluída com sucesso. O status será atualizado em breve.</p>
                               <Button onClick={() => {
                                   setPaymentStatus(null);
                                   if (user?.user_type === 'CLIENT') {
-                                     setActiveClientScreen('profile');
+                                     setActiveClientScreen('appointments');
                                   }
                               }}>
-                                  Ver Meu Perfil
+                                  Ok
                               </Button>
                           </>
                       )}
@@ -805,13 +724,8 @@ const App: React.FC = () => {
                               <ClockIcon className="w-20 h-20 text-amber-500 mx-auto mb-4" />
                               <h2 className="text-2xl font-bold mb-2">Pagamento Pendente</h2>
                               <p className="text-gray-400 mb-6">Seu pagamento está sendo processado. Sua compra será confirmada assim que o pagamento for aprovado.</p>
-                               <Button variant="secondary" onClick={() => {
-                                  setPaymentStatus(null);
-                                  if (user?.user_type === 'CLIENT') {
-                                     setActiveClientScreen('profile');
-                                  }
-                              }}>
-                                  Ver Meu Perfil
+                               <Button variant="secondary" onClick={() => setPaymentStatus(null)}>
+                                  Ok
                               </Button>
                           </>
                       )}

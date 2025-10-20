@@ -1,10 +1,11 @@
+
 import React, { useContext, useMemo, useState } from 'react';
 import { AppContext } from '../../App';
 import Button from '../../components/Button';
 import { Service, ServicePackage, SubscriptionPlan, UserActiveSubscription, UserPurchasedPackage } from '../../types';
 
 const ClientProfileScreen: React.FC = () => {
-    const { user, barbershops, appointments, logout, installPrompt, triggerInstall } = useContext(AppContext);
+    const { user, barbershops, appointments, logout } = useContext(AppContext);
     const [filters, setFilters] = useState({
         startDate: '',
         endDate: '',
@@ -33,16 +34,14 @@ const ClientProfileScreen: React.FC = () => {
             if (app.client_id !== user.id) return;
             
             if (app.status === 'completed' || app.status === 'paid') {
-                 if (app.price !== null && app.price > 0) {
-                    history.push({
-                        id: `exp-${app.id}`,
-                        date: app.start_time,
-                        description: app.service_name,
-                        barbershopId: app.barbershop_id,
-                        amount: app.price,
-                        type: 'service'
-                    });
-                }
+                history.push({
+                    id: `exp-${app.id}`,
+                    date: app.start_time,
+                    description: app.service_name,
+                    barbershopId: app.barbershop_id,
+                    amount: app.price,
+                    type: 'service'
+                });
             } else if (app.status === 'cancelled' && app.cancellation_fee && app.cancellation_fee > 0) {
                  history.push({
                     id: `fee-${app.id}`,
@@ -155,7 +154,7 @@ const ClientProfileScreen: React.FC = () => {
                             </div>
                         )
                     })}
-                    {activeSubscriptions.length === 0 && purchasedPackages.length === 0 && (
+                    {(!user.active_subscriptions || activeSubscriptions.length === 0) && (!user.purchased_packages || purchasedPackages.length === 0) && (
                         <p className="text-gray-400 text-center text-sm py-4">Você não possui assinaturas ou pacotes ativos.</p>
                     )}
                 </div>
@@ -202,12 +201,7 @@ const ClientProfileScreen: React.FC = () => {
                 </div>
             </section>
 
-            <div className="pt-4 space-y-3">
-                 {installPrompt && (
-                    <Button variant="primary" onClick={triggerInstall}>
-                        Instalar Aplicativo
-                    </Button>
-                 )}
+            <div className="pt-4">
                  <Button variant="secondary" onClick={logout}>Sair da Conta</Button>
             </div>
         </div>

@@ -1,8 +1,9 @@
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '../src/types/database';
-import { IntegrationSettings, ServicePackage, SubscriptionPlan, Json } from '../src/types';
+import { IntegrationSettings, ServicePackage, SubscriptionPlan } from '../src/types';
 import { randomUUID } from 'crypto';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -58,10 +59,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
             let itemDetails;
             if (type === 'package') {
-                const packages = (barbershop.packages as unknown as ServicePackage[]) || [];
+                const packages = (barbershop.packages as ServicePackage[]) || [];
                 itemDetails = packages.find(p => p.id === itemId);
             } else { // subscription
-                const subscriptions = (barbershop.subscriptions as unknown as SubscriptionPlan[]) || [];
+                const subscriptions = (barbershop.subscriptions as SubscriptionPlan[]) || [];
                 itemDetails = subscriptions.find(s => s.id === itemId);
             }
 

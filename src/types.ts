@@ -1,3 +1,4 @@
+
 import { Session as SupabaseSession } from '@supabase/supabase-js';
 
 export type Json =
@@ -188,15 +189,6 @@ export interface UserActiveSubscription {
   status: 'active' | 'cancelled';
 }
 
-export interface PushSubscriptionJSON {
-  endpoint: string;
-  expirationTime?: number | null;
-  keys: {
-    p256dh: string;
-    auth: string;
-  };
-}
-
 
 // Main application types, mirroring Supabase tables
 export interface User {
@@ -214,7 +206,7 @@ export interface User {
   store_credits: Json | null;
   purchased_packages: Json | UserPurchasedPackage[] | null;
   active_subscriptions: Json | UserActiveSubscription[] | null;
-  push_subscriptions: Json | PushSubscriptionJSON[] | null;
+  push_subscriptions: Json | null;
 }
 
 export interface Barbershop {
@@ -270,7 +262,7 @@ export interface Appointment {
   mp_preference_id?: string | null;
   package_usage_id: string | null;
   subscription_usage_id: string | null;
-  reminder_sent_at?: string | null;
+  reminder_sent_at?: string | null; // Added for cron job
 }
 
 export interface Review {
