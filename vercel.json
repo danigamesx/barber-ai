@@ -4,11 +4,5 @@
       "source": "/((?!api|sw.js|icon-192.png|icon-512.png|manifest.json).*)",
       "destination": "/index.html"
     }
-  ],
-  "crons": [
-    {
-      "path": "/api/check-appointments",
-      "schedule": "*/30 * * * *"
-    }
   ]
 }
