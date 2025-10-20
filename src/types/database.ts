@@ -1,3 +1,4 @@
+
 export type Json =
   | string
   | number
@@ -27,6 +28,7 @@ export type Database = {
           notes: string | null
           package_usage_id: string | null
           price: number | null
+          reminder_sent_at: string | null
           review_id: string | null
           service_id: string | null
           service_name: string | null
@@ -51,6 +53,7 @@ export type Database = {
           notes?: string | null
           package_usage_id?: string | null
           price?: number | null
+          reminder_sent_at?: string | null
           review_id?: string | null
           service_id?: string | null
           service_name?: string | null
@@ -75,6 +78,7 @@ export type Database = {
           notes?: string | null
           package_usage_id?: string | null
           price?: number | null
+          reminder_sent_at?: string | null
           review_id?: string | null
           service_id?: string | null
           service_name?: string | null
