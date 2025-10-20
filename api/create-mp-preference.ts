@@ -59,10 +59,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
             let itemDetails;
             if (type === 'package') {
-                const packages = (barbershop.packages as ServicePackage[]) || [];
+                const packages = (barbershop.packages as unknown as ServicePackage[]) || [];
                 itemDetails = packages.find(p => p.id === itemId);
             } else { // subscription
-                const subscriptions = (barbershop.subscriptions as SubscriptionPlan[]) || [];
+                const subscriptions = (barbershop.subscriptions as unknown as SubscriptionPlan[]) || [];
                 itemDetails = subscriptions.find(s => s.id === itemId);
             }
 
