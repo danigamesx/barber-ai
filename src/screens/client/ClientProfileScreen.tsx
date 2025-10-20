@@ -1,8 +1,8 @@
-
 import React, { useContext, useMemo, useState } from 'react';
 import { AppContext } from '../../App';
 import Button from '../../components/Button';
 import { Service, ServicePackage, SubscriptionPlan, UserActiveSubscription, UserPurchasedPackage } from '../../types';
+import InstallPwaButton from '../../components/InstallPwaButton';
 
 const ClientProfileScreen: React.FC = () => {
     const { user, barbershops, appointments, logout } = useContext(AppContext);
@@ -34,14 +34,16 @@ const ClientProfileScreen: React.FC = () => {
             if (app.client_id !== user.id) return;
             
             if (app.status === 'completed' || app.status === 'paid') {
-                history.push({
-                    id: `exp-${app.id}`,
-                    date: app.start_time,
-                    description: app.service_name,
-                    barbershopId: app.barbershop_id,
-                    amount: app.price,
-                    type: 'service'
-                });
+                 if (app.price !== null && app.price > 0) {
+                    history.push({
+                        id: `exp-${app.id}`,
+                        date: app.start_time,
+                        description: app.service_name,
+                        barbershopId: app.barbershop_id,
+                        amount: app.price,
+                        type: 'service'
+                    });
+                }
             } else if (app.status === 'cancelled' && app.cancellation_fee && app.cancellation_fee > 0) {
                  history.push({
                     id: `fee-${app.id}`,
@@ -201,7 +203,8 @@ const ClientProfileScreen: React.FC = () => {
                 </div>
             </section>
 
-            <div className="pt-4">
+            <div className="pt-4 space-y-3">
+                 <InstallPwaButton variant="primary" />
                  <Button variant="secondary" onClick={logout}>Sair da Conta</Button>
             </div>
         </div>

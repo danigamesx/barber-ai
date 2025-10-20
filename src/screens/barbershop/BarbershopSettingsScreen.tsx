@@ -1,4 +1,3 @@
-
 import React, { useContext, useState, useEffect } from 'react';
 import { AppContext, PlanContext } from '../../App';
 import Button from '../../components/Button';
@@ -291,9 +290,7 @@ const BarbershopSettingsScreen: React.FC = () => {
   };
 
   const handleInitiatePurchase = (planId: string, billingCycle: 'monthly' | 'annual') => {
-    if (setPurchaseIntent) {
-      setPurchaseIntent({ planId, billingCycle });
-    }
+    setPurchaseIntent({ planId, billingCycle });
     setIsPlansModalOpen(false);
   };
 
@@ -647,7 +644,6 @@ const BarbershopSettingsScreen: React.FC = () => {
       {modalState?.type === 'subscriptions' && (
         <ManageSubscriptionsModal
             currentSubscriptions={subscriptions}
-            // FIX: The 'availableServices' prop was missing, which is required by ManageSubscriptionsModal.
             availableServices={services}
             onClose={() => setModalState(null)}
             onSave={(subscriptions) => {

@@ -8,8 +8,6 @@ declare global {
       readonly VITE_SUPABASE_ANON_KEY: string;
       // FIX: Added environment variable for Mercado Pago App ID
       readonly VITE_MERCADO_PAGO_APP_ID: string;
-      // FIX: Added VITE_VAPID_PUBLIC_KEY to match the declaration in `src/supabaseClient.ts` and resolve the conflict.
-      readonly VITE_VAPID_PUBLIC_KEY: string;
     };
   }
 }
