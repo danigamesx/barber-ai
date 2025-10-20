@@ -228,6 +228,7 @@ export type Database = {
           outstanding_debts: Json | null
           phone: string | null
           purchased_packages: Json | null
+          push_subscriptions: Json | null
           rewards: Json | null
           store_credits: Json | null
           user_type: string
@@ -244,6 +245,7 @@ export type Database = {
           outstanding_debts?: Json | null
           phone?: string | null
           purchased_packages?: Json | null
+          push_subscriptions?: Json | null
           rewards?: Json | null
           store_credits?: Json | null
           user_type: string
@@ -260,6 +262,7 @@ export type Database = {
           outstanding_debts?: Json | null
           phone?: string | null
           purchased_packages?: Json | null
+          push_subscriptions?: Json | null
           rewards?: Json | null
           store_credits?: Json | null
           user_type?: string
@@ -337,6 +340,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_user_and_barbershop: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       handle_new_user: {
         Args: Record<PropertyKey, never>
         Returns: {
