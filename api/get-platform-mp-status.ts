@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '../src/types/database';
-import { SUPER_ADMIN_USER_ID } from '../src/constants';
+import { SUPER_ADMIN_USER_ID } from './_shared';
 
 // Helper to get user and check for Super Admin
 async function isSuperAdmin(req: VercelRequest, supabase: SupabaseClient<Database>): Promise<boolean> {

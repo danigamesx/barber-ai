@@ -11,7 +11,8 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 export async function subscribeUserToPush() {
-    const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+    // FIX: Cast to any to avoid type error as VITE_VAPID_PUBLIC_KEY is not in the global ImportMeta definition
+    const vapidPublicKey = (import.meta.env as any).VITE_VAPID_PUBLIC_KEY;
     if (!vapidPublicKey) {
         console.error("VAPID public key not found in environment variables (VITE_VAPID_PUBLIC_KEY).");
         return null;
