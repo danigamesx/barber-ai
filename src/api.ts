@@ -387,8 +387,20 @@ export const setAppointmentGoogleEventId = async (appointmentId: string, googleE
 };
 
 // === MERCADO PAGO PAYMENT INTEGRATION ===
+
+async function getAuthHeaders() {
+    if (!supabase) throw new Error(supabaseInitializationError!);
+    // FIX: Cast to any to bypass incorrect type errors for Supabase auth methods.
+    const { data: { session } } = await (supabase.auth as any).getSession();
+    if (!session) throw new Error("Usuário não autenticado.");
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+    };
+}
+
 export const createMercadoPagoPreference = async (appointmentData: Omit<Appointment, 'id' | 'created_at'> & { start_time: Date, end_time: Date }): Promise<{ redirectUrl: string, preferenceId: string }> => {
-    const response = await fetch(`/api/create-mp-preference`, {
+    const response = await fetch(`/api/create-mp-preference?action=create_preference`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ appointmentData }),
@@ -402,7 +414,7 @@ export const createMercadoPagoPreference = async (appointmentData: Omit<Appointm
 };
 
 export const createPackageSubscriptionPreference = async (type: 'package' | 'subscription', itemId: string, barbershopId: string, user: User): Promise<{ redirectUrl: string, preferenceId: string }> => {
-    const response = await fetch(`/api/create-mp-preference`, {
+    const response = await fetch(`/api/create-mp-preference?action=create_preference`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ packageData: { type, itemId, barbershopId, userId: user.id, userName: user.name, userEmail: user.email } }),
@@ -415,7 +427,7 @@ export const createPackageSubscriptionPreference = async (type: 'package' | 'sub
 };
 
 export const createPlanPreference = async (planId: string, billingCycle: 'monthly' | 'annual', barbershopId: string): Promise<{ preferenceId: string; publicKey: string }> => {
-    const response = await fetch(`/api/create-plan-preference`, {
+    const response = await fetch(`/api/create-mp-preference?action=create_plan_preference`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ planId, billingCycle, barbershopId }),
@@ -429,7 +441,7 @@ export const createPlanPreference = async (planId: string, billingCycle: 'monthl
 };
 
 export const disconnectMercadoPago = async (barbershopId: string): Promise<void> => {
-    const response = await fetch('/api/mp-oauth-disconnect', {
+    const response = await fetch('/api/create-mp-preference?action=disconnect_merchant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ barbershopId }),
@@ -441,19 +453,8 @@ export const disconnectMercadoPago = async (barbershopId: string): Promise<void>
     }
 };
 
-// --- PLATFORM-SPECIFIC API CALLS ---
-
-async function getAuthHeaders() {
-    const { data: { session } } = await supabase!.auth.getSession();
-    if (!session) throw new Error("Usuário não autenticado.");
-    return {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-    };
-}
-
 export const getPlatformMpStatus = async (): Promise<{ connected: boolean }> => {
-    const response = await fetch('/api/get-platform-mp-status', {
+    const response = await fetch('/api/create-mp-preference?action=get_platform_status', {
         method: 'GET',
         headers: await getAuthHeaders(),
     });
@@ -465,7 +466,7 @@ export const getPlatformMpStatus = async (): Promise<{ connected: boolean }> => 
 };
 
 export const disconnectPlatformMercadoPago = async (): Promise<void> => {
-    const response = await fetch('/api/mp-platform-oauth-disconnect', {
+    const response = await fetch('/api/create-mp-preference?action=disconnect_platform', {
         method: 'POST',
         headers: await getAuthHeaders(),
     });

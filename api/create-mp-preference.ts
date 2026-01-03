@@ -1,171 +1,202 @@
-
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '../src/types/database';
-import { IntegrationSettings, ServicePackage, SubscriptionPlan } from '../src/types';
+import { IntegrationSettings, Json, ServicePackage, SubscriptionPlan } from '../src/types';
 import { randomUUID } from 'crypto';
+import { PLANS, SUPER_ADMIN_USER_ID } from './_shared';
+
+// Helper to get user and check for Super Admin
+async function isSuperAdmin(req: VercelRequest, supabase: SupabaseClient<Database>): Promise<boolean> {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return false;
+    const token = authHeader.split(' ')[1];
+    if (!token) return false;
+
+    // FIX: Cast supabase.auth to any to avoid type error with getUser in some environments/versions
+    const { data: { user } } = await (supabase.auth as any).getUser(token);
+    return user?.id === SUPER_ADMIN_USER_ID;
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const supabaseUrl = process.env.VITE_SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
     if (!supabaseUrl || !supabaseServiceKey) {
-        console.error('Supabase environment variables are missing.');
-        return res.status(500).json({ error: 'Configuração do servidor incompleta. Variáveis do Supabase ausentes.' });
+        return res.status(500).json({ error: 'Configuração do servidor incompleta.' });
     }
 
     const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const action = req.query.action as string || 'create_preference'; // Default action
 
+    // --- GET ACTIONS ---
+    if (req.method === 'GET') {
+        if (action === 'get_platform_status') {
+            if (!(await isSuperAdmin(req, supabaseAdmin))) {
+                return res.status(403).json({ error: 'Forbidden' });
+            }
+            try {
+                const { data: settings } = await supabaseAdmin.from('platform_settings').select('config').eq('id', 1).single();
+                const config = settings?.config as any;
+                return res.status(200).json({ connected: !!(config?.mercadopagoAccessToken && config?.mercadopagoPublicKey) });
+            } catch (e: any) {
+                return res.status(500).json({ error: e.message });
+            }
+        }
+        return res.status(405).end('Method Not Allowed');
+    }
+
+    // --- POST ACTIONS ---
     if (req.method !== 'POST') {
         res.setHeader('Allow', 'POST');
         return res.status(405).end('Method Not Allowed');
     }
 
-    const { appointmentData, packageData } = req.body;
-
-    // Helper function to build back_urls correctly
-    const buildBackUrls = (path: string, origin: string) => {
-        const baseUrl = `${origin}/#${path}`;
-        const separator = baseUrl.includes('?') ? '&' : '?';
-        return {
-            success: `${baseUrl}${separator}payment_status=success`,
-            failure: `${baseUrl}${separator}payment_status=failure`,
-            pending: `${baseUrl}${separator}payment_status=pending`,
-        };
-    };
-
-    if (packageData) {
-        try {
-            const { type, itemId, barbershopId, userId, userName, userEmail } = packageData;
-            if (!type || !itemId || !barbershopId || !userId) {
-                return res.status(400).json({ error: 'Dados da compra incompletos.' });
-            }
-
-            const { data: barbershop, error: fetchError } = await supabaseAdmin
-                .from('barbershops')
-                .select('integrations, name, packages, subscriptions, slug')
-                .eq('id', barbershopId)
-                .single();
-            if (fetchError) throw new Error('Barbearia não encontrada.');
-
-            const integrations = barbershop.integrations as IntegrationSettings;
-            const accessToken = integrations?.mercadopagoAccessToken;
-            const publicKey = integrations?.mercadopagoPublicKey;
-
-            if (!accessToken || !publicKey) {
-                return res.status(400).json({ error: 'Esta barbearia não está configurada para pagamentos online.' });
-            }
-
-            let itemDetails;
-            if (type === 'package') {
-                const packages = (barbershop.packages as ServicePackage[]) || [];
-                itemDetails = packages.find(p => p.id === itemId);
-            } else { // subscription
-                const subscriptions = (barbershop.subscriptions as SubscriptionPlan[]) || [];
-                itemDetails = subscriptions.find(s => s.id === itemId);
-            }
-
-            if (!itemDetails) {
-                return res.status(404).json({ error: 'Pacote ou assinatura não encontrado.' });
-            }
+    try {
+        // 1. DISCONNECT MERCHANT
+        if (action === 'disconnect_merchant') {
+            const { barbershopId } = req.body;
+            if (!barbershopId) return res.status(400).json({ error: 'Barbershop ID required.' });
             
-            const client = new MercadoPagoConfig({ accessToken });
-            const preferenceClient = new Preference(client);
+            const { data: barbershop } = await supabaseAdmin.from('barbershops').select('integrations').eq('id', barbershopId).single();
+            const current = (barbershop?.integrations as IntegrationSettings) || {};
+            const { mercadopagoAccessToken, mercadopagoPublicKey, mercadopagoRefreshToken, mercadopagoUserId, ...rest } = current;
             
-            const transactionId = randomUUID();
-            const returnPath = barbershop.slug ? `/${barbershop.slug}` : `/?barbershopId=${barbershopId}`;
+            await supabaseAdmin.from('barbershops').update({ integrations: rest as Json }).eq('id', barbershopId);
+            return res.status(200).json({ message: 'Disconnected' });
+        }
 
-            const preferenceBody = {
-                items: [{
-                    id: itemId,
-                    title: `${type === 'package' ? 'Pacote' : 'Assinatura'}: ${itemDetails.name}`,
-                    description: `Compra na barbearia ${barbershop.name}`,
+        // 2. DISCONNECT PLATFORM
+        if (action === 'disconnect_platform') {
+            if (!(await isSuperAdmin(req, supabaseAdmin))) return res.status(403).json({ error: 'Forbidden' });
+            
+            const { data } = await supabaseAdmin.from('platform_settings').select('config').eq('id', 1).single();
+            const current = (data?.config as any) || {};
+            const { mercadopagoAccessToken, mercadopagoPublicKey, mercadopagoRefreshToken, mercadopagoUserId, ...rest } = current;
+            
+            await supabaseAdmin.from('platform_settings').update({ config: rest }).eq('id', 1);
+            return res.status(200).json({ message: 'Disconnected' });
+        }
+
+        // 3. CREATE PLAN PREFERENCE
+        if (action === 'create_plan_preference') {
+            const { data: settings } = await supabaseAdmin.from('platform_settings').select('config').eq('id', 1).single();
+            const platformToken = (settings?.config as any)?.mercadopagoAccessToken;
+            const platformKey = (settings?.config as any)?.mercadopagoPublicKey;
+
+            if (!platformToken) return res.status(500).json({ error: 'Conta da plataforma não conectada.' });
+
+            const { planId, billingCycle, barbershopId } = req.body;
+            const plan = PLANS.find(p => p.id === planId);
+            if (!plan) return res.status(400).json({ error: 'Plano não encontrado.' });
+
+            const price = billingCycle === 'annual' ? plan.priceAnnual : plan.priceMonthly;
+            const client = new MercadoPagoConfig({ accessToken: platformToken });
+            const preference = new Preference(client);
+
+            const response = await preference.create({
+                body: {
+                    items: [{ id: `${planId}-${billingCycle}`, title: `Plano ${plan.name}`, quantity: 1, unit_price: Number(price.toFixed(2)), currency_id: 'BRL' }],
+                    back_urls: {
+                        success: `${req.headers.origin}/#/?payment_status=success&return_to=settings`,
+                        failure: `${req.headers.origin}/#/?payment_status=failure&return_to=settings`,
+                        pending: `${req.headers.origin}/#/?payment_status=pending&return_to=settings`,
+                    },
+                    auto_return: 'approved',
+                    notification_url: `https://${req.headers.host}/api/plan-webhook`,
+                    external_reference: barbershopId,
+                    metadata: { plan_id: planId, billing_cycle: billingCycle, barbershop_id: barbershopId }
+                }
+            });
+            return res.status(200).json({ preferenceId: response.id, publicKey: platformKey });
+        }
+
+        // 4. CREATE PREFERENCE (Appointment/Package - Default)
+        if (action === 'create_preference') {
+            const { appointmentData, packageData } = req.body;
+            const buildBackUrls = (path: string) => {
+                const base = `${req.headers.origin}/#${path}`;
+                const sep = base.includes('?') ? '&' : '?';
+                return {
+                    success: `${base}${sep}payment_status=success`,
+                    failure: `${base}${sep}payment_status=failure`,
+                    pending: `${base}${sep}payment_status=pending`,
+                };
+            };
+
+            let barbershopId, items, payer, metadata, notificationUrlSuffix;
+
+            if (packageData) {
+                barbershopId = packageData.barbershopId;
+                metadata = packageData;
+                notificationUrlSuffix = `purchase_type=${packageData.type}&barbershop_id=${barbershopId}`;
+                payer = { name: packageData.userName, email: packageData.userEmail };
+                
+                const { data: shop } = await supabaseAdmin.from('barbershops').select('packages, subscriptions, name').eq('id', barbershopId).single();
+                if (!shop) throw new Error('Barbearia não encontrada');
+                
+                let itemDetails;
+                if (packageData.type === 'package') {
+                    itemDetails = (shop.packages as ServicePackage[]).find(p => p.id === packageData.itemId);
+                } else {
+                    itemDetails = (shop.subscriptions as SubscriptionPlan[]).find(s => s.id === packageData.itemId);
+                }
+                if (!itemDetails) throw new Error('Item não encontrado');
+
+                items = [{
+                    id: packageData.itemId,
+                    title: itemDetails.name,
+                    description: `Compra na ${shop.name}`,
                     quantity: 1,
                     currency_id: 'BRL',
-                    unit_price: Number(itemDetails.price),
-                }],
-                payer: { name: userName, email: userEmail },
-                back_urls: buildBackUrls(returnPath, req.headers.origin as string),
-                auto_return: 'approved' as 'approved',
-                notification_url: `https://${req.headers.host}/api/mp-webhook?purchase_type=${type}&barbershop_id=${barbershopId}`,
-                external_reference: transactionId,
-                metadata: { userId, barbershopId, itemId, type },
-            };
+                    unit_price: Number(itemDetails.price)
+                }];
 
-            const mpResponse = await preferenceClient.create({ body: preferenceBody });
-            
-            res.status(200).json({ preferenceId: mpResponse.id, publicKey });
+            } else if (appointmentData) {
+                barbershopId = appointmentData.barbershop_id;
+                metadata = appointmentData;
+                notificationUrlSuffix = `purchase_type=appointment&barbershop_id=${barbershopId}`;
+                payer = { name: appointmentData.client_name, email: '' };
+                items = [{
+                    id: appointmentData.service_id,
+                    title: appointmentData.service_name,
+                    quantity: 1,
+                    currency_id: 'BRL',
+                    unit_price: Number(appointmentData.price)
+                }];
+            } else {
+                return res.status(400).json({ error: 'Dados inválidos.' });
+            }
 
-        } catch (error: any) {
-            console.error('Erro ao criar preferência para pacote/assinatura:', error.cause || error.message);
-            res.status(500).json({ error: error.message || 'Erro interno do servidor.' });
+            const { data: shop } = await supabaseAdmin.from('barbershops').select('integrations, slug').eq('id', barbershopId).single();
+            const token = (shop?.integrations as IntegrationSettings)?.mercadopagoAccessToken;
+            const key = (shop?.integrations as IntegrationSettings)?.mercadopagoPublicKey;
+
+            if (!token) return res.status(400).json({ error: 'Pagamento online não configurado.' });
+
+            const client = new MercadoPagoConfig({ accessToken: token });
+            const preference = new Preference(client);
+            const returnPath = shop?.slug ? `/${shop.slug}` : `/?barbershopId=${barbershopId}`;
+
+            const response = await preference.create({
+                body: {
+                    items,
+                    payer,
+                    back_urls: buildBackUrls(returnPath),
+                    auto_return: 'approved',
+                    notification_url: `https://${req.headers.host}/api/mp-webhook?${notificationUrlSuffix}`,
+                    external_reference: randomUUID(),
+                    metadata
+                }
+            });
+
+            return res.status(200).json({ redirectUrl: response.init_point, preferenceId: response.id, publicKey: key });
         }
-    } else if (appointmentData) {
-        try {
-            const { data: barbershop, error: fetchError } = await supabaseAdmin
-                .from('barbershops')
-                .select('integrations, name, slug')
-                .eq('id', appointmentData.barbershop_id)
-                .single();
 
-            if (fetchError) {
-                console.error('Supabase fetch error:', fetchError);
-                throw new Error('Barbearia não encontrada ou erro de banco de dados.');
-            }
+        return res.status(400).json({ error: 'Ação desconhecida.' });
 
-            const integrations = barbershop.integrations as IntegrationSettings;
-            const accessToken = integrations?.mercadopagoAccessToken;
-
-            if (!accessToken) {
-                return res.status(400).json({ error: 'Esta barbearia não está configurada para receber pagamentos online.' });
-            }
-
-            const client = new MercadoPagoConfig({ accessToken });
-            const preferenceClient = new Preference(client);
-            
-            const transactionId = randomUUID();
-            const returnPath = barbershop.slug ? `/${barbershop.slug}` : `/?barbershopId=${appointmentData.barbershop_id}`;
-
-
-            const preferenceBody = {
-                items: [
-                    {
-                        id: appointmentData.service_id,
-                        title: `Serviço: ${appointmentData.service_name}`,
-                        description: `Agendamento na ${barbershop.name} com ${appointmentData.barber_name}`,
-                        quantity: 1,
-                        currency_id: 'BRL',
-                        unit_price: Number(appointmentData.price),
-                    },
-                ],
-                payer: {
-                    name: appointmentData.client_name,
-                    email: '',
-                },
-                back_urls: buildBackUrls(returnPath, req.headers.origin as string),
-                auto_return: 'approved' as 'approved',
-                notification_url: `https://${req.headers.host}/api/mp-webhook?purchase_type=appointment&barbershop_id=${appointmentData.barbershop_id}`,
-                external_reference: transactionId,
-                metadata: appointmentData,
-            };
-
-            const mpResponse = await preferenceClient.create({ body: preferenceBody });
-            
-            const redirectUrl = mpResponse.init_point;
-            const preferenceId = mpResponse.id;
-
-            if (!redirectUrl || !preferenceId) {
-                throw new Error('Não foi possível obter a URL de checkout e o ID da preferência do Mercado Pago.');
-            }
-            
-            res.status(200).json({ redirectUrl, preferenceId, publicKey: integrations.mercadopagoPublicKey });
-
-        } catch (error: any) {
-            console.error('Erro ao criar preferência no Mercado Pago:', error.cause || error.message);
-            res.status(500).json({ error: error.message || 'Erro interno do servidor.' });
-        }
-    } else {
-        return res.status(400).json({ error: 'Dados do agendamento ou do pacote/assinatura são obrigatórios.' });
+    } catch (error: any) {
+        console.error('API Error:', error);
+        return res.status(500).json({ error: error.message });
     }
 }

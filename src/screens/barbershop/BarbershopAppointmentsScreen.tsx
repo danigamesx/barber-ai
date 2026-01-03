@@ -222,6 +222,8 @@ const NewAppointmentModal: React.FC<{
                 cancellation_fee: null,
                 commission_amount: null,
                 review_id: null,
+                package_usage_id: null,
+                subscription_usage_id: null,
             });
             onClose();
         } catch (error: any) {
@@ -399,47 +401,42 @@ const BarbershopAppointmentsScreen: React.FC = () => {
         });
     };
     
+    // Daily schedule logic
     const dailyScheduleItems = useMemo(() => {
         if (!barbershopData) return [];
         const dayOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][selectedDate.getDay()];
         const hours = (barbershopData.opening_hours as OpeningHours || {})[dayOfWeek] as DayOpeningHours | null;
-
         if (!hours) return [{ type: 'closed', message: 'Fechado neste dia.' }];
-
+    
         const items: any[] = [];
-        const sortedApps = [...appointmentsForSelectedDay];
-        
-        const buildTimelineForBlock = (startStr: string, endStr: string) => {
-            let cursor = new Date(`${selectedDate.toDateString()} ${startStr}`);
-            const blockEnd = new Date(`${selectedDate.toDateString()} ${endStr}`);
-
-            while (cursor < blockEnd) {
-                const nextApp = sortedApps.find(app => app.start_time >= cursor);
-
-                if (nextApp && nextApp.start_time < blockEnd) {
-                    while (cursor < nextApp.start_time) {
-                        items.push({ type: 'free', time: cursor.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
-                        cursor.setMinutes(cursor.getMinutes() + 30);
-                    }
-                    
-                    items.push({ type: 'appointment', data: nextApp });
-                    cursor = new Date(nextApp.end_time);
-                    
-                    const indexToRemove = sortedApps.findIndex(app => app.id === nextApp.id);
-                    if (indexToRemove > -1) {
-                        sortedApps.splice(indexToRemove, 1);
-                    }
+    
+        const processTimeBlock = (start: string, end: string) => {
+            let currentTime = new Date(`${selectedDate.toDateString()} ${start}`);
+            const endTime = new Date(`${selectedDate.toDateString()} ${end}`);
+    
+            while (currentTime < endTime) {
+                const timeString = currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                const appointmentAtThisTime = appointmentsForSelectedDay.find(app =>
+                    app.start_time.getHours() === currentTime.getHours() &&
+                    app.start_time.getMinutes() === currentTime.getMinutes()
+                );
+    
+                if (appointmentAtThisTime) {
+                    items.push({ type: 'appointment', data: appointmentAtThisTime });
+                    const duration = (appointmentAtThisTime.end_time.getTime() - appointmentAtThisTime.start_time.getTime()) / (1000 * 60);
+                    currentTime.setMinutes(currentTime.getMinutes() + duration);
                 } else {
-                    items.push({ type: 'free', time: cursor.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
-                    cursor.setMinutes(cursor.getMinutes() + 30);
+                    items.push({ type: 'free', time: timeString });
+                    currentTime.setMinutes(currentTime.getMinutes() + 30);
                 }
             }
         };
-
-        buildTimelineForBlock(hours.morning_open, hours.morning_close);
+    
+        processTimeBlock(hours.morning_open, hours.morning_close);
         items.push({ type: 'break', start: hours.morning_close, end: hours.afternoon_open });
-        buildTimelineForBlock(hours.afternoon_open, hours.afternoon_close);
-
+        processTimeBlock(hours.afternoon_open, hours.afternoon_close);
+    
         return items;
     }, [selectedDate, barbershopData, appointmentsForSelectedDay]);
 
