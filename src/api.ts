@@ -157,11 +157,29 @@ export const uploadImage = async (file: File, bucket: string, folder: string): P
 export const addAppointment = async (appointment: Omit<Appointment, 'id' | 'created_at' | 'start_time' | 'end_time'> & { start_time: Date, end_time: Date }): Promise<Appointment> => {
     if (!supabase) throw new Error(supabaseInitializationError!);
     const initialStatus = appointment.status === 'paid' ? 'paid' : (appointment.status === 'confirmed' ? 'confirmed' : 'pending');
-    const appointmentForDb: TablesInsert<'appointments'> = {
-        ...appointment,
+    
+    // FIX: Explicitly map fields to avoid sending unknown columns (like package_usage_id) to Supabase
+    // if the database migration hasn't been run yet.
+    const appointmentForDb: any = {
+        client_id: appointment.client_id,
+        client_name: appointment.client_name,
+        barbershop_id: appointment.barbershop_id,
+        barber_id: appointment.barber_id,
+        barber_name: appointment.barber_name,
+        service_id: appointment.service_id,
+        service_name: appointment.service_name,
+        price: appointment.price,
         start_time: appointment.start_time.toISOString(),
         end_time: appointment.end_time.toISOString(),
         status: initialStatus,
+        notes: appointment.notes,
+        is_reward: appointment.is_reward,
+        cancellation_fee: appointment.cancellation_fee,
+        commission_amount: appointment.commission_amount,
+        review_id: appointment.review_id,
+        google_event_id: appointment.google_event_id,
+        mp_preference_id: appointment.mp_preference_id,
+        // package_usage_id and subscription_usage_id removed to prevent "schema cache" errors
     };
 
     const { data: newAppointmentRow, error: insertError } = await supabase.from('appointments').insert(appointmentForDb).select().single();

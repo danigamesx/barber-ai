@@ -26,7 +26,6 @@ export type Database = {
           is_reward: boolean | null
           mp_preference_id: string | null
           notes: string | null
-          package_usage_id: string | null
           price: number | null
           reminder_sent_at: string | null
           review_id: string | null
@@ -35,7 +34,6 @@ export type Database = {
           start_time: string
           status: string
           stripe_session_id: string | null
-          subscription_usage_id: string | null
         }
         Insert: {
           barber_id?: string | null
@@ -52,7 +50,6 @@ export type Database = {
           is_reward?: boolean | null
           mp_preference_id?: string | null
           notes?: string | null
-          package_usage_id?: string | null
           price?: number | null
           reminder_sent_at?: string | null
           review_id?: string | null
@@ -61,7 +58,6 @@ export type Database = {
           start_time: string
           status?: string
           stripe_session_id?: string | null
-          subscription_usage_id?: string | null
         }
         Update: {
           barber_id?: string | null
@@ -78,7 +74,6 @@ export type Database = {
           is_reward?: boolean | null
           mp_preference_id?: string | null
           notes?: string | null
-          package_usage_id?: string | null
           price?: number | null
           reminder_sent_at?: string | null
           review_id?: string | null
@@ -87,7 +82,6 @@ export type Database = {
           start_time?: string
           status?: string
           stripe_session_id?: string | null
-          subscription_usage_id?: string | null
         }
         Relationships: [
           {
