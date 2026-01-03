@@ -10,6 +10,8 @@ import * as api from '../../api';
 
 const AppointmentRequestCard: React.FC<{ appointment: Appointment }> = ({ appointment }) => {
   const { users, barbershopData, updateAppointmentStatus } = useContext(AppContext);
+  const now = new Date();
+  const isPast = new Date(appointment.start_time) < now;
   
   const handleAccept = () => {
     updateAppointmentStatus(appointment, 'confirmed');
@@ -29,10 +31,15 @@ const AppointmentRequestCard: React.FC<{ appointment: Appointment }> = ({ appoin
   };
 
   return (
-    <div className="bg-brand-secondary p-4 rounded-lg">
-      <div className="mb-3">
-        <p className="font-bold text-lg text-brand-light">{appointment.client_name}</p>
-        <p className="text-sm text-gray-300">{appointment.start_time.toLocaleString([], { dateStyle: 'full', timeStyle: 'short' })}</p>
+    <div className={`p-4 rounded-lg ${isPast ? 'bg-red-900/20 border border-red-800' : 'bg-brand-secondary'}`}>
+      <div className="mb-3 flex justify-between items-start">
+        <div>
+            <p className="font-bold text-lg text-brand-light">{appointment.client_name}</p>
+            <p className={`text-sm ${isPast ? 'text-red-400 font-bold' : 'text-gray-300'}`}>
+                {appointment.start_time.toLocaleString([], { dateStyle: 'full', timeStyle: 'short' })}
+                {isPast && " (EXPIRADO)"}
+            </p>
+        </div>
       </div>
       <div className="bg-brand-dark p-3 rounded-md mb-3 text-sm">
         <p><strong>Serviço:</strong> {appointment.service_name} (R$ {(appointment.price || 0).toFixed(2)})</p>
@@ -40,8 +47,8 @@ const AppointmentRequestCard: React.FC<{ appointment: Appointment }> = ({ appoin
         {appointment.notes && <p className="mt-2 text-gray-400 italic"><strong>Observações:</strong> "{appointment.notes}"</p>}
       </div>
       <div className="flex gap-4">
-        <Button onClick={handleAccept}>Aceitar</Button>
-        <Button variant="danger" onClick={handleDecline}>Recusar</Button>
+        {!isPast && <Button onClick={handleAccept}>Aceitar</Button>}
+        <Button variant="danger" onClick={handleDecline}>{isPast ? 'Limpar / Recusar' : 'Recusar'}</Button>
       </div>
     </div>
   );
@@ -325,10 +332,20 @@ const BarbershopAppointmentsScreen: React.FC = () => {
     const [viewingPastAppointment, setViewingPastAppointment] = useState<Appointment | null>(null);
 
 
-    const pendingAppointments = useMemo(() => {
-        return appointments
-            .filter(a => a.barbershop_id === barbershopData?.id && a.status === 'pending')
-            .sort((a, b) => a.start_time.getTime() - b.start_time.getTime());
+    const { upcomingPending, expiredPending } = useMemo(() => {
+        const now = new Date();
+        const allPending = appointments
+            .filter(a => a.barbershop_id === barbershopData?.id && a.status === 'pending');
+        
+        const upcoming = allPending
+            .filter(a => new Date(a.start_time) > now)
+            .sort((a, b) => a.start_time.getTime() - b.start_time.getTime()); // Ascending (soonest first)
+
+        const expired = allPending
+            .filter(a => new Date(a.start_time) <= now)
+            .sort((a, b) => b.start_time.getTime() - a.start_time.getTime()); // Descending (most recent expired first)
+
+        return { upcomingPending: upcoming, expiredPending: expired };
     }, [appointments, barbershopData]);
 
     const appointmentsByDay = useMemo(() => {
@@ -447,15 +464,24 @@ const BarbershopAppointmentsScreen: React.FC = () => {
                 <h1 className="text-2xl font-bold text-brand-light">Agenda</h1>
 
                 <section>
-                    <h2 className="text-lg font-semibold text-amber-400 mb-3">Confirmações Pendentes ({pendingAppointments.length})</h2>
+                    <h2 className="text-lg font-semibold text-amber-400 mb-3">Confirmações Pendentes ({upcomingPending.length})</h2>
                     <div className="space-y-4">
-                        {pendingAppointments.length > 0 ? (
-                            pendingAppointments.map(app => <AppointmentRequestCard key={app.id} appointment={app} />)
+                        {upcomingPending.length > 0 ? (
+                            upcomingPending.map(app => <AppointmentRequestCard key={app.id} appointment={app} />)
                         ) : (
-                            <p className="text-gray-400 text-sm">Nenhuma solicitação pendente.</p>
+                            <p className="text-gray-400 text-sm">Nenhuma solicitação nova pendente.</p>
                         )}
                     </div>
                 </section>
+
+                {expiredPending.length > 0 && (
+                    <section>
+                        <h2 className="text-lg font-semibold text-red-500 mb-3">Solicitações Expiradas/Não Atendidas ({expiredPending.length})</h2>
+                        <div className="space-y-4">
+                            {expiredPending.map(app => <AppointmentRequestCard key={app.id} appointment={app} />)}
+                        </div>
+                    </section>
+                )}
                 
                 <section className="bg-brand-secondary p-4 rounded-lg">
                     <div className="flex justify-between items-center mb-4">
