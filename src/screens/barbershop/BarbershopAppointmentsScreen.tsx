@@ -2,7 +2,7 @@ import React, { useContext, useMemo, useState, useEffect, useCallback } from 're
 import { AppContext } from '../../App';
 import Button from '../../components/Button';
 import { Appointment, IntegrationSettings, User, Service, Barber, OpeningHours, DayOpeningHours } from '../../types';
-import { XCircleIcon, PencilIcon, CheckCircleIcon, TrashIcon, ClockIcon } from '../../components/icons/OutlineIcons';
+import { XCircleIcon, PencilIcon, CheckCircleIcon, TrashIcon, ClockIcon, ChevronDownIcon } from '../../components/icons/OutlineIcons';
 import EditAppointmentModal from './EditAppointmentModal';
 import * as api from '../../api';
 
@@ -31,7 +31,7 @@ const AppointmentRequestCard: React.FC<{ appointment: Appointment }> = ({ appoin
   };
 
   return (
-    <div className={`p-4 rounded-lg ${isPast ? 'bg-red-900/20 border border-red-800' : 'bg-brand-secondary'}`}>
+    <div className={`p-4 rounded-lg transition-colors ${isPast ? 'bg-red-900/10 border border-red-900/30' : 'bg-brand-secondary'}`}>
       <div className="mb-3 flex justify-between items-start">
         <div>
             <p className="font-bold text-lg text-brand-light">{appointment.client_name}</p>
@@ -48,7 +48,7 @@ const AppointmentRequestCard: React.FC<{ appointment: Appointment }> = ({ appoin
       </div>
       <div className="flex gap-4">
         {!isPast && <Button onClick={handleAccept}>Aceitar</Button>}
-        <Button variant="danger" onClick={handleDecline}>{isPast ? 'Limpar / Recusar' : 'Recusar'}</Button>
+        <Button variant="danger" onClick={handleDecline} className="py-2 text-sm">{isPast ? 'Limpar Solicitação' : 'Recusar'}</Button>
       </div>
     </div>
   );
@@ -83,17 +83,7 @@ const AppointmentActionModal: React.FC<{
                     setClient(localClient || null); 
                 }
             } catch (error: any) {
-                let errorMessage = "Erro desconhecido ao buscar perfil do cliente.";
-                if (error) {
-                    if (error.message) {
-                        errorMessage = `Erro do Supabase: ${error.message}`;
-                        if (error.details) errorMessage += ` Detalhes: ${error.details}`;
-                        if (error.hint) errorMessage += ` Dica: ${error.hint}`;
-                    } else {
-                        errorMessage = JSON.stringify(error);
-                    }
-                }
-                console.error("Failed to fetch client profile:", errorMessage);
+                console.error("Failed to fetch client profile:", error);
                 setClient(localClient || null);
             } finally {
                 setIsLoadingClient(false);
@@ -330,6 +320,9 @@ const BarbershopAppointmentsScreen: React.FC = () => {
     const [isNewBookingModalOpen, setIsNewBookingModalOpen] = useState(false);
     const [newBookingTime, setNewBookingTime] = useState<string | null>(null);
     const [viewingPastAppointment, setViewingPastAppointment] = useState<Appointment | null>(null);
+    
+    // Control for the collapsible expired section
+    const [isExpiredSectionOpen, setIsExpiredSectionOpen] = useState(false);
 
 
     const { upcomingPending, expiredPending } = useMemo(() => {
@@ -339,11 +332,11 @@ const BarbershopAppointmentsScreen: React.FC = () => {
         
         const upcoming = allPending
             .filter(a => new Date(a.start_time) > now)
-            .sort((a, b) => a.start_time.getTime() - b.start_time.getTime()); // Ascending (soonest first)
+            .sort((a, b) => a.start_time.getTime() - b.start_time.getTime());
 
         const expired = allPending
             .filter(a => new Date(a.start_time) <= now)
-            .sort((a, b) => b.start_time.getTime() - a.start_time.getTime()); // Descending (most recent expired first)
+            .sort((a, b) => b.start_time.getTime() - a.start_time.getTime());
 
         return { upcomingPending: upcoming, expiredPending: expired };
     }, [appointments, barbershopData]);
@@ -463,26 +456,44 @@ const BarbershopAppointmentsScreen: React.FC = () => {
             <div className="p-4 space-y-6">
                 <h1 className="text-2xl font-bold text-brand-light">Agenda</h1>
 
+                {/* Section: New Pending Requests */}
                 <section>
-                    <h2 className="text-lg font-semibold text-amber-400 mb-3">Confirmações Pendentes ({upcomingPending.length})</h2>
+                    <h2 className="text-lg font-semibold text-amber-400 mb-3">Solicitações Pendentes ({upcomingPending.length})</h2>
                     <div className="space-y-4">
                         {upcomingPending.length > 0 ? (
                             upcomingPending.map(app => <AppointmentRequestCard key={app.id} appointment={app} />)
                         ) : (
-                            <p className="text-gray-400 text-sm">Nenhuma solicitação nova pendente.</p>
+                            <p className="text-gray-400 text-sm">Nenhuma nova solicitação no momento.</p>
                         )}
                     </div>
                 </section>
 
+                {/* Section: Expired Pending Requests (Minimizable) */}
                 {expiredPending.length > 0 && (
-                    <section>
-                        <h2 className="text-lg font-semibold text-red-500 mb-3">Solicitações Expiradas/Não Atendidas ({expiredPending.length})</h2>
-                        <div className="space-y-4">
-                            {expiredPending.map(app => <AppointmentRequestCard key={app.id} appointment={app} />)}
-                        </div>
+                    <section className="border-t border-gray-700/50 pt-4">
+                        <button 
+                            onClick={() => setIsExpiredSectionOpen(!isExpiredSectionOpen)}
+                            className="w-full flex justify-between items-center text-red-500 hover:text-red-400 transition-colors mb-3"
+                        >
+                            <h2 className="text-lg font-semibold">Solicitações Expiradas ({expiredPending.length})</h2>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs uppercase font-bold">{isExpiredSectionOpen ? 'Recolher' : 'Ver Todas'}</span>
+                                <ChevronDownIcon className={`w-6 h-6 transform transition-transform ${isExpiredSectionOpen ? 'rotate-180' : ''}`} />
+                            </div>
+                        </button>
+                        
+                        {isExpiredSectionOpen && (
+                            <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <p className="text-xs text-gray-500 bg-red-900/10 p-2 rounded italic">
+                                    Estas solicitações já passaram da data marcada e não podem ser aceitas. Recuse-as para limpar sua lista de notificações.
+                                </p>
+                                {expiredPending.map(app => <AppointmentRequestCard key={app.id} appointment={app} />)}
+                            </div>
+                        )}
                     </section>
                 )}
                 
+                {/* Calendar Section */}
                 <section className="bg-brand-secondary p-4 rounded-lg">
                     <div className="flex justify-between items-center mb-4">
                         <button onClick={() => handleMonthChange(-1)} className="p-2 rounded-full hover:bg-gray-700">&lt;</button>
