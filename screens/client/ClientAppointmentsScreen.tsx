@@ -27,6 +27,8 @@ const AppointmentCard: React.FC<{
   onCancel: () => void;
 }> = ({ appointment, barbershop, onReview, onRebook, onCancel }) => {
   const { service_name, start_time, barber_name, status, review_id } = appointment;
+  const now = new Date();
+  const isDatePast = new Date(start_time) < now;
   
   const statusClasses: { [key in Appointment['status']]: string } = {
     pending: 'bg-yellow-500/20 text-yellow-400',
@@ -37,8 +39,15 @@ const AppointmentCard: React.FC<{
     paid: 'bg-indigo-500/20 text-indigo-400',
   };
 
-  const isPast = ['completed', 'cancelled', 'declined'].includes(status);
-  const isUpcoming = ['pending', 'confirmed', 'paid'].includes(status);
+  // Logica de exibição:
+  // Upcoming = Status Ativo E Data Futura
+  // Past/History = Status Inativo OU Data Passada
+  
+  const isStatusActive = ['pending', 'confirmed', 'paid'].includes(status);
+  const showActiveActions = isStatusActive && !isDatePast;
+  
+  // Se está no passado ou cancelado/concluído, mostra opções de histórico
+  const showHistoryActions = isDatePast || ['completed', 'cancelled', 'declined'].includes(status);
 
   const handleAddToCalendar = () => {
     if (barbershop) {
@@ -59,9 +68,12 @@ const AppointmentCard: React.FC<{
         </span>
       </div>
       <div className="border-t border-gray-700 my-3"></div>
-      <p className="text-sm text-brand-light">{start_time.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</p>
+      <p className="text-sm text-brand-light">
+          {start_time.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+          {isDatePast && isStatusActive && <span className="ml-2 text-xs text-red-400">(Data Passada)</span>}
+      </p>
 
-      {isUpcoming && (
+      {showActiveActions && (
           <div className="mt-4 flex flex-col sm:flex-row gap-2">
               <Button variant="secondary" className="py-2 text-sm flex items-center justify-center gap-2" onClick={handleAddToCalendar}>
                   <CalendarIcon className="w-5 h-5" />
@@ -71,7 +83,7 @@ const AppointmentCard: React.FC<{
           </div>
       )}
 
-      {isPast && (
+      {showHistoryActions && (
           <div className="mt-4 flex gap-2">
               {status === 'completed' && !review_id && <Button variant="secondary" className="py-2 text-sm" onClick={onReview}>Deixar Avaliação</Button>}
               <Button variant="secondary" className="py-2 text-sm" onClick={onRebook}>Agendar Novamente</Button>
@@ -83,6 +95,7 @@ const AppointmentCard: React.FC<{
 
 const ClientAppointmentsScreen: React.FC = () => {
   const { user, appointments, barbershops, updateAppointmentStatus, removeFromWaitingList } = useContext(AppContext);
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'history'>('upcoming');
   const [reviewingAppointment, setReviewingAppointment] = useState<Appointment | null>(null);
   const [rebookingAppointment, setRebookingAppointment] = useState<Appointment | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
@@ -123,11 +136,32 @@ const ClientAppointmentsScreen: React.FC = () => {
   const clientAppointments = useMemo(() => {
     return appointments
       .filter(a => a.client_id === user?.id)
-      .sort((a, b) => b.start_time.getTime() - a.start_time.getTime());
+      .sort((a, b) => b.start_time.getTime() - a.start_time.getTime()); // Sort descendente padrão
   }, [appointments, user]);
 
-  const upcomingAppointments = clientAppointments.filter(a => ['pending', 'confirmed', 'paid'].includes(a.status));
-  const pastAppointments = clientAppointments.filter(a => !['pending', 'confirmed', 'paid'].includes(a.status));
+  const { upcomingAppointments, pastAppointments } = useMemo(() => {
+    const now = new Date();
+    
+    // Futuros: Status Ativo E Data > Agora
+    const upcoming = clientAppointments
+        .filter(a => {
+            const isFuture = new Date(a.start_time) > now;
+            const isActive = ['pending', 'confirmed', 'paid'].includes(a.status);
+            return isFuture && isActive;
+        })
+        .sort((a, b) => a.start_time.getTime() - b.start_time.getTime()); // Futuros: Mais cedo primeiro
+
+    // Passados: Status Inativo OU Data <= Agora
+    const past = clientAppointments
+        .filter(a => {
+            const isPast = new Date(a.start_time) <= now;
+            const isInactive = ['completed', 'cancelled', 'declined'].includes(a.status);
+            return isPast || isInactive;
+        })
+        .sort((a, b) => b.start_time.getTime() - a.start_time.getTime()); // Passados: Mais recentes primeiro
+
+    return { upcomingAppointments: upcoming, pastAppointments: past };
+  }, [clientAppointments]);
 
   const rebookingBarbershop = barbershops.find(b => b.id === rebookingAppointment?.barbershop_id) || null;
 
@@ -171,66 +205,90 @@ const ClientAppointmentsScreen: React.FC = () => {
 
   return (
     <>
-    <div className="p-4 space-y-8">
+    <div className="p-4 space-y-6">
       <h1 className="text-2xl font-bold text-brand-light">Meus Agendamentos</h1>
 
-      <div>
-        <h2 className="text-lg font-semibold mb-4 text-brand-primary">Próximos</h2>
-        <div className="space-y-4">
-          {upcomingAppointments.length > 0 ? (
-            upcomingAppointments.map(app => (
-              <AppointmentCard 
-                key={app.id} 
-                appointment={app} 
-                barbershop={barbershops.find(b => b.id === app.barbershop_id)}
-                onReview={() => {}} 
-                onRebook={() => {}} 
-                onCancel={() => setCancellingAppointment(app)}
-              />
-            ))
-          ) : (
-            <p className="text-gray-400">Você não tem agendamentos futuros.</p>
-          )}
-        </div>
+      {/* Tabs */}
+      <div className="bg-brand-secondary p-1 rounded-lg flex">
+        <button 
+            onClick={() => setActiveTab('upcoming')} 
+            className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${activeTab === 'upcoming' ? 'bg-brand-primary text-brand-dark' : 'text-gray-400 hover:text-white'}`}
+        >
+            Próximos
+        </button>
+        <button 
+            onClick={() => setActiveTab('history')} 
+            className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${activeTab === 'history' ? 'bg-brand-primary text-brand-dark' : 'text-gray-400 hover:text-white'}`}
+        >
+            Histórico
+        </button>
       </div>
 
-      <div>
-        <h2 className="text-lg font-semibold mb-4 text-brand-primary">Minhas Listas de Espera</h2>
-         <div className="space-y-4">
-            {waitingLists.length > 0 ? (
-                waitingLists.map(wl => (
-                    <div key={`${wl.barbershopId}-${wl.date}`} className="bg-brand-secondary p-4 rounded-lg">
-                        <p className="font-bold">{wl.barbershopName}</p>
-                        <p className="text-sm text-gray-300">Aguardando por um horário em: {new Date(wl.date + 'T00:00:00').toLocaleDateString()}</p>
-                        <Button variant="danger" className="w-full mt-3 py-2 text-sm" onClick={() => user && removeFromWaitingList(wl.barbershopId, wl.date, user.id)}>Sair da Lista</Button>
+      {activeTab === 'upcoming' && (
+          <div className="space-y-6">
+            <div>
+                {upcomingAppointments.length > 0 ? (
+                    <div className="space-y-4">
+                    {upcomingAppointments.map(app => (
+                        <AppointmentCard 
+                        key={app.id} 
+                        appointment={app} 
+                        barbershop={barbershops.find(b => b.id === app.barbershop_id)}
+                        onReview={() => {}} 
+                        onRebook={() => {}} 
+                        onCancel={() => setCancellingAppointment(app)}
+                        />
+                    ))}
                     </div>
+                ) : (
+                    <div className="bg-brand-secondary p-6 rounded-lg text-center">
+                        <p className="text-gray-400 mb-2">Você não tem agendamentos futuros.</p>
+                    </div>
+                )}
+            </div>
+
+            {waitingLists.length > 0 && (
+                <div>
+                    <h2 className="text-lg font-semibold mb-4 text-brand-primary">Minhas Listas de Espera</h2>
+                    <div className="space-y-4">
+                        {waitingLists.map(wl => (
+                            <div key={`${wl.barbershopId}-${wl.date}`} className="bg-brand-secondary p-4 rounded-lg">
+                                <p className="font-bold">{wl.barbershopName}</p>
+                                <p className="text-sm text-gray-300">Aguardando por um horário em: {new Date(wl.date + 'T00:00:00').toLocaleDateString()}</p>
+                                <Button variant="danger" className="w-full mt-3 py-2 text-sm" onClick={() => user && removeFromWaitingList(wl.barbershopId, wl.date, user.id)}>Sair da Lista</Button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+          </div>
+      )}
+
+      {activeTab === 'history' && (
+          <div>
+            <div className="space-y-4">
+            {pastAppointments.length > 0 ? (
+                pastAppointments.map(app => (
+                    <AppointmentCard 
+                        key={app.id} 
+                        appointment={app} 
+                        barbershop={barbershops.find(b => b.id === app.barbershop_id)}
+                        onReview={() => setReviewingAppointment(app)}
+                        onRebook={() => setRebookingAppointment(app)}
+                        onCancel={() => {}}
+                    />
                 ))
             ) : (
-                 <p className="text-gray-400">Você não está em nenhuma lista de espera.</p>
+                <div className="text-center py-8">
+                    <p className="text-gray-400">Nenhum histórico encontrado.</p>
+                </div>
             )}
-        </div>
-      </div>
-      
-      <div>
-        <h2 className="text-lg font-semibold mb-4 text-brand-primary">Histórico</h2>
-        <div className="space-y-4">
-          {pastAppointments.length > 0 ? (
-            pastAppointments.map(app => (
-                <AppointmentCard 
-                    key={app.id} 
-                    appointment={app} 
-                    barbershop={barbershops.find(b => b.id === app.barbershop_id)}
-                    onReview={() => setReviewingAppointment(app)}
-                    onRebook={() => setRebookingAppointment(app)}
-                    onCancel={() => {}}
-                />
-            ))
-          ) : (
-             <p className="text-gray-400">Nenhum agendamento passado encontrado.</p>
-          )}
-        </div>
-      </div>
+            </div>
+          </div>
+      )}
+
     </div>
+    
     {reviewingAppointment && (
         <ReviewModal 
             appointment={reviewingAppointment}
