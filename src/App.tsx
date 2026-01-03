@@ -1,6 +1,7 @@
 
+
 import React, { useState, useMemo, useEffect } from 'react';
-import { User, Appointment, Barbershop, Review, ClientNotification, Session, Barber, FinancialRecord, Json, IntegrationSettings, CancellationPolicy, ServicePackage, SubscriptionPlan } from './types';
+import { User, Appointment, Barbershop, Review, ClientNotification, Session, Barber, FinancialRecord, Json, IntegrationSettings, CancellationPolicy } from './types';
 import LoginScreen from './screens/LoginScreen';
 import ClientHomeScreen from './screens/client/ClientHomeScreen';
 import BarbershopDashboardScreen from './screens/barbershop/BarbershopDashboardScreen';
@@ -11,7 +12,7 @@ import BarbershopSettingsScreen from './screens/barbershop/BarbershopSettingsScr
 import AnalyticsScreen from './screens/barbershop/AnalyticsScreen';
 import ProfessionalsScreen from './screens/barbershop/ProfessionalsScreen';
 import ClientsScreen from './screens/barbershop/ClientsScreen';
-import { HomeIcon, CalendarIcon, BellIcon, UserIcon, ClipboardListIcon, MegaphoneIcon, ChartBarIcon, CogIcon, UsersIcon, MenuIcon, ShareIcon, CheckCircleIcon, XCircleIcon, ClockIcon } from './components/icons/OutlineIcons';
+import { HomeIcon, CalendarIcon, BellIcon, UserIcon, ClipboardListIcon, MegaphoneIcon, ChartBarIcon, CogIcon, UsersIcon, MenuIcon, CheckCircleIcon, XCircleIcon, ClockIcon } from './components/icons/OutlineIcons';
 import BarbershopSetupScreen from './screens/barbershop/BarbershopSetupScreen';
 import ClientNotificationsScreen from './screens/client/ClientNotificationsScreen';
 import CommunicationsScreen from './screens/barbershop/CommunicationsScreen';

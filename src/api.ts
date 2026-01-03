@@ -100,7 +100,7 @@ export const getBarbershops = async (): Promise<Barbershop[]> => {
     if (!supabase) throw new Error(supabaseInitializationError!);
     const { data, error } = await supabase.from('barbershops').select('*');
     if (error) throw error;
-    return data;
+    return data as Barbershop[];
 };
 
 export const getBarbershopById = async (id: string): Promise<Barbershop> => {
@@ -272,25 +272,17 @@ export const deleteFinancialRecord = async (barbershopId: string, barberId: stri
 };
 
 export const sendPromotion = async (barbershopId: string, title: string, message: string, clients: User[], barbershops: Barbershop[]) => {
-    if (!supabase) throw new Error(supabaseInitializationError!);
-    const shop = barbershops.find(b => b.id === barbershopId);
-    if (!shop) return;
+    // Consolidated logic call to reduce serverless functions
+    const clientIds = clients.map(c => c.id);
+    const response = await fetch('/api/create-mp-preference?action=send_promotion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ barbershopId, title, message, clientIds }),
+    });
 
-    const newPromotion: Promotion = { 
-        id: `promo_${Date.now()}`, title, message, sentAt: new Date().toISOString(), 
-        recipients: clients.map(c => ({ clientId: c.id, clientName: c.name, status: 'sent', receivedAt: new Date().toISOString() }))
-    };
-    const currentPromotions = Array.isArray(shop.promotions) ? shop.promotions as Promotion[] : [];
-    await updateBarbershop(barbershopId, { promotions: [...currentPromotions, newPromotion] as unknown as Json });
-
-    const notification: Omit<ClientNotification, 'id'> = {
-        promotionId: newPromotion.id, barbershopId, barbershopName: shop.name, title, message, receivedAt: new Date().toISOString(), isRead: false,
-    };
-    
-    for (const client of clients) {
-        const currentNotifications = Array.isArray(client.notifications) ? client.notifications as ClientNotification[] : [];
-        const newNotification = { ...notification, id: `notif_${Date.now()}_${client.id}` };
-        await supabase.from('profiles').update({ notifications: [...currentNotifications, newNotification] as unknown as Json }).eq('id', client.id);
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to send promotion");
     }
 };
 

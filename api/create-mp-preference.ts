@@ -1,10 +1,12 @@
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '../src/types/database';
-import { IntegrationSettings, Json, ServicePackage, SubscriptionPlan } from '../src/types';
+import { IntegrationSettings, Json, ServicePackage, SubscriptionPlan, Promotion, ClientNotification } from '../src/types';
 import { randomUUID } from 'crypto';
 import { PLANS, SUPER_ADMIN_USER_ID } from './_shared';
+import webpush from 'web-push';
 
 // Helper to get user and check for Super Admin
 async function isSuperAdmin(req: VercelRequest, supabase: SupabaseClient<Database>): Promise<boolean> {
@@ -16,6 +18,15 @@ async function isSuperAdmin(req: VercelRequest, supabase: SupabaseClient<Databas
     // FIX: Cast supabase.auth to any to avoid type error with getUser in some environments/versions
     const { data: { user } } = await (supabase.auth as any).getUser(token);
     return user?.id === SUPER_ADMIN_USER_ID;
+}
+
+// Configurar Web Push
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.VAPID_SUBJECT) {
+    webpush.setVapidDetails(
+        process.env.VAPID_SUBJECT,
+        process.env.VAPID_PUBLIC_KEY,
+        process.env.VAPID_PRIVATE_KEY
+    );
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -111,7 +122,89 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(200).json({ preferenceId: response.id, publicKey: platformKey });
         }
 
-        // 4. CREATE PREFERENCE (Appointment/Package - Default)
+        // 4. SEND PROMOTION
+        if (action === 'send_promotion') {
+            const { barbershopId, title, message, clientIds } = req.body;
+
+            if (!barbershopId || !title || !message || !clientIds) {
+                return res.status(400).json({ error: 'Missing required fields.' });
+            }
+
+            const { data: barbershop } = await supabaseAdmin.from('barbershops').select('name, promotions').eq('id', barbershopId).single();
+            if (!barbershop) return res.status(404).json({ error: 'Barbershop not found' });
+
+            const { data: clients } = await supabaseAdmin.from('profiles').select('id, name, notifications, push_subscriptions').in('id', clientIds);
+            if (!clients) return res.status(404).json({ error: 'Clients not found' });
+
+            const recipients = clients.map(c => ({
+                clientId: c.id,
+                clientName: c.name,
+                status: 'sent' as const,
+                receivedAt: new Date().toISOString()
+            }));
+
+            const newPromotion: Promotion = {
+                id: `promo_${Date.now()}`,
+                title,
+                message,
+                sentAt: new Date().toISOString(),
+                recipients
+            };
+
+            const currentPromotions = (barbershop.promotions as unknown as Promotion[]) || [];
+            await supabaseAdmin.from('barbershops').update({ 
+                promotions: [...currentPromotions, newPromotion] as unknown as Json 
+            }).eq('id', barbershopId);
+
+            const notificationBase: Omit<ClientNotification, 'id'> = {
+                promotionId: newPromotion.id,
+                barbershopId,
+                barbershopName: barbershop.name,
+                title,
+                message,
+                receivedAt: new Date().toISOString(),
+                isRead: false,
+            };
+
+            // Enviar notificações internas e Push
+            for (const client of clients) {
+                // 1. Internal Notification
+                const currentNotifications = (client.notifications as unknown as ClientNotification[]) || [];
+                const newNotification = { ...notificationBase, id: `notif_${Date.now()}_${client.id}` };
+                await supabaseAdmin.from('profiles').update({ 
+                    notifications: [...currentNotifications, newNotification] as unknown as Json 
+                }).eq('id', client.id);
+
+                // 2. Web Push Notification
+                const pushSubscriptions = client.push_subscriptions as any[] || [];
+                if (pushSubscriptions.length > 0) {
+                     const payload = JSON.stringify({
+                        title: `${barbershop.name}: ${title}`,
+                        body: message,
+                    });
+                    
+                    const validSubscriptions = [];
+                    for (const sub of pushSubscriptions) {
+                        try {
+                            await webpush.sendNotification(sub, payload);
+                            validSubscriptions.push(sub);
+                        } catch (error: any) {
+                            if (error.statusCode !== 410 && error.statusCode !== 404) {
+                                validSubscriptions.push(sub); // Keep if error is temporary
+                            }
+                        }
+                    }
+                    // Update valid subscriptions if any were removed
+                    if (validSubscriptions.length !== pushSubscriptions.length) {
+                        await supabaseAdmin.from('profiles').update({ push_subscriptions: validSubscriptions as any }).eq('id', client.id);
+                    }
+                }
+            }
+
+            return res.status(200).json({ success: true });
+        }
+
+        // 5. CREATE PREFERENCE (Appointment/Package - Default)
         if (action === 'create_preference') {
             const { appointmentData, packageData } = req.body;
             const buildBackUrls = (path: string) => {
@@ -137,9 +230,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 
                 let itemDetails;
                 if (packageData.type === 'package') {
-                    itemDetails = (shop.packages as ServicePackage[]).find(p => p.id === packageData.itemId);
+                    itemDetails = (shop.packages as unknown as ServicePackage[]).find(p => p.id === packageData.itemId);
                 } else {
-                    itemDetails = (shop.subscriptions as SubscriptionPlan[]).find(s => s.id === packageData.itemId);
+                    itemDetails = (shop.subscriptions as unknown as SubscriptionPlan[]).find(s => s.id === packageData.itemId);
                 }
                 if (!itemDetails) throw new Error('Item não encontrado');
 

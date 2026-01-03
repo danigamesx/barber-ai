@@ -1,3 +1,5 @@
+
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { User, Appointment, Barbershop, Review, ClientNotification, Session, Barber, FinancialRecord, Json, IntegrationSettings, CancellationPolicy } from './types';
 import LoginScreen from './screens/LoginScreen';
@@ -10,7 +12,7 @@ import BarbershopSettingsScreen from './screens/barbershop/BarbershopSettingsScr
 import AnalyticsScreen from './screens/barbershop/AnalyticsScreen';
 import ProfessionalsScreen from './screens/barbershop/ProfessionalsScreen';
 import ClientsScreen from './screens/barbershop/ClientsScreen';
-import { HomeIcon, CalendarIcon, BellIcon, UserIcon, ClipboardListIcon, MegaphoneIcon, ChartBarIcon, CogIcon, UsersIcon, MenuIcon } from './components/icons/OutlineIcons';
+import { HomeIcon, CalendarIcon, BellIcon, UserIcon, ClipboardListIcon, MegaphoneIcon, ChartBarIcon, CogIcon, UsersIcon, MenuIcon, CheckCircleIcon, XCircleIcon, ClockIcon } from './components/icons/OutlineIcons';
 import BarbershopSetupScreen from './screens/barbershop/BarbershopSetupScreen';
 import ClientNotificationsScreen from './screens/client/ClientNotificationsScreen';
 import CommunicationsScreen from './screens/barbershop/CommunicationsScreen';
@@ -19,14 +21,16 @@ import AdminDashboardScreen from './screens/admin/AdminDashboardScreen';
 import * as api from './api';
 import { SUPER_ADMIN_USER_ID, PLANS } from './constants';
 import TrialBanner from './components/TrialBanner';
-import TrialExpiredScreen from './screens/barbershop/TrialExpiredScreen';
-import Button from './components/Button';
 import LandingScreen from './screens/LandingScreen';
+import Button from './components/Button';
 import BarbershopPublicPage from './screens/public/BarbershopPublicPage';
 import InactivePlanBanner from './components/InactivePlanBanner';
 import { supabaseInitializationError } from './supabaseClient';
 import PlanPaymentModal from './screens/barbershop/PlanPaymentModal';
 import { PackagePaymentModal } from './screens/client/PaymentModal';
+import NotificationPermissionManager from './components/NotificationPermissionManager';
+import TrialExpiredScreen from './screens/barbershop/TrialExpiredScreen';
+
 
 export const AppContext = React.createContext<{
   user: User | null;
@@ -113,7 +117,7 @@ export const PlanContext = React.createContext<{
     features: PLANS[0].features,
 });
 
-const MainApp: React.FC = () => {
+const App: React.FC = () => {
   if (supabaseInitializationError) {
     return (
         <div className="flex flex-col items-center justify-center h-screen p-6 bg-brand-dark text-center">
@@ -494,6 +498,191 @@ const MainApp: React.FC = () => {
     patchUser,
   };
 
+  const appContextValue = { 
+      user, users, barbershops, barbershopData, appointments, allAppointments: appointments, reviews, googleToken, isSuperAdmin, accessStatus,
+      installPrompt, triggerInstall, setPurchaseIntent, setPackageSubscriptionIntent,
+      ...contextFunctions
+  };
+  
+  const handleEnterApp = (type: 'client' | 'barbershop') => {
+    setLoginAccountType(type);
+    setShowLanding(false);
+  };
+
+  const renderClientApp = () => {
+    const notifications = user?.notifications as ClientNotification[] | undefined;
+    const unreadCount = Array.isArray(notifications) ? notifications.filter(n => !n.isRead).length : 0;
+    return (
+    <div className="flex flex-col h-screen">
+      <main className="flex-grow overflow-y-auto pb-20">
+        {activeClientScreen === 'home' && <ClientHomeScreen />}
+        {activeClientScreen === 'appointments' && <ClientAppointmentsScreen />}
+        {activeClientScreen === 'notifications' && <ClientNotificationsScreen />}
+        {activeClientScreen === 'profile' && <ClientProfileScreen />}
+      </main>
+      <nav className="fixed bottom-0 left-0 right-0 bg-brand-secondary border-t border-gray-700 flex justify-around p-2">
+        <button onClick={() => setActiveClientScreen('home')} className={`flex flex-col items-center w-full p-2 rounded-lg ${activeClientScreen === 'home' ? 'text-brand-primary' : 'text-gray-400'}`}>
+          <HomeIcon className="w-6 h-6" />
+          <span className="text-xs mt-1">Início</span>
+        </button>
+        <button onClick={() => setActiveClientScreen('appointments')} className={`flex flex-col items-center w-full p-2 rounded-lg ${activeClientScreen === 'appointments' ? 'text-brand-primary' : 'text-gray-400'}`}>
+          <CalendarIcon className="w-6 h-6" />
+          <span className="text-xs mt-1">Agendamentos</span>
+        </button>
+         <button onClick={() => setActiveClientScreen('notifications')} className={`relative flex flex-col items-center w-full p-2 rounded-lg ${activeClientScreen === 'notifications' ? 'text-brand-primary' : 'text-gray-400'}`}>
+          <BellIcon className="w-6 h-6" />
+          <span className="text-xs mt-1">Notificações</span>
+          {unreadCount > 0 && (
+            <span className="absolute top-1 right-6 w-5 h-5 bg-red-600 text-white text-xs font-bold rounded-full flex items-center justify-center">{unreadCount}</span>
+          )}
+        </button>
+         <button onClick={() => setActiveClientScreen('profile')} className={`flex flex-col items-center w-full p-2 rounded-lg ${activeClientScreen === 'profile' ? 'text-brand-primary' : 'text-gray-400'}`}>
+          <UserIcon className="w-6 h-6" />
+          <span className="text-xs mt-1">Perfil</span>
+        </button>
+      </nav>
+      <NotificationPermissionManager />
+    </div>
+  )};
+
+  const renderBarbershopApp = () => {
+    if (!accessStatus.hasAccess && !accessStatus.isTrial) {
+        return <TrialExpiredScreen />;
+    }
+    
+    let navItems = [
+      { id: 'dashboard', label: 'Painel', icon: HomeIcon, enabled: true },
+      { id: 'appointments', label: 'Agenda', icon: CalendarIcon, enabled: true },
+      { id: 'waiting_list', label: 'Espera', icon: ClipboardListIcon, enabled: true },
+      { id: 'professionals', label: 'Equipe', icon: UsersIcon, enabled: true },
+      { id: 'clients', label: 'Clientes', icon: UserIcon, enabled: planContextValue.features.clientManagement },
+      { id: 'communications', label: 'Marketing', icon: MegaphoneIcon, enabled: planContextValue.features.marketing },
+      { id: 'analytics', label: 'Análises', icon: ChartBarIcon, enabled: planContextValue.features.analytics },
+      { id: 'settings', label: 'Ajustes', icon: CogIcon, enabled: true },
+    ];
+    
+    const activeItem = navItems.find(item => item.id === activeBarbershopScreen);
+
+    const sidebarContent = (
+      <nav className="flex flex-col space-y-2 p-4">
+        <h2 className="text-2xl font-bold text-brand-primary mb-4 px-2 truncate">{barbershopData?.name}</h2>
+        {navItems.map(item => (
+            item.enabled ? (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveBarbershopScreen(item.id);
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`flex items-center space-x-3 p-3 rounded-lg transition-colors w-full text-left ${
+                  activeBarbershopScreen === item.id
+                    ? 'bg-brand-primary text-brand-dark font-semibold'
+                    : 'text-gray-300 hover:bg-brand-secondary'
+                }`}
+              >
+                <item.icon className="w-6 h-6 flex-shrink-0" />
+                <span>{item.label}</span>
+              </button>
+            ) : (
+                 <div key={item.id} className="flex items-center space-x-3 p-3 rounded-lg text-gray-500 cursor-not-allowed" title="Faça upgrade para acessar">
+                    <item.icon className="w-6 h-6 flex-shrink-0" />
+                    <span>{item.label}</span>
+                 </div>
+            )
+        ))}
+      </nav>
+    );
+
+    return (
+      <div className="flex h-screen bg-brand-dark text-brand-light">
+        {isMobileMenuOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden" onClick={() => setIsMobileMenuOpen(false)}></div>
+        )}
+        
+        <aside className={`fixed top-0 left-0 h-full w-64 bg-gray-800 shadow-lg transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out z-30 md:hidden`}>
+          {sidebarContent}
+        </aside>
+
+        <aside className="hidden md:block md:w-64 bg-brand-secondary flex-shrink-0">
+          {sidebarContent}
+        </aside>
+        
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <header className="md:hidden flex items-center justify-between p-4 bg-brand-secondary shadow-md">
+             <button onClick={() => setIsMobileMenuOpen(true)} className="text-brand-light">
+              <MenuIcon className="w-6 h-6" />
+            </button>
+            <h1 className="text-lg font-bold text-brand-light">{activeItem?.label}</h1>
+            <div className="w-6"></div>
+          </header>
+          
+          {accessStatus.isTrial && accessStatus.trialEndDate && (
+             <TrialBanner trialEndDate={accessStatus.trialEndDate} />
+          )}
+
+          {accessStatus.planId === 'INACTIVE' && !accessStatus.isTrial && (
+            <InactivePlanBanner />
+          )}
+
+          <main className="flex-grow overflow-y-auto">
+            {activeBarbershopScreen === 'dashboard' && <BarbershopDashboardScreen />}
+            {activeBarbershopScreen === 'appointments' && <BarbershopAppointmentsScreen />}
+            {activeBarbershopScreen === 'professionals' && <ProfessionalsScreen />}
+            {activeBarbershopScreen === 'clients' && <ClientsScreen />}
+            {activeBarbershopScreen === 'waiting_list' && <WaitingListScreen />}
+            {activeBarbershopScreen === 'communications' && <CommunicationsScreen />}
+            {activeBarbershopScreen === 'analytics' && <AnalyticsScreen />}
+            {activeBarbershopScreen === 'settings' && <BarbershopSettingsScreen />}
+          </main>
+        </div>
+      </div>
+    );
+  };
+
+  const renderContent = () => {
+    const identifier = currentHash.startsWith('#/') ? currentHash.substring(2).split('?')[0] : new URLSearchParams(currentHash.substring(currentHash.indexOf('?'))).get('barbershopId');
+
+    if (identifier) {
+        return <BarbershopPublicPage identifier={identifier} />;
+    }
+
+    if (showLanding && !session) {
+        return <LandingScreen onEnter={handleEnterApp} />;
+    }
+    if (loading) {
+      return <div className="flex items-center justify-center h-screen"><p>Carregando aplicativo...</p></div>;
+    }
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center h-screen p-4 text-center">
+                <p className="text-red-500 text-lg mb-4">{error}</p>
+                <Button 
+                    onClick={() => window.location.reload()} 
+                    className="w-auto px-6 py-2"
+                >
+                    Tentar Novamente
+                </Button>
+            </div>
+        );
+    }
+    if (!user) {
+        return <LoginScreen initialAccountType={loginAccountType} />;
+    }
+    if (isSuperAdmin) {
+        return <AdminDashboardScreen />
+    }
+    if (user.user_type === 'CLIENT') {
+      return renderClientApp();
+    }
+    if (user.user_type === 'BARBERSHOP') {
+      if (barbershopData && !barbershopData.has_completed_setup) {
+        return <BarbershopSetupScreen />;
+      }
+      return renderBarbershopApp();
+    }
+    return <LoginScreen initialAccountType={loginAccountType} />;
+  };
+
   const finalAppContextValue = { ...appContextValue };
 
   return (
@@ -550,4 +739,4 @@ const MainApp: React.FC = () => {
   );
 };
 
-export default MainApp;
+export default App;
