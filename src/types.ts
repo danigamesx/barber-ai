@@ -1,4 +1,3 @@
-
 import { Session as SupabaseSession } from '@supabase/supabase-js';
 
 export type Json =
@@ -62,12 +61,17 @@ export interface IntegrationSettings {
     whatsapp_reminder_minutes?: number;
     googleCalendarClientId?: string | null;
     googleCalendarId?: string;
-    stripeAccountId?: string | null;
-    stripeAccountOnboarded?: boolean;
+    
+    // Mercado Pago Fields
     mercadopagoAccessToken?: string | null;
     mercadopagoPublicKey?: string | null;
     mercadopagoRefreshToken?: string | null;
     mercadopagoUserId?: number | null;
+    
+    // Stripe Fields
+    stripeAccountId?: string | null;
+    stripeAccountOnboarded?: boolean;
+
     plan?: 'BASIC' | 'PRO' | 'PREMIUM' | string;
     plan_type?: 'monthly' | 'annual';
     plan_expires_at?: string; // ISO Date String
@@ -262,7 +266,7 @@ export interface Appointment {
   mp_preference_id?: string | null;
   package_usage_id: string | null;
   subscription_usage_id: string | null;
-  reminder_sent_at?: string | null; // Added for cron job
+  reminder_sent_at?: string | null;
 }
 
 export interface Review {

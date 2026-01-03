@@ -1,3 +1,9 @@
+import Stripe from 'stripe';
+
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+  apiVersion: '2024-06-20',
+});
+
 export const SUPER_ADMIN_USER_ID = '5b6749fa-13ff-498f-b18b-8374ac069b87';
 
 export const PLANS = [

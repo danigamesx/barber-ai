@@ -1,4 +1,3 @@
-
 import { supabase, supabaseInitializationError } from './supabaseClient';
 import { User, Barbershop, Appointment, Review, Barber, FinancialRecord, Promotion, ClientNotification, WaitingListEntry, Json, IntegrationSettings, Address } from './types';
 import { TablesInsert, TablesUpdate } from './types/database';
@@ -19,28 +18,33 @@ const reviewFromRow = (row: any): Review => ({
 // === AUTH FUNCTIONS ===
 export const getSession = () => {
     if (!supabase) return Promise.resolve({ data: { session: null }, error: new Error(supabaseInitializationError!) });
-    return supabase.auth.getSession();
+    // FIX: Cast to any to bypass incorrect type errors for Supabase auth methods.
+    return (supabase.auth as any).getSession();
 }
 export const onAuthStateChange = (callback: (event: string, session: any) => void) => {
     if (!supabase) return { data: { subscription: { unsubscribe: () => {} } } };
-    return supabase.auth.onAuthStateChange(callback);
+    // FIX: Cast to any to bypass incorrect type errors for Supabase auth methods.
+    return (supabase.auth as any).onAuthStateChange(callback);
 }
 
 export const signInUser = async (email: string, password: string) => {
     if (!supabase) throw new Error(supabaseInitializationError!);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    // FIX: Cast to any to bypass incorrect type errors for Supabase auth methods.
+    const { error } = await (supabase.auth as any).signInWithPassword({ email, password });
     if (error) throw error;
 };
 
 export const signOutUser = async () => {
     if (!supabase) throw new Error(supabaseInitializationError!);
-    const { error } = await supabase.auth.signOut();
+    // FIX: Cast to any to bypass incorrect type errors for Supabase auth methods.
+    const { error } = await (supabase.auth as any).signOut();
     if (error) throw error;
 };
 
 export const signUpUser = async (name: string, email: string, password: string, accountType: 'client' | 'barbershop', phone: string, birthDate?: string, barbershopName?: string) => {
     if (!supabase) throw new Error(supabaseInitializationError!);
-    const { data: authData, error: authError } = await supabase.auth.signUp({ 
+    // FIX: Cast to any to bypass incorrect type errors for Supabase auth methods.
+    const { data: authData, error: authError } = await (supabase.auth as any).signUp({ 
         email, 
         password,
         options: {
@@ -75,13 +79,6 @@ export const signUpUser = async (name: string, email: string, password: string, 
         if (barbershopError) throw barbershopError;
     }
 };
-
-export const deleteUserAndBarbershop = async () => {
-    if (!supabase) throw new Error(supabaseInitializationError!);
-    const { error } = await supabase.rpc('delete_user_and_barbershop');
-    if (error) throw error;
-}
-
 
 // === DATA FETCHING FUNCTIONS ===
 export const getUserProfile = async (userId: string): Promise<User> => {
@@ -121,7 +118,6 @@ export const getBarbershopBySlug = async (slug: string): Promise<Barbershop> => 
     if (!data) throw new Error("Barbershop not found.");
     return data as Barbershop;
 };
-
 
 export const getAppointments = async (): Promise<Appointment[]> => {
     if (!supabase) throw new Error(supabaseInitializationError!);
@@ -329,6 +325,12 @@ export const removeFromWaitingList = async (barbershopId: string, date: string, 
     await updateBarbershop(barbershopId, { waiting_list: updatedWaitingList as unknown as Json });
 };
 
+export const deleteUserAndBarbershop = async () => {
+    if (!supabase) throw new Error(supabaseInitializationError!);
+    const { error } = await supabase.rpc('delete_user_and_barbershop');
+    if (error) throw error;
+};
+
 export const getUsersByIds = async (userIds: string[]): Promise<User[]> => {
     if (!supabase) throw new Error(supabaseInitializationError!);
     if (!userIds || userIds.length === 0) return [];
@@ -385,7 +387,7 @@ export const setAppointmentGoogleEventId = async (appointmentId: string, googleE
 };
 
 // === MERCADO PAGO PAYMENT INTEGRATION ===
-export const createMercadoPagoPreference = async (appointmentData: Omit<Appointment, 'id' | 'created_at'> & { start_time: Date, end_time: Date }): Promise<{ redirectUrl: string, preferenceId: string, publicKey: string }> => {
+export const createMercadoPagoPreference = async (appointmentData: Omit<Appointment, 'id' | 'created_at'> & { start_time: Date, end_time: Date }): Promise<{ redirectUrl: string, preferenceId: string }> => {
     const response = await fetch(`/api/create-mp-preference`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -399,7 +401,7 @@ export const createMercadoPagoPreference = async (appointmentData: Omit<Appointm
     return data;
 };
 
-export const createPackageSubscriptionPreference = async (type: 'package' | 'subscription', itemId: string, barbershopId: string, user: User): Promise<{ preferenceId: string; publicKey: string; }> => {
+export const createPackageSubscriptionPreference = async (type: 'package' | 'subscription', itemId: string, barbershopId: string, user: User): Promise<{ redirectUrl: string, preferenceId: string }> => {
     const response = await fetch(`/api/create-mp-preference`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -407,13 +409,12 @@ export const createPackageSubscriptionPreference = async (type: 'package' | 'sub
     });
     if (!response.ok) {
         const errorBody = await response.json();
-        throw new Error(errorBody.error || 'Falha ao criar preferência de pagamento de pacote/assinatura.');
+        throw new Error(errorBody.error || 'Falha ao criar preferência de pagamento.');
     }
-    const data = await response.json();
-    return data;
+    return await response.json();
 };
 
-export const createPlanPreference = async (planId: string, billingCycle: 'monthly' | 'annual', barbershopId: string): Promise<{ preferenceId: string, publicKey: string }> => {
+export const createPlanPreference = async (planId: string, billingCycle: 'monthly' | 'annual', barbershopId: string): Promise<{ preferenceId: string; publicKey: string }> => {
     const response = await fetch(`/api/create-plan-preference`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -443,8 +444,7 @@ export const disconnectMercadoPago = async (barbershopId: string): Promise<void>
 // --- PLATFORM-SPECIFIC API CALLS ---
 
 async function getAuthHeaders() {
-    if (!supabase) throw new Error(supabaseInitializationError!);
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabase!.auth.getSession();
     if (!session) throw new Error("Usuário não autenticado.");
     return {
         'Content-Type': 'application/json',

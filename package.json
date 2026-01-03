@@ -13,8 +13,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "@supabase/supabase-js": "^2.43.4",
-    "express": "^4.19.2",
-    "mercadopago": "^2.0.9",
+    "mercadopago": "^2.0.8",
     "tslib": "^2.6.2",
     "web-push": "^3.6.7"
   },

@@ -17,6 +17,7 @@
 
     <title>BarberAI - Gestão Inteligente para Barbearias</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://sdk.mercadopago.com/js/v2"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
@@ -25,8 +26,6 @@
         scroll-behavior: smooth;
       }
     </style>
-    <!-- SDK do Mercado Pago -->
-    <script src="https://sdk.mercadopago.com/js/v2"></script>
     <script>
       tailwind.config = {
         theme: {
@@ -58,7 +57,9 @@
     "src/": "https://aistudiocdn.com/src@^1.1.2/",
     "mercadopago": "https://aistudiocdn.com/mercadopago@^2.9.0",
     "crypto": "https://aistudiocdn.com/crypto@^1.0.1",
-    "web-push": "https://aistudiocdn.com/web-push@^3.6.7"
+    "web-push": "https://aistudiocdn.com/web-push@^3.6.7",
+    "stripe": "https://esm.sh/stripe@^20.1.0",
+    "micro": "https://esm.sh/micro@^10.0.1"
   }
 }
 </script>

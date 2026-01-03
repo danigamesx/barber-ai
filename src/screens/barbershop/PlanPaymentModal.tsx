@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { XCircleIcon } from '../../components/icons/OutlineIcons';
 import * as api from '../../api';
 import { PLANS } from '../../constants';
 import { AppContext } from '../../App';
+import Button from '../../components/Button';
 
 declare global {
     interface Window {
@@ -16,10 +17,7 @@ interface PlanPaymentModalProps {
   onClose: () => void;
 }
 
-const PaymentBrickComponent: React.FC<{
-    preferenceId: string;
-    publicKey: string;
-}> = ({ preferenceId, publicKey }) => {
+const PlanPaymentBrick: React.FC<{ preferenceId: string; publicKey: string }> = ({ preferenceId, publicKey }) => {
     useEffect(() => {
         const mp = new window.MercadoPago(publicKey, { locale: 'pt-BR' });
         const bricksBuilder = mp.bricks();
@@ -27,23 +25,21 @@ const PaymentBrickComponent: React.FC<{
 
         const renderBrick = async () => {
             const settings = {
-                initialization: {
-                    preferenceId: preferenceId,
-                },
+                initialization: { preferenceId: preferenceId },
                 customization: {
                     visual: { style: { theme: 'dark' } },
                     paymentMethods: { creditCard: 'all', debitCard: 'all', pix: 'all' },
                 },
                 callbacks: {
                     onReady: () => {},
-                    onError: (error: any) => { console.error("Erro no Brick de Pagamento:", error); },
+                    onError: (error: any) => { console.error("Plan Payment Brick Error:", error); },
                 },
             };
             
-            const container = document.getElementById('payment-brick-container');
+            const container = document.getElementById('plan-payment-brick-container');
             if (container) {
-                container.innerHTML = ''; 
-                paymentBrickController = await bricksBuilder.create('payment', 'payment-brick-container', settings);
+                container.innerHTML = '';
+                paymentBrickController = await bricksBuilder.create('payment', 'plan-payment-brick-container', settings);
             }
         };
         
@@ -52,15 +48,13 @@ const PaymentBrickComponent: React.FC<{
         return () => {
              if (paymentBrickController) {
                 try {
-                    paymentBrickController.unmount();
-                } catch (e) {
-                    console.error("Erro ao desmontar o brick:", e);
-                }
+                     paymentBrickController.unmount();
+                } catch (e) { console.error("Error unmounting plan brick:", e); }
              }
         }
     }, [preferenceId, publicKey]);
 
-    return <div id="payment-brick-container" />;
+    return <div id="plan-payment-brick-container" />;
 };
 
 
@@ -73,25 +67,20 @@ const PlanPaymentModal: React.FC<PlanPaymentModalProps> = ({ planId, billingCycl
 
     const plan = PLANS.find(p => p.id === planId);
     const price = billingCycle === 'annual' ? plan?.priceAnnual : plan?.priceMonthly;
-    
-    useEffect(() => {
-        if (!plan || !barbershopData) {
-            setError("Não foi possível carregar os detalhes do plano ou da barbearia.");
-            setIsLoading(false);
-            return;
-        }
 
+    useEffect(() => {
+        if (!barbershopData) return;
+        
         api.createPlanPreference(planId, billingCycle, barbershopData.id)
-            .then(data => {
-                setPreferenceId(data.preferenceId);
-                setPublicKey(data.publicKey);
+            .then(({ preferenceId, publicKey }) => {
+                setPreferenceId(preferenceId);
+                setPublicKey(publicKey);
             })
             .catch(err => {
-                setError(err.message || "Falha ao criar a preferência de pagamento do plano.");
+                setError(err.message || "Erro ao iniciar assinatura.");
             })
             .finally(() => setIsLoading(false));
-
-    }, [planId, billingCycle, barbershopData, plan]);
+    }, [planId, billingCycle, barbershopData]);
 
     if (!plan) return null;
 
@@ -103,44 +92,31 @@ const PlanPaymentModal: React.FC<PlanPaymentModalProps> = ({ planId, billingCycl
                 </button>
                 
                 <div className="flex-shrink-0">
-                    <h2 className="text-xl font-bold mb-2 text-center">Pagamento da Assinatura</h2>
-                    <p className="text-center text-gray-400 mb-6">Você está contratando o Plano {plan.name}.</p>
+                    <h2 className="text-xl font-bold mb-2 text-center">Assinar Plano</h2>
+                    <p className="text-center text-gray-400 mb-6">Você escolheu o plano <strong>{plan.name}</strong>.</p>
                 </div>
                 
                 <div className="flex-grow overflow-y-auto -mx-2 px-2">
                     <div className="bg-brand-secondary p-4 rounded-lg mb-6">
                         <div className="flex justify-between items-center">
-                            <span className="text-gray-300">Plano {plan.name} ({billingCycle === 'annual' ? 'Anual' : 'Mensal'})</span>
-                            <span className="font-bold text-lg">R$ {(price || 0).toFixed(2).replace('.',',')}</span>
+                            <span className="text-gray-300">Ciclo {billingCycle === 'annual' ? 'Anual' : 'Mensal'}</span>
+                            <span className="font-bold text-lg text-green-400">R$ {(price || 0).toFixed(2).replace('.',',')}</span>
                         </div>
                     </div>
                     
-                    {error && <p className="text-red-500 text-sm text-center my-4">{error}</p>}
+                    {error && <p className="text-red-500 text-sm text-center mb-4">{error}</p>}
                     
-                    {isLoading && !error && (
-                        <div className="text-center text-gray-400 my-4 flex items-center justify-center">
-                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <p>Inicializando pagamento...</p>
+                    {isLoading && (
+                        <div className="text-center text-gray-400 my-4">
+                            <p>Carregando pagamento...</p>
                         </div>
                     )}
-
+                    
                     {!isLoading && !error && preferenceId && publicKey && (
-                        <PaymentBrickComponent
-                            preferenceId={preferenceId}
-                            publicKey={publicKey}
-                        />
+                        <PlanPaymentBrick preferenceId={preferenceId} publicKey={publicKey} />
                     )}
                 </div>
-
-                 <p className="text-xs text-gray-500 text-center flex items-center justify-center gap-2 mt-4 flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                    </svg>
-                    Pagamento seguro processado pelo Mercado Pago.
-                </p>
+                 <p className="text-xs text-gray-500 text-center mt-4 flex-shrink-0">Processado de forma segura pelo Mercado Pago.</p>
             </div>
         </div>
     );

@@ -1,5 +1,3 @@
-
-
 import React, { useState, useContext, useMemo, useEffect } from 'react';
 import { Barbershop, Service, Barber, Address, SocialMedia, Review, IntegrationSettings, ServicePackage, SubscriptionPlan } from '../../types';
 import { AppContext } from '../../App';
@@ -354,7 +352,7 @@ const BarbershopPublicPage: React.FC<BarbershopPublicPageProps> = ({ identifier 
                             <XCircleIcon className="w-8 h-8" />
                         </button>
                         <h2 className="text-xl font-bold mb-4">Quase lá!</h2>
-                        <p className="text-gray-300 mb-6">Para agendar seu horário ou fazer uma compra, por favor, entre na sua conta ou crie um cadastro.</p>
+                        <p className="text-gray-300 mb-6">Para agendar seu horário, por favor, entre na sua conta ou crie um cadastro.</p>
                         <Button onClick={redirectToLogin}>Entrar ou Cadastrar</Button>
                     </div>
                 </div>

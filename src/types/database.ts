@@ -34,6 +34,7 @@ export type Database = {
           service_name: string | null
           start_time: string
           status: string
+          stripe_session_id: string | null
           subscription_usage_id: string | null
         }
         Insert: {
@@ -59,6 +60,7 @@ export type Database = {
           service_name?: string | null
           start_time: string
           status?: string
+          stripe_session_id?: string | null
           subscription_usage_id?: string | null
         }
         Update: {
@@ -84,6 +86,7 @@ export type Database = {
           service_name?: string | null
           start_time?: string
           status?: string
+          stripe_session_id?: string | null
           subscription_usage_id?: string | null
         }
         Relationships: [
