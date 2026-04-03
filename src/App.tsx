@@ -345,6 +345,9 @@ const App: React.FC = () => {
   
   const signupAndRefetch = async (name: string, email: string, password: string, accountType: 'client' | 'barbershop', phone: string, birthDate?: string, barbershopName?: string) => {
     await api.signUpUser(name, email, password, accountType, phone, birthDate, barbershopName);
+    if (accountType === 'barbershop') {
+        window.location.reload();
+    }
   };
   
   const patchUser = (updatedUser: User) => {
@@ -682,7 +685,10 @@ const App: React.FC = () => {
       return renderClientApp();
     }
     if (user.user_type === 'BARBERSHOP') {
-      if (barbershopData && !barbershopData.has_completed_setup) {
+      if (!barbershopData) {
+        return <div className="flex items-center justify-center h-screen"><p>Carregando dados da barbearia...</p></div>;
+      }
+      if (!barbershopData.has_completed_setup) {
         return <BarbershopSetupScreen />;
       }
       return renderBarbershopApp();
