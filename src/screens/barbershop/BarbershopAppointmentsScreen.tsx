@@ -1,8 +1,8 @@
-import React, { useContext, useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useContext, useMemo, useState, useEffect } from 'react';
 import { AppContext } from '../../App';
 import Button from '../../components/Button';
 import { Appointment, IntegrationSettings, User, Service, Barber, OpeningHours, DayOpeningHours } from '../../types';
-import { XCircleIcon, PencilIcon, CheckCircleIcon, TrashIcon, ClockIcon, ChevronDownIcon } from '../../components/icons/OutlineIcons';
+import { XCircleIcon, ChevronDownIcon } from '../../components/icons/OutlineIcons';
 import EditAppointmentModal from './EditAppointmentModal';
 import * as api from '../../api';
 

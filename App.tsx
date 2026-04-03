@@ -1,5 +1,4 @@
 
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { User, Appointment, Barbershop, Review, ClientNotification, Session, Barber, FinancialRecord, Json, IntegrationSettings, CancellationPolicy } from './types';
 import LoginScreen from './screens/LoginScreen';
@@ -12,7 +11,7 @@ import BarbershopSettingsScreen from './screens/barbershop/BarbershopSettingsScr
 import AnalyticsScreen from './screens/barbershop/AnalyticsScreen';
 import ProfessionalsScreen from './screens/barbershop/ProfessionalsScreen';
 import ClientsScreen from './screens/barbershop/ClientsScreen';
-import { HomeIcon, CalendarIcon, BellIcon, UserIcon, ClipboardListIcon, MegaphoneIcon, ChartBarIcon, CogIcon, UsersIcon, MenuIcon, ShareIcon, CheckCircleIcon, XCircleIcon, ClockIcon } from './components/icons/OutlineIcons';
+import { HomeIcon, CalendarIcon, BellIcon, UserIcon, ClipboardListIcon, MegaphoneIcon, ChartBarIcon, CogIcon, UsersIcon, MenuIcon, CheckCircleIcon, XCircleIcon, ClockIcon } from './components/icons/OutlineIcons';
 import BarbershopSetupScreen from './screens/barbershop/BarbershopSetupScreen';
 import ClientNotificationsScreen from './screens/client/ClientNotificationsScreen';
 import CommunicationsScreen from './screens/barbershop/CommunicationsScreen';
@@ -26,6 +25,11 @@ import Button from './components/Button';
 import BarbershopPublicPage from './screens/public/BarbershopPublicPage';
 import InactivePlanBanner from './components/InactivePlanBanner';
 import { supabaseInitializationError } from './supabaseClient';
+import PlanPaymentModal from './screens/barbershop/PlanPaymentModal';
+import { PackagePaymentModal } from './screens/client/PaymentModal';
+import NotificationPermissionManager from './components/NotificationPermissionManager';
+import TrialExpiredScreen from './screens/barbershop/TrialExpiredScreen';
+
 
 export const AppContext = React.createContext<{
   user: User | null;
@@ -43,6 +47,11 @@ export const AppContext = React.createContext<{
     planId: string;
     trialEndDate: Date | null;
   };
+  installPrompt: any;
+  triggerInstall: () => void;
+  setPurchaseIntent: React.Dispatch<React.SetStateAction<{ planId: string; billingCycle: 'monthly' | 'annual'; } | null>>;
+  setPackageSubscriptionIntent: React.Dispatch<React.SetStateAction<{ type: "package" | "subscription"; itemId: string; barbershop: Barbershop; } | null>>;
+  deleteBarbershopAccount: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   signup: (name: string, email: string, password: string, accountType: 'client' | 'barbershop', phone: string, birthDate?: string, barbershopName?: string) => Promise<void>;
@@ -73,6 +82,11 @@ export const AppContext = React.createContext<{
   googleToken: null,
   isSuperAdmin: false,
   accessStatus: { hasAccess: false, isTrial: false, planId: 'BASIC', trialEndDate: null },
+  installPrompt: null,
+  triggerInstall: () => {},
+  setPurchaseIntent: () => {},
+  setPackageSubscriptionIntent: () => {},
+  deleteBarbershopAccount: async () => {},
   login: async () => {},
   logout: async () => {},
   signup: async () => {},
@@ -130,6 +144,9 @@ const App: React.FC = () => {
   const [loginAccountType, setLoginAccountType] = useState<'client' | 'barbershop' | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'failure' | 'pending' | null>(null);
   const [currentHash, setCurrentHash] = useState(window.location.hash);
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [purchaseIntent, setPurchaseIntent] = useState<{ planId: string, billingCycle: 'monthly' | 'annual' } | null>(null);
+  const [packageSubscriptionIntent, setPackageSubscriptionIntent] = useState<{ type: 'package' | 'subscription', itemId: string, barbershop: Barbershop } | null>(null);
 
   const [activeClientScreen, setActiveClientScreen] = useState('home');
   const [activeBarbershopScreen, setActiveBarbershopScreen] = useState('dashboard');
@@ -143,6 +160,34 @@ const App: React.FC = () => {
     planId: string;
     trialEndDate: Date | null;
   }>({ hasAccess: true, isTrial: false, planId: 'BASIC', trialEndDate: null });
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+
+    const checkLoginIntent = () => {
+        const intent = sessionStorage.getItem('bookingIntentBarbershopId') || sessionStorage.getItem('purchaseIntent');
+        if (intent) {
+            setShowLanding(false);
+        }
+    };
+    checkLoginIntent();
+
+
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+  
+  const triggerInstall = () => {
+    if (installPrompt) {
+        installPrompt.prompt();
+        installPrompt.userChoice.then(() => {
+            setInstallPrompt(null);
+        });
+    }
+  };
   
   useEffect(() => {
     if (currentHash.includes('payment_status')) {
@@ -152,10 +197,14 @@ const App: React.FC = () => {
 
       if (status && ['success', 'failure', 'pending'].includes(status)) {
         setPaymentStatus(status);
+        if (status === 'success' && params.get('return_to') === 'settings') {
+            setActiveBarbershopScreen('settings');
+        }
       }
 
       // Clean the hash
       params.delete('payment_status');
+      params.delete('return_to');
       const path = currentHash.split('?')[0];
       const newParamsString = params.toString();
       const newHash = newParamsString ? `${path}?${newParamsString}` : path;
@@ -172,29 +221,28 @@ const App: React.FC = () => {
         setLoading(true);
         setError(null);
         try {
-            const [barbershopsData, usersData, reviewsData] = await Promise.all([
-                api.getBarbershops(),
-                api.getAllUsers(),
-                api.getReviews(),
-            ]);
-            setBarbershops(barbershopsData);
-            setUsers(usersData);
-            setReviews(reviewsData);
-
             const { data: { session: currentSession } } = await api.getSession();
             setSession(currentSession);
 
             if (currentSession?.user) {
-                const [appointmentsData, userProfile] = await Promise.all([
+                const [barbershopsData, usersData, reviewsData, appointmentsData, userProfile] = await Promise.all([
+                    api.getBarbershops(),
+                    api.getAllUsers(),
+                    api.getReviews(),
                     api.getAppointments(),
                     api.getUserProfile(currentSession.user.id),
                 ]);
+                setBarbershops(barbershopsData);
+                setUsers(usersData);
+                setReviews(reviewsData);
                 setAppointments(appointmentsData);
                 setUser(userProfile);
             } else {
                 setUser(null);
                 setAppointments([]);
                 setGoogleToken(null);
+                const barbershopsData = await api.getBarbershops();
+                setBarbershops(barbershopsData);
             }
         } catch (err: any) {
             console.error("Falha ao carregar dados iniciais:", err);
@@ -218,9 +266,9 @@ const App: React.FC = () => {
             setUser(null);
             setAppointments([]);
             setUsers([]);
-            setBarbershops([]);
             setReviews([]);
             setGoogleToken(null);
+            setShowLanding(true);
         }
     });
 
@@ -246,37 +294,27 @@ const App: React.FC = () => {
       const integrations = barbershopData.integrations as IntegrationSettings;
       const now = new Date();
       
-      let finalPlanId = 'INACTIVE';
+      let hasAccess = false;
       let isTrial = false;
+      let finalPlanId = 'INACTIVE';
       let trialEndDate: Date | null = null;
       
       if (integrations?.plan_status === 'suspended') {
+          hasAccess = true; // Still has access to basic features
           finalPlanId = 'INACTIVE';
-          setAccessStatus({ hasAccess: true, isTrial: false, planId: finalPlanId, trialEndDate: null });
-          return;
-      }
-  
-      if (barbershopData.trial_ends_at) {
-          const trialEnd = new Date(barbershopData.trial_ends_at);
-          if (trialEnd > now) {
-              isTrial = true;
-              trialEndDate = trialEnd;
-              finalPlanId = 'PREMIUM'; 
-              setAccessStatus({ hasAccess: true, isTrial, planId: finalPlanId, trialEndDate });
-              return;
-          }
-      }
-  
-      if (integrations?.plan_expires_at) {
-          const planEndDate = new Date(integrations.plan_expires_at);
-          if (planEndDate > now) {
-              finalPlanId = integrations.plan || 'BASIC';
-              setAccessStatus({ hasAccess: true, isTrial: false, planId: finalPlanId, trialEndDate: null });
-              return;
-          }
+      } else if (barbershopData.trial_ends_at && new Date(barbershopData.trial_ends_at) > now) {
+          hasAccess = true;
+          isTrial = true;
+          trialEndDate = new Date(barbershopData.trial_ends_at);
+          finalPlanId = 'PREMIUM';
+      } else if (integrations?.plan_expires_at && new Date(integrations.plan_expires_at) > now) {
+          hasAccess = true;
+          finalPlanId = integrations.plan || 'INACTIVE';
+      } else if (barbershopData.trial_ends_at && new Date(barbershopData.trial_ends_at) <= now) {
+          hasAccess = false; // Trial has expired, no active plan
       }
       
-      setAccessStatus({ hasAccess: true, isTrial: false, planId: 'INACTIVE', trialEndDate: null });
+      setAccessStatus({ hasAccess, isTrial, planId: finalPlanId, trialEndDate });
   
   }, [user, barbershopData]);
 
@@ -288,12 +326,7 @@ const App: React.FC = () => {
         return { 
             plan: {}, 
             features: {
-                analytics: false,
-                marketing: false,
-                googleCalendar: false,
-                onlinePayments: false,
-                packagesAndSubscriptions: false,
-                clientManagement: false,
+                analytics: false, marketing: false, googleCalendar: false, onlinePayments: false, packagesAndSubscriptions: false, clientManagement: false,
             } 
         };
     }
@@ -348,7 +381,7 @@ const App: React.FC = () => {
         setAppointments(updatedAppointments);
     
         try {
-            let clientProfile = await api.getUserProfile(appointment.client_id);
+            let clientProfile = users.find(u => u.id === appointment.client_id) || await api.getUserProfile(appointment.client_id);
         
             if (status === 'cancelled' && user && clientProfile) {
                 const barbershop = barbershops.find(b => b.id === appointment.barbershop_id);
@@ -435,7 +468,7 @@ const App: React.FC = () => {
     },
     sendPromotion: async (barbershopId: string, title: string, message: string) => {
         const clients = users.filter(u => u.user_type === 'CLIENT');
-        await api.sendPromotion(barbershopId, title, message, clients, barbershops);
+        await api.sendPromotion(barbershopId, title, message, clients);
         setBarbershops(await api.getBarbershops());
     },
     markNotificationsAsRead: async (notificationIds: string[]) => {
@@ -452,12 +485,21 @@ const App: React.FC = () => {
       await api.removeFromWaitingList(barbershopId, date, clientId, barbershops);
       setBarbershops(await api.getBarbershops());
     },
+    deleteBarbershopAccount: async () => {
+        if (barbershopData) {
+            await api.deleteUserAndBarbershop();
+            await api.signOutUser();
+        } else {
+            throw new Error("Nenhuma barbearia encontrada para excluir.");
+        }
+    },
     setGoogleToken,
     patchUser,
   };
 
   const appContextValue = { 
       user, users, barbershops, barbershopData, appointments, allAppointments: appointments, reviews, googleToken, isSuperAdmin, accessStatus,
+      installPrompt, triggerInstall, setPurchaseIntent, setPackageSubscriptionIntent,
       ...contextFunctions
   };
   
@@ -498,10 +540,15 @@ const App: React.FC = () => {
           <span className="text-xs mt-1">Perfil</span>
         </button>
       </nav>
+      <NotificationPermissionManager />
     </div>
   )};
 
   const renderBarbershopApp = () => {
+    if (!accessStatus.hasAccess && !accessStatus.isTrial) {
+        return <TrialExpiredScreen />;
+    }
+    
     let navItems = [
       { id: 'dashboard', label: 'Painel', icon: HomeIcon, enabled: true },
       { id: 'appointments', label: 'Agenda', icon: CalendarIcon, enabled: true },
@@ -592,31 +639,10 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
-    const hash = currentHash;
-    if (hash.includes('barbershopId')) {
-        const queryString = hash.substring(hash.indexOf('?'));
-        const urlParams = new URLSearchParams(queryString);
-        const barbershopId = urlParams.get('barbershopId');
+    const identifier = currentHash.startsWith('#/') ? currentHash.substring(2).split('?')[0] : new URLSearchParams(currentHash.substring(currentHash.indexOf('?'))).get('barbershopId');
 
-        if (barbershopId) {
-            if (loading) {
-                return <div className="flex items-center justify-center h-screen"><p>Carregando barbearia...</p></div>;
-            }
-
-            const shop = barbershops.find(b => b.id === barbershopId);
-            
-            if (shop) {
-                return <BarbershopPublicPage barbershop={shop} />;
-            } else {
-                return (
-                    <div className="flex flex-col items-center justify-center h-screen p-4 text-center">
-                        <h2 className="text-2xl font-bold text-red-500 mb-2">Barbearia não encontrada.</h2>
-                        <p className="text-gray-400 mb-6">O link que você acessou pode estar quebrado ou a barbearia pode ter sido removida.</p>
-                        <a href="#" onClick={() => setCurrentHash('')} className="text-brand-primary hover:underline">Voltar para o início</a>
-                    </div>
-                );
-            }
-        }
+    if (identifier) {
+        return <BarbershopPublicPage identifier={identifier} />;
     }
 
     if (showLanding && !session) {
@@ -663,6 +689,8 @@ const App: React.FC = () => {
       <PlanContext.Provider value={planContextValue}>
         <div className="antialiased font-sans bg-brand-dark min-h-screen">
           {renderContent()}
+          {purchaseIntent && <PlanPaymentModal planId={purchaseIntent.planId} billingCycle={purchaseIntent.billingCycle} onClose={() => setPurchaseIntent(null)} />}
+          {packageSubscriptionIntent && <PackagePaymentModal intent={packageSubscriptionIntent} onClose={() => setPackageSubscriptionIntent(null)} />}
           {paymentStatus && (
               <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[100]">
                   <div className="bg-brand-dark w-full max-w-md rounded-lg shadow-xl p-8 text-center">
@@ -670,14 +698,14 @@ const App: React.FC = () => {
                           <>
                               <CheckCircleIcon className="w-20 h-20 text-green-500 mx-auto mb-4" />
                               <h2 className="text-2xl font-bold mb-2">Pagamento Aprovado!</h2>
-                              <p className="text-gray-400 mb-6">Seu agendamento está confirmado. O status será atualizado em breve para "Pago".</p>
+                              <p className="text-gray-400 mb-6">Sua compra foi concluída com sucesso. O status será atualizado em breve.</p>
                               <Button onClick={() => {
                                   setPaymentStatus(null);
                                   if (user?.user_type === 'CLIENT') {
                                      setActiveClientScreen('appointments');
                                   }
                               }}>
-                                  Ver Meus Agendamentos
+                                  Ok
                               </Button>
                           </>
                       )}
@@ -685,7 +713,7 @@ const App: React.FC = () => {
                           <>
                               <XCircleIcon className="w-20 h-20 text-red-500 mx-auto mb-4" />
                               <h2 className="text-2xl font-bold mb-2">Pagamento Recusado</h2>
-                              <p className="text-gray-400 mb-6">Não foi possível processar seu pagamento. Nenhum valor foi cobrado. Por favor, tente novamente ou escolha outro método de pagamento.</p>
+                              <p className="text-gray-400 mb-6">Não foi possível processar seu pagamento. Nenhum valor foi cobrado. Por favor, tente novamente.</p>
                               <Button variant="secondary" onClick={() => setPaymentStatus(null)}>
                                   Tentar Novamente
                               </Button>
@@ -695,14 +723,9 @@ const App: React.FC = () => {
                           <>
                               <ClockIcon className="w-20 h-20 text-amber-500 mx-auto mb-4" />
                               <h2 className="text-2xl font-bold mb-2">Pagamento Pendente</h2>
-                              <p className="text-gray-400 mb-6">Seu pagamento está sendo processado. Seu agendamento será confirmado assim que o pagamento for aprovado.</p>
-                               <Button variant="secondary" onClick={() => {
-                                  setPaymentStatus(null);
-                                  if (user?.user_type === 'CLIENT') {
-                                     setActiveClientScreen('appointments');
-                                  }
-                              }}>
-                                  Ver Meus Agendamentos
+                              <p className="text-gray-400 mb-6">Seu pagamento está sendo processado. Sua compra será confirmada assim que o pagamento for aprovado.</p>
+                               <Button variant="secondary" onClick={() => setPaymentStatus(null)}>
+                                  Ok
                               </Button>
                           </>
                       )}

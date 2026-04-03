@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
 import Button from '../../components/Button';
 import { XCircleIcon } from '../../components/icons/OutlineIcons';
-import { PLANS } from '../../constants';
-import PlanPaymentModal from './PlanPaymentModal'; // Import the new payment modal
-import { SubscriptionPlanDetails } from '../../types';
+import { PLANS, WHATSAPP_CONTACT } from '../../constants';
 
 interface PlansModalProps {
   onClose: () => void;
-  // This prop will be used to set the purchase intent in the App component
-  onInitiatePurchase: (planId: string, billingCycle: 'monthly' | 'annual') => void;
+  onInitiatePurchase?: (planId: string, billingCycle: 'monthly' | 'annual') => void;
 }
 
-const PlansModal: React.FC<PlansModalProps> = ({ onClose, onInitiatePurchase }) => {
+const PlansModal: React.FC<PlansModalProps> = ({ onClose }) => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+
+  const handleWhatsAppRedirect = (planName: string) => {
+    const message = `Quero contratar o BarberAI. Tenho interesse no plano ${planName}.`;
+    const whatsappUrl = `https://wa.me/${WHATSAPP_CONTACT}?text=${encodeURIComponent(message)}`;
+    window.location.href = whatsappUrl;
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
@@ -67,7 +70,8 @@ const PlansModal: React.FC<PlansModalProps> = ({ onClose, onInitiatePurchase }) 
                   </li>
                   <li className={`flex items-start gap-2 ${plan.features.packagesAndSubscriptions ? '' : 'text-gray-500 line-through'}`}><span>{plan.features.packagesAndSubscriptions ? '✓' : '✕'}</span> <span>Pacotes e Assinaturas</span></li>
                 </ul>
-                 <Button onClick={() => onInitiatePurchase(plan.id, billingCycle)} variant={plan.id === 'PRO' ? 'primary' : 'secondary'} className="mt-auto">Contratar Plano</Button>
+                 {/* FIX: Replaced WhatsApp redirection with a call to the 'onInitiatePurchase' prop. */}
+                 <Button onClick={() => handleWhatsAppRedirect(plan.name)} variant={plan.id === 'PRO' ? 'primary' : 'secondary'} className="mt-auto">Contratar Plano</Button>
               </div>
             );
           })}

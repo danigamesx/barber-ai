@@ -1,6 +1,6 @@
 import { supabase, supabaseInitializationError } from './supabaseClient';
-import { User, Barbershop, Appointment, Review, Barber, FinancialRecord, Promotion, ClientNotification, WaitingListEntry, Json, IntegrationSettings, Address } from './types';
-import { TablesInsert, TablesUpdate } from './types/database';
+import { User, Barbershop, Appointment, Review, Barber, FinancialRecord, ClientNotification, WaitingListEntry, Json, IntegrationSettings, Address } from './types';
+import { TablesUpdate } from './types/database';
 
 // Helper functions to convert DB row types to application types (especially for dates)
 const appointmentFromRow = (row: any): Appointment => ({
@@ -289,7 +289,7 @@ export const deleteFinancialRecord = async (barbershopId: string, barberId: stri
     await updateBarbershop(barbershopId, { barbers: updatedBarbers as unknown as Json });
 };
 
-export const sendPromotion = async (barbershopId: string, title: string, message: string, clients: User[], barbershops: Barbershop[]) => {
+export const sendPromotion = async (barbershopId: string, title: string, message: string, clients: User[]) => {
     // Consolidated logic call to reduce serverless functions
     const clientIds = clients.map(c => c.id);
     const response = await fetch('/api/create-mp-preference?action=send_promotion', {
@@ -355,6 +355,29 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>) 
     if (error) throw error;
     return data as User;
 }
+
+export const resetSystemData = async (adminId: string) => {
+    if (!supabase) throw new Error(supabaseInitializationError!);
+    
+    // Delete in order to respect potential foreign key constraints
+    // 1. Reviews
+    const { error: reviewsError } = await supabase.from('reviews').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (reviewsError) console.error("Error deleting reviews:", reviewsError);
+
+    // 2. Appointments
+    const { error: appointmentsError } = await supabase.from('appointments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (appointmentsError) console.error("Error deleting appointments:", appointmentsError);
+
+    // 3. Barbershops
+    const { error: barbershopsError } = await supabase.from('barbershops').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (barbershopsError) console.error("Error deleting barbershops:", barbershopsError);
+
+    // 4. Profiles (except admin)
+    const { error: profilesError } = await supabase.from('profiles').delete().neq('id', adminId);
+    if (profilesError) console.error("Error deleting profiles:", profilesError);
+    
+    return { success: true };
+};
 
 // === GOOGLE CALENDAR INTEGRATION ===
 export const createGoogleCalendarEvent = async (appointment: Appointment, token: string, barbershop: Barbershop): Promise<{id: string}> => {

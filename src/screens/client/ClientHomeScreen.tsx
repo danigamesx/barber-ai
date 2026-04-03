@@ -1,14 +1,13 @@
 import React, { useContext, useState, useMemo } from 'react';
-import { Barbershop, Address, Review } from '../../types';
+import { Barbershop, Address } from '../../types';
 import { StarIcon, HeartIcon } from '../../components/icons/OutlineIcons';
 import { AppContext } from '../../App';
 
 const BarbershopCard: React.FC<{ 
   barbershop: Barbershop; 
-  onSelect: () => void;
   isFavorite: boolean;
   onToggleFavorite: (e: React.MouseEvent) => void;
-}> = ({ barbershop, onSelect, isFavorite, onToggleFavorite }) => {
+}> = ({ barbershop, isFavorite, onToggleFavorite }) => {
   const address = (barbershop.address as Address) || {};
   const formattedAddress = `${address.street || 'Endereço não informado'}, ${address.number || ''} - ${address.city || ''}`;
   const { reviews } = useContext(AppContext);
@@ -111,7 +110,6 @@ const ClientHomeScreen: React.FC = () => {
               <BarbershopCard 
                 key={shop.id} 
                 barbershop={shop} 
-                onSelect={() => {}}
                 isFavorite={true}
                 onToggleFavorite={(e) => handleToggleFavorite(e, shop.id)}
               />
@@ -128,7 +126,6 @@ const ClientHomeScreen: React.FC = () => {
               <BarbershopCard 
                   key={shop.id} 
                   barbershop={shop} 
-                  onSelect={() => {}}
                   isFavorite={false}
                   onToggleFavorite={(e) => handleToggleFavorite(e, shop.id)}
                 />

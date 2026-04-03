@@ -1,5 +1,5 @@
 import React, { useState, useContext, useMemo, useEffect } from 'react';
-import { Barbershop, Service, Barber, Address, SocialMedia, Review, IntegrationSettings, ServicePackage, SubscriptionPlan } from '../../types';
+import { Barbershop, Service, Barber, Address, SocialMedia, IntegrationSettings, ServicePackage, SubscriptionPlan } from '../../types';
 import { AppContext } from '../../App';
 import Button from '../../components/Button';
 import { StarIcon, PhoneIcon, InstagramIcon, FacebookIcon, GlobeAltIcon, XCircleIcon, ArrowLeftIcon } from '../../components/icons/OutlineIcons';

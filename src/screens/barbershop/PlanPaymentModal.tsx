@@ -3,7 +3,6 @@ import { XCircleIcon } from '../../components/icons/OutlineIcons';
 import * as api from '../../api';
 import { PLANS } from '../../constants';
 import { AppContext } from '../../App';
-import Button from '../../components/Button';
 
 declare global {
     interface Window {

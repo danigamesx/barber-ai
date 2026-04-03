@@ -6,16 +6,37 @@ import * as api from '../../api';
 import Button from '../../components/Button';
 
 const AdminDashboardScreen: React.FC = () => {
-    const { barbershops, users, logout } = useContext(AppContext);
+    const { barbershops, users, logout, user } = useContext(AppContext);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedBarbershop, setSelectedBarbershop] = useState<Barbershop | null>(null);
     const [platformMpStatus, setPlatformMpStatus] = useState({ loading: true, connected: false });
+    const [isResetting, setIsResetting] = useState(false);
 
     useEffect(() => {
         api.getPlatformMpStatus().then(status => {
             setPlatformMpStatus({ loading: false, connected: status.connected });
         });
     }, []);
+
+    const handleResetSystem = async () => {
+        if (!user) return;
+        
+        if (window.confirm("ATENÇÃO: Isso apagará TODOS os agendamentos, avaliações, barbearias e contas de usuários (exceto a sua). Esta ação não pode ser desfeita. Tem certeza?")) {
+            const secondConfirm = window.confirm("TEM CERTEZA ABSOLUTA? Você será deslogado após a limpeza para atualizar os dados.");
+            if (secondConfirm) {
+                setIsResetting(true);
+                try {
+                    await api.resetSystemData(user.id);
+                    alert("Sistema resetado com sucesso. Você será deslogado.");
+                    await logout();
+                } catch (error: any) {
+                    alert(`Falha ao resetar sistema: ${error.message}`);
+                } finally {
+                    setIsResetting(false);
+                }
+            }
+        }
+    };
 
     const handleConnectPlatformMercadoPago = () => {
         const appId = import.meta.env.VITE_MERCADO_PAGO_APP_ID;
@@ -185,6 +206,24 @@ const AdminDashboardScreen: React.FC = () => {
                                 )})}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                {/* Danger Zone */}
+                <div className="mt-12 p-6 bg-red-900/20 border border-red-900/50 rounded-lg">
+                    <h2 className="text-xl font-bold text-red-500 mb-4">Zona de Perigo</h2>
+                    <p className="text-gray-400 mb-6 text-sm">
+                        As ações abaixo são irreversíveis. Use com extrema cautela.
+                    </p>
+                    <div className="flex flex-col md:flex-row gap-4">
+                        <Button 
+                            variant="danger" 
+                            onClick={handleResetSystem}
+                            disabled={isResetting}
+                            className="w-full md:w-auto"
+                        >
+                            {isResetting ? 'Resetando...' : 'Resetar Todo o Sistema'}
+                        </Button>
                     </div>
                 </div>
             </div>

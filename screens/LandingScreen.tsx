@@ -35,10 +35,10 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleStartPurchase = (planId: string, cycle: 'monthly' | 'annual') => {
-    const purchaseIntent = { planId, billingCycle: cycle };
-    sessionStorage.setItem('purchaseIntent', JSON.stringify(purchaseIntent));
-    onEnter('barbershop');
+  const handleWhatsAppRedirect = (planName: string) => {
+    const message = `Quero contratar o BarberAI. Tenho interesse no plano ${planName}.`;
+    const whatsappUrl = `https://wa.me/5551994829915?text=${encodeURIComponent(message)}`;
+    window.location.href = whatsappUrl;
   };
 
   return (
@@ -294,7 +294,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
                                 <span className="text-4xl font-bold tracking-tight text-white">R${plan.price[billingCycle].toFixed(2).replace('.',',')}</span>
                                 <span className="text-sm font-semibold leading-6 text-gray-300">/mês</span>
                             </p>
-                            <Button onClick={() => handleStartPurchase(plan.id, billingCycle)} variant={plan.mostPopular ? 'primary' : 'secondary'} className="mt-6 w-full">Comece agora</Button>
+                            <Button onClick={() => handleWhatsAppRedirect(plan.name)} variant={plan.mostPopular ? 'primary' : 'secondary'} className="mt-6 w-full">Comece agora</Button>
                             <ul role="list" className="mt-8 space-y-3 text-sm leading-6 text-gray-300 xl:mt-10">
                                 {plan.features.map((feature) => (
                                     <li key={feature} className="flex gap-x-3"><CheckIcon className="h-6 w-5 flex-none text-brand-primary" aria-hidden="true" />{feature}</li>

@@ -34,6 +34,12 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const handleWhatsAppRedirect = (planName: string) => {
+    const message = `Quero contratar o BarberAI. Tenho interesse no plano ${planName}.`;
+    const whatsappUrl = `https://wa.me/5551994829915?text=${encodeURIComponent(message)}`;
+    window.location.href = whatsappUrl;
+  };
+
   return (
     <div className="bg-brand-dark text-brand-light">
       <header className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${isScrolled ? 'bg-brand-secondary/70 backdrop-blur-lg' : 'bg-transparent'}`}>
@@ -141,7 +147,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
                                 <span className="text-4xl font-bold tracking-tight text-white">R${plan.price[billingCycle]}</span>
                                 <span className="text-sm font-semibold leading-6 text-gray-300">/mês</span>
                             </p>
-                            <Button onClick={onEnter} variant={plan.mostPopular ? 'primary' : 'secondary'} className="mt-6 w-full">Contratar Plano</Button>
+                            <Button onClick={() => handleWhatsAppRedirect(plan.name)} variant={plan.mostPopular ? 'primary' : 'secondary'} className="mt-6 w-full">Contratar Plano</Button>
                             <ul role="list" className="mt-8 space-y-3 text-sm leading-6 text-gray-300 xl:mt-10">
                                 {plan.features.map((feature) => (
                                     <li key={feature} className="flex gap-x-3"><CheckIcon className="h-6 w-5 flex-none text-brand-primary" aria-hidden="true" />{feature}</li>

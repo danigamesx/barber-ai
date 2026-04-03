@@ -1,18 +1,13 @@
-import React, { useContext, useState, useMemo, useEffect } from 'react';
-import { Barbershop, Appointment, Address, LoyaltyProgram, Review } from '../../types';
+import React, { useContext, useState, useMemo } from 'react';
+import { Barbershop, Address } from '../../types';
 import { StarIcon, HeartIcon } from '../../components/icons/OutlineIcons';
-import BookingModal from './BookingModal';
-import PaymentModal from './PaymentModal';
 import { AppContext } from '../../App';
-
-type NewAppointmentData = Omit<Appointment, 'id' | 'start_time' | 'end_time' | 'created_at'> & { start_time: Date, end_time: Date };
 
 const BarbershopCard: React.FC<{ 
   barbershop: Barbershop; 
-  onSelect: () => void;
   isFavorite: boolean;
   onToggleFavorite: (e: React.MouseEvent) => void;
-}> = ({ barbershop, onSelect, isFavorite, onToggleFavorite }) => {
+}> = ({ barbershop, isFavorite, onToggleFavorite }) => {
   const address = (barbershop.address as Address) || {};
   const formattedAddress = `${address.street || 'Endereço não informado'}, ${address.number || ''} - ${address.city || ''}`;
   const { reviews } = useContext(AppContext);
@@ -26,8 +21,11 @@ const BarbershopCard: React.FC<{
 
 
   const handleCardClick = () => {
-    // Navigate to the public page instead of opening a modal
-    window.location.hash = `/?barbershopId=${barbershop.id}`;
+    if (barbershop.slug) {
+        window.location.hash = `/${barbershop.slug}`;
+    } else {
+        window.location.hash = `/?barbershopId=${barbershop.id}`;
+    }
   };
 
   return (
@@ -50,21 +48,6 @@ const BarbershopCard: React.FC<{
     </div>
   );
 };
-
-const LoyaltyCard: React.FC<{ barbershopName: string, stamps: number, goal: number, reward: string }> = ({ barbershopName, stamps, goal, reward }) => (
-    <div className="bg-brand-secondary p-4 rounded-lg">
-        <h4 className="font-bold text-brand-primary">{barbershopName}</h4>
-        <p className="text-sm text-gray-300 mb-3">Próxima recompensa: <span className="font-semibold">{reward}</span></p>
-        <div className="flex justify-between items-center gap-2">
-            {Array.from({ length: goal }).map((_, i) => (
-                <div key={i} className={`w-full h-8 rounded-md flex items-center justify-center ${i < stamps ? 'bg-amber-400' : 'bg-brand-dark'}`}>
-                    {i < stamps && <StarIcon className="w-5 h-5 text-brand-dark" />}
-                </div>
-            ))}
-        </div>
-        <p className="text-xs text-gray-400 mt-2 text-right">{stamps} de {goal} carimbos</p>
-    </div>
-);
 
 const ClientHomeScreen: React.FC = () => {
   const { user, barbershops, toggleFavoriteBarbershop } = useContext(AppContext);
@@ -96,21 +79,6 @@ const ClientHomeScreen: React.FC = () => {
     return filteredBarbershops.filter(shop => !user?.favorite_barbershop_ids?.includes(shop.id));
   }, [filteredBarbershops, user]);
 
-  const loyaltyData = useMemo(() => {
-    if (!user?.loyalty_stamps) return [];
-    return Object.entries((user.loyalty_stamps as {[key: string]: number}) || {}).map(([shopId, stamps]) => {
-        const shop = barbershops.find(b => b.id === shopId);
-        const program = shop?.loyalty_program as LoyaltyProgram | undefined;
-        return shop && program?.enabled ? { 
-            shopId, 
-            shopName: shop.name, 
-            stamps, 
-            goal: program.stampsNeeded, 
-            reward: program.reward 
-        } : null;
-    }).filter(Boolean);
-  }, [user, barbershops]);
-
   return (
     <div className="p-4 space-y-8">
       <header>
@@ -128,17 +96,6 @@ const ClientHomeScreen: React.FC = () => {
           />
       </div>
 
-      {searchQuery.trim() === '' && loyaltyData.length > 0 && (
-        <section>
-            <h2 className="text-lg font-semibold mb-4 text-brand-primary">Cartão Fidelidade</h2>
-            <div className="space-y-4">
-                {loyaltyData.map(data => (
-                    data && <LoyaltyCard key={data.shopId} barbershopName={data.shopName} stamps={data.stamps} goal={data.goal} reward={data.reward} />
-                ))}
-            </div>
-        </section>
-      )}
-
       {filteredBarbershops.length === 0 && searchQuery.trim() !== '' && (
         <div className="text-center py-10">
             <p className="text-gray-400">Nenhuma barbearia encontrada para "{searchQuery}".</p>
@@ -153,7 +110,6 @@ const ClientHomeScreen: React.FC = () => {
               <BarbershopCard 
                 key={shop.id} 
                 barbershop={shop} 
-                onSelect={() => {}}
                 isFavorite={true}
                 onToggleFavorite={(e) => handleToggleFavorite(e, shop.id)}
               />
@@ -170,7 +126,6 @@ const ClientHomeScreen: React.FC = () => {
               <BarbershopCard 
                   key={shop.id} 
                   barbershop={shop} 
-                  onSelect={() => {}}
                   isFavorite={false}
                   onToggleFavorite={(e) => handleToggleFavorite(e, shop.id)}
                 />

@@ -1,5 +1,5 @@
 import React, { useState, useContext, useMemo, useEffect } from 'react';
-import { Barbershop, Service, Barber, Address, SocialMedia, Review, IntegrationSettings } from '../../types';
+import { Barbershop, Service, Barber, Address, SocialMedia, IntegrationSettings, ServicePackage, SubscriptionPlan } from '../../types';
 import { AppContext } from '../../App';
 import Button from '../../components/Button';
 import { StarIcon, PhoneIcon, InstagramIcon, FacebookIcon, GlobeAltIcon, XCircleIcon, ArrowLeftIcon } from '../../components/icons/OutlineIcons';
@@ -9,24 +9,70 @@ import * as api from '../../api';
 
 type NewAppointmentData = Omit<Appointment, 'id' | 'start_time' | 'end_time' | 'created_at'> & { start_time: Date, end_time: Date };
 
-const BarbershopPublicPage: React.FC<{ barbershop: Barbershop }> = ({ barbershop }) => {
-    const { reviews, user } = useContext(AppContext);
+interface BarbershopPublicPageProps {
+  identifier: string;
+}
+
+const BarbershopPublicPage: React.FC<BarbershopPublicPageProps> = ({ identifier }) => {
+    const { reviews, user, setPackageSubscriptionIntent } = useContext(AppContext);
+    const [barbershop, setBarbershop] = useState<Barbershop | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [componentError, setComponentError] = useState<string | null>(null);
     const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
     const [isRedirecting, setIsRedirecting] = useState(false);
     const [showLoginPrompt, setShowLoginPrompt] = useState(false);
     
     useEffect(() => {
+        if (!identifier) return;
+
+        const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(identifier);
+
+        const fetchBarbershop = async () => {
+            setLoading(true);
+            setComponentError(null);
+            try {
+                const shopData = isUUID
+                    ? await api.getBarbershopById(identifier)
+                    : await api.getBarbershopBySlug(identifier);
+                setBarbershop(shopData);
+            } catch (err) {
+                console.error("Failed to fetch barbershop:", err);
+                setComponentError("Não foi possível carregar os dados da barbearia. Verifique o link ou tente novamente.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchBarbershop();
+    }, [identifier]);
+    
+    useEffect(() => {
         const hash = window.location.hash;
-        if (hash.includes('openBooking=true') && user) {
-            const urlParams = new URLSearchParams(hash.substring(hash.indexOf('?')));
+        const urlParams = new URLSearchParams(hash.substring(hash.indexOf('?')));
+        if (urlParams.get('openBooking') === 'true' && user && barbershop) {
             setIsBookingModalOpen(true);
             urlParams.delete('openBooking');
-            const newHash = `#/?${urlParams.toString()}`;
+            const newParamsString = urlParams.toString();
+            const path = hash.split('?')[0];
+            const newHash = newParamsString ? `${path}?${newParamsString}` : path;
             window.history.replaceState(null, '', newHash);
         }
-    }, [user]);
+    }, [user, barbershop]);
+    
+     useEffect(() => {
+        const purchaseIntentStr = sessionStorage.getItem('purchaseIntent');
+        if (user && barbershop && purchaseIntentStr && setPackageSubscriptionIntent) {
+            const intent = JSON.parse(purchaseIntentStr);
+            if (intent.identifier === identifier) {
+                setPackageSubscriptionIntent({ type: intent.type, itemId: intent.itemId, barbershop: barbershop });
+                sessionStorage.removeItem('purchaseIntent');
+            }
+        }
+    }, [user, barbershop, identifier, setPackageSubscriptionIntent]);
+
 
     const isAcceptingAppointments = useMemo(() => {
+        if (!barbershop) return false;
         const now = new Date();
         const integrations = barbershop.integrations as IntegrationSettings;
     
@@ -55,30 +101,24 @@ const BarbershopPublicPage: React.FC<{ barbershop: Barbershop }> = ({ barbershop
         if (user) {
             setIsBookingModalOpen(true);
         } else {
+             sessionStorage.setItem('bookingIntentIdentifier', identifier);
+            setShowLoginPrompt(true);
+        }
+    };
+    
+    const handlePurchaseClick = (type: 'package' | 'subscription', itemId: string) => {
+        if (user && barbershop && setPackageSubscriptionIntent) {
+            setPackageSubscriptionIntent({ type, itemId, barbershop });
+        } else {
+            sessionStorage.setItem('purchaseIntent', JSON.stringify({ type, itemId, barbershopId: barbershop?.id, identifier }));
             setShowLoginPrompt(true);
         }
     };
     
     const redirectToLogin = () => {
-        sessionStorage.setItem('bookingIntentBarbershopId', barbershop.id);
-        window.location.hash = '';
+        sessionStorage.setItem('returnToIdentifier', identifier);
+        window.location.hash = ''; // Navega para a tela de login
     };
-
-    const address = barbershop.address as Address;
-    const social = barbershop.social_media as SocialMedia;
-    const phone = barbershop.phone;
-    const barbers = Array.isArray(barbershop.barbers) ? barbershop.barbers as Barber[] : [];
-    const services = Array.isArray(barbershop.services) ? barbershop.services as Service[] : [];
-    const gallery = barbershop.gallery_images || [];
-
-    const whatsappLink = phone ? `https://wa.me/55${phone.replace(/\D/g, '')}` : null;
-    
-    const barbershopReviews = useMemo(() => reviews.filter(r => r.barbershop_id === barbershop.id), [reviews, barbershop.id]);
-    const averageRating = useMemo(() => {
-        if (barbershopReviews.length === 0) return 'Novo';
-        const sum = barbershopReviews.reduce((acc, review) => acc + review.rating, 0);
-        return (sum / barbershopReviews.length).toFixed(1);
-    }, [barbershopReviews]);
 
     const handleInitiatePayment = async (appointmentData: NewAppointmentData) => {
         setIsBookingModalOpen(false);
@@ -97,6 +137,32 @@ const BarbershopPublicPage: React.FC<{ barbershop: Barbershop }> = ({ barbershop
             setIsRedirecting(false);
         }
     };
+
+    if (loading) {
+        return <div className="flex items-center justify-center h-screen"><p>Carregando barbearia...</p></div>;
+    }
+
+    if (componentError || !barbershop) {
+        return (
+            <div className="flex flex-col items-center justify-center h-screen p-4 text-center">
+                <h2 className="text-2xl font-bold text-red-500 mb-2">Barbearia não encontrada.</h2>
+                <p className="text-gray-400 mb-6">{componentError || 'O link que você acessou pode estar quebrado ou a barbearia pode ter sido removida.'}</p>
+                <a href="#" onClick={() => (window.location.hash = '')} className="text-brand-primary hover:underline">Voltar para o início</a>
+            </div>
+        );
+    }
+    
+    const address = barbershop.address as Address;
+    const social = barbershop.social_media as SocialMedia;
+    const phone = barbershop.phone;
+    const barbers = Array.isArray(barbershop.barbers) ? barbershop.barbers as Barber[] : [];
+    const services = Array.isArray(barbershop.services) ? barbershop.services as Service[] : [];
+    const packages = Array.isArray(barbershop.packages) ? barbershop.packages as ServicePackage[] : [];
+    const subscriptions = Array.isArray(barbershop.subscriptions) ? barbershop.subscriptions as SubscriptionPlan[] : [];
+    const gallery = barbershop.gallery_images || [];
+    const whatsappLink = phone ? `https://wa.me/55${phone.replace(/\D/g, '')}` : null;
+    const barbershopReviews = reviews.filter(r => r.barbershop_id === barbershop.id);
+    const averageRating = barbershopReviews.length === 0 ? 'Novo' : (barbershopReviews.reduce((acc, r) => acc + r.rating, 0) / barbershopReviews.length).toFixed(1);
 
     return (
         <>
@@ -187,6 +253,48 @@ const BarbershopPublicPage: React.FC<{ barbershop: Barbershop }> = ({ barbershop
                                     ))}
                                 </div>
                              </section>
+
+                             {packages.length > 0 && (
+                                <section>
+                                    <h2 className="text-xl font-semibold text-brand-primary mb-3">Pacotes de Serviços</h2>
+                                    <div className="space-y-3">
+                                        {packages.map(pkg => (
+                                            <div key={pkg.id} className="bg-brand-secondary p-4 rounded-lg">
+                                                <p className="font-bold">{pkg.name}</p>
+                                                <p className="text-sm text-gray-400">{pkg.totalUses} usos por R$ {pkg.price.toFixed(2)}</p>
+                                                <ul className="text-xs list-disc list-inside pl-1 mt-2 text-gray-300">
+                                                    {pkg.serviceIds.map(id => {
+                                                        const service = services.find(s => s.id === id);
+                                                        return service ? <li key={id}>{service.name}</li> : null;
+                                                    })}
+                                                </ul>
+                                                <Button onClick={() => handlePurchaseClick('package', pkg.id)} variant="secondary" className="w-full py-2 text-sm mt-3">Contratar Pacote</Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                             )}
+
+                             {subscriptions.length > 0 && (
+                                 <section>
+                                    <h2 className="text-xl font-semibold text-brand-primary mb-3">Assinaturas Mensais</h2>
+                                     <div className="space-y-3">
+                                        {subscriptions.map(sub => (
+                                            <div key={sub.id} className="bg-brand-secondary p-4 rounded-lg">
+                                                <p className="font-bold">{sub.name}</p>
+                                                <p className="text-sm text-gray-400">{sub.usesPerMonth} uso(s)/mês por R$ {sub.price.toFixed(2)}</p>
+                                                 <ul className="text-xs list-disc list-inside pl-1 mt-2 text-gray-300">
+                                                    {sub.serviceIds.map(id => {
+                                                        const service = services.find(s => s.id === id);
+                                                        return service ? <li key={id}>{service.name}</li> : null;
+                                                    })}
+                                                </ul>
+                                                <Button onClick={() => handlePurchaseClick('subscription', sub.id)} variant="secondary" className="w-full py-2 text-sm mt-3">Assinar</Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                 </section>
+                             )}
                          </>
                      ) : (
                          <div className="bg-brand-secondary p-6 rounded-lg text-center my-8">

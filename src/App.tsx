@@ -468,7 +468,7 @@ const App: React.FC = () => {
     },
     sendPromotion: async (barbershopId: string, title: string, message: string) => {
         const clients = users.filter(u => u.user_type === 'CLIENT');
-        await api.sendPromotion(barbershopId, title, message, clients, barbershops);
+        await api.sendPromotion(barbershopId, title, message, clients);
         setBarbershops(await api.getBarbershops());
     },
     markNotificationsAsRead: async (notificationIds: string[]) => {

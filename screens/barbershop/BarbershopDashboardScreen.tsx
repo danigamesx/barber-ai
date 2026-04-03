@@ -1,6 +1,6 @@
 import React, { useContext, useMemo, useState } from 'react';
 import { AppContext } from '../../App';
-import { Appointment, OpeningHours, User, Barbershop, DayOpeningHours } from '../../types';
+import { Appointment, User } from '../../types';
 import Button from '../../components/Button';
 import {
   CurrencyDollarIcon,

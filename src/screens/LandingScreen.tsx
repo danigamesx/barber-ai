@@ -40,7 +40,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onEnter }) => {
   const handleWhatsAppRedirect = (planName: string) => {
     const message = `Quero contratar o BarberAI. Tenho interesse no plano ${planName}.`;
     const whatsappUrl = `https://wa.me/${WHATSAPP_CONTACT}?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
+    window.location.href = whatsappUrl;
   };
 
   return (
