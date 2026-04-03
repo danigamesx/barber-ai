@@ -71,6 +71,11 @@ const BarbershopPublicPage: React.FC<BarbershopPublicPageProps> = ({ identifier 
     }, [user, barbershop, identifier, setPackageSubscriptionIntent]);
 
 
+    const isMercadoPagoConnected = useMemo(() => {
+        const integrations = barbershop?.integrations as IntegrationSettings | undefined;
+        return !!(integrations?.mercadopagoPublicKey && integrations?.mercadopagoAccessToken);
+    }, [barbershop]);
+
     const isAcceptingAppointments = useMemo(() => {
         if (!barbershop) return false;
         const now = new Date();
@@ -254,7 +259,7 @@ const BarbershopPublicPage: React.FC<BarbershopPublicPageProps> = ({ identifier 
                                 </div>
                              </section>
 
-                             {packages.length > 0 && (
+                             {packages.length > 0 && isMercadoPagoConnected && (
                                 <section>
                                     <h2 className="text-xl font-semibold text-brand-primary mb-3">Pacotes de Serviços</h2>
                                     <div className="space-y-3">
@@ -275,7 +280,7 @@ const BarbershopPublicPage: React.FC<BarbershopPublicPageProps> = ({ identifier 
                                 </section>
                              )}
 
-                             {subscriptions.length > 0 && (
+                             {subscriptions.length > 0 && isMercadoPagoConnected && (
                                  <section>
                                     <h2 className="text-xl font-semibold text-brand-primary mb-3">Assinaturas Mensais</h2>
                                      <div className="space-y-3">

@@ -1,6 +1,6 @@
 import React, { useState, useContext, useMemo } from 'react';
 import { AppContext } from '../../App';
-import { Barbershop, Barber, Service, Appointment, OpeningHours, BlockedTimeSlot, DayOpeningHours } from '../../types';
+import { Barbershop, Barber, Service, Appointment, OpeningHours, BlockedTimeSlot, DayOpeningHours, IntegrationSettings } from '../../types';
 import Button from '../../components/Button';
 import { XCircleIcon, CheckCircleIcon, CalendarIcon } from '../../components/icons/OutlineIcons';
 import BarberProfileModal from './BarberProfileModal';
@@ -381,6 +381,9 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
     }
   };
   
+  const integrations = barbershop.integrations as IntegrationSettings | undefined;
+  const isMercadoPagoConnected = !!(integrations?.mercadopagoPublicKey && integrations?.mercadopagoAccessToken);
+
   const getConfirmationButtons = () => {
     const basePrice = isUsingReward ? 0 : (selectedService?.price || 0);
     const debt = (user?.outstanding_debts as any)?.[barbershop.id] || 0;
@@ -391,7 +394,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
     if (finalPriceToPay > 0) {
         return (
             <>
-                <Button onClick={handlePayNow}>Pagar Agora e Confirmar</Button>
+                {isMercadoPagoConnected && <Button onClick={handlePayNow}>Pagar Agora e Confirmar</Button>}
                 <Button variant="secondary" onClick={handleRequestAndPayLater}>Agendar e Pagar no Local</Button>
             </>
         );

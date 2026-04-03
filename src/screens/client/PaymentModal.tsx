@@ -162,6 +162,9 @@ export const PackagePaymentModal: React.FC<PackagePaymentModalProps> = ({ intent
 
     const { type, itemId, barbershop } = intent;
     
+    const integrations = barbershop?.integrations as IntegrationSettings | undefined;
+    const isMercadoPagoConnected = !!(integrations?.mercadopagoPublicKey && integrations?.mercadopagoAccessToken);
+
     const item = React.useMemo(() => {
         if (!barbershop) return null;
         if (type === 'package') {
@@ -205,7 +208,13 @@ export const PackagePaymentModal: React.FC<PackagePaymentModalProps> = ({ intent
                 
                 {error && <p className="text-red-500 text-sm text-center mb-4">{error}</p>}
                 
-                <Button onClick={handleGoToPayment} disabled={isLoading}>
+                {!isMercadoPagoConnected && (
+                    <p className="text-red-500 text-sm text-center mb-4">
+                        Esta barbearia não está configurada para receber pagamentos online.
+                    </p>
+                )}
+                
+                <Button onClick={handleGoToPayment} disabled={isLoading || !isMercadoPagoConnected}>
                     {isLoading ? 'Processando...' : 'Pagar com Mercado Pago'}
                 </Button>
             </div>
