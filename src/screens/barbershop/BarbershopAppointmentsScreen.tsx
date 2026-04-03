@@ -419,6 +419,7 @@ const BarbershopAppointmentsScreen: React.FC = () => {
         if (!hours) return [{ type: 'closed', message: 'Fechado neste dia.' }];
     
         const items: any[] = [];
+        const now = new Date();
     
         const processTimeBlock = (start: string, end: string) => {
             let currentTime = new Date(`${selectedDate.toDateString()} ${start}`);
@@ -437,7 +438,8 @@ const BarbershopAppointmentsScreen: React.FC = () => {
                     const duration = (appointmentAtThisTime.end_time.getTime() - appointmentAtThisTime.start_time.getTime()) / (1000 * 60);
                     currentTime.setMinutes(currentTime.getMinutes() + duration);
                 } else {
-                    items.push({ type: 'free', time: timeString });
+                    const isPast = currentTime < now;
+                    items.push({ type: 'free', time: timeString, isPast });
                     currentTime.setMinutes(currentTime.getMinutes() + 30);
                 }
             }
@@ -554,9 +556,15 @@ const BarbershopAppointmentsScreen: React.FC = () => {
                                     <div key={`free-${index}`} className="flex items-center gap-4 group">
                                          <p className="text-right text-sm text-gray-600 w-16">{item.time}</p>
                                          <div className="border-l-4 border-transparent pl-3 w-full">
-                                            <button onClick={() => { setNewBookingTime(item.time); setIsNewBookingModalOpen(true); }} className="text-left text-sm text-gray-500 hover:text-brand-primary w-full">
-                                                + Agendar horário
-                                            </button>
+                                            {!item.isPast ? (
+                                                <button onClick={() => { setNewBookingTime(item.time); setIsNewBookingModalOpen(true); }} className="text-left text-sm text-gray-500 hover:text-brand-primary w-full">
+                                                    + Agendar horário
+                                                </button>
+                                            ) : (
+                                                <span className="text-left text-sm text-gray-700 w-full italic">
+                                                    Horário expirado
+                                                </span>
+                                            )}
                                          </div>
                                     </div>
                                 );
