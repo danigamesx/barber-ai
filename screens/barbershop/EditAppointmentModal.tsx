@@ -123,6 +123,13 @@ const EditAppointmentModal: React.FC<EditAppointmentModalProps> = ({ appointment
         <h2 className="text-xl font-bold mb-4 text-center">Editar Agendamento</h2>
         <p className="text-center text-gray-400 mb-6">{appointment.client_name} - {appointment.service_name}</p>
         
+        {appointment.notes && appointment.notes.trim() !== "" && (
+          <div className="mb-6 p-3 bg-gray-800 rounded-lg text-left">
+            <p className="text-xs text-gray-400 uppercase font-semibold mb-1">Observações do Cliente</p>
+            <p className="text-sm text-gray-200 italic">"{appointment.notes}"</p>
+          </div>
+        )}
+        
         <div className="space-y-4">
           <div>
             <label className="text-sm text-gray-400 mb-1 block">Nova Data</label>

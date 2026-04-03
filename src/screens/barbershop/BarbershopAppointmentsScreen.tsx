@@ -131,10 +131,10 @@ const AppointmentActionModal: React.FC<{
                     <h2 className="text-xl font-bold">{appointment.client_name}</h2>
                     <p className="text-gray-400">{appointment.service_name}</p>
                     <p className="text-brand-primary font-semibold">{appointment.start_time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {appointment.end_time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                    {appointment.notes && (
+                    {appointment.notes && appointment.notes.trim() !== "" && (
                         <div className="mt-4 p-3 bg-gray-800 rounded-lg text-left">
                             <p className="text-xs text-gray-400 uppercase font-semibold mb-1">Observações</p>
-                            <p className="text-sm text-gray-200">{appointment.notes}</p>
+                            <p className="text-sm text-gray-200 italic">"{appointment.notes}"</p>
                         </div>
                     )}
                 </div>
@@ -306,7 +306,12 @@ const PastAppointmentDetailsModal: React.FC<{
                     <p><strong>Data:</strong> {appointment.start_time.toLocaleDateString()}</p>
                     <p><strong>Horário:</strong> {appointment.start_time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {appointment.end_time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                     <p><strong>Valor:</strong> R$ {(appointment.price || 0).toFixed(2)}</p>
-                    {appointment.notes && <p className="mt-2 pt-2 border-t border-gray-700"><strong>Observações:</strong> "{appointment.notes}"</p>}
+                    {appointment.notes && appointment.notes.trim() !== "" && (
+                        <div className="mt-4 p-3 bg-gray-800 rounded-lg text-left">
+                            <p className="text-xs text-gray-400 uppercase font-semibold mb-1">Observações</p>
+                            <p className="text-sm text-gray-200 italic">"{appointment.notes}"</p>
+                        </div>
+                    )}
                 </div>
                 <div className="mt-6">
                     <Button variant="secondary" onClick={onClose}>Fechar</Button>
