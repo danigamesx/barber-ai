@@ -19,13 +19,21 @@ const ClientsScreen: React.FC = () => {
             if (app.client_id !== owner.id) {
                 if (!clientMap.has(app.client_id)) {
                     const fullProfile = users.find(u => u.id === app.client_id);
-                    clientMap.set(app.client_id, fullProfile || {
-                        id: app.client_id,
-                        name: app.client_name || 'Cliente Desconhecido',
-                        email: null, phone: null, user_type: 'CLIENT', birth_date: null, favorite_barbershop_ids: null, loyalty_stamps: null, notifications: null, outstanding_debts: null, rewards: null, store_credits: null,
-                        // FIX: Added missing properties to match the User type.
-                        purchased_packages: null, active_subscriptions: null,
-                    });
+                    const clientData = {
+                        ...(fullProfile || {
+                            id: app.client_id,
+                            name: app.client_name || 'Cliente Desconhecido',
+                            user_type: 'CLIENT',
+                            email: null,
+                            phone: null,
+                            birth_date: null, favorite_barbershop_ids: null, loyalty_stamps: null, notifications: null, outstanding_debts: null, rewards: null, store_credits: null,
+                            purchased_packages: null, active_subscriptions: null,
+                            push_subscriptions: null,
+                        }),
+                    };
+                    if (!clientData.phone && app.client_phone) clientData.phone = app.client_phone;
+                    if (!clientData.email && app.client_email) clientData.email = app.client_email;
+                    clientMap.set(app.client_id, clientData as User);
                 }
             } 
             // Handle walk-in clients

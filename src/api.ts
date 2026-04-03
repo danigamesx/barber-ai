@@ -58,6 +58,17 @@ export const signUpUser = async (name: string, email: string, password: string, 
     });
     if (authError) throw authError;
     if (!authData.user) throw new Error("Signup successful, but no user returned.");
+
+    // Manually upsert profile to ensure all data (especially phone) is saved correctly
+    const { error: profileError } = await supabase.from('profiles').upsert({
+        id: authData.user.id,
+        name,
+        email,
+        phone,
+        user_type: accountType === 'client' ? 'CLIENT' : 'BARBERSHOP',
+        birth_date: birthDate || null
+    });
+    if (profileError) console.error("Error upserting profile:", profileError);
     
     if (accountType === 'barbershop') {
         if (!barbershopName) throw new Error("Barbershop name is required.");
@@ -121,9 +132,13 @@ export const getBarbershopBySlug = async (slug: string): Promise<Barbershop> => 
 
 export const getAppointments = async (): Promise<Appointment[]> => {
     if (!supabase) throw new Error(supabaseInitializationError!);
-    const { data, error } = await supabase.from('appointments').select('*');
+    const { data, error } = await supabase.from('appointments').select('*, client:profiles(phone, email)');
     if (error) throw error;
-    return data.map(appointmentFromRow);
+    return data.map(row => ({
+        ...appointmentFromRow(row),
+        client_phone: row.client?.phone || null,
+        client_email: row.client?.email || null,
+    }));
 };
 
 export const getReviews = async (): Promise<Review[]> => {
@@ -182,10 +197,14 @@ export const addAppointment = async (appointment: Omit<Appointment, 'id' | 'crea
         // package_usage_id and subscription_usage_id removed to prevent "schema cache" errors
     };
 
-    const { data: newAppointmentRow, error: insertError } = await supabase.from('appointments').insert(appointmentForDb).select().single();
+    const { data: newAppointmentRow, error: insertError } = await supabase.from('appointments').insert(appointmentForDb).select('*, client:profiles(phone, email)').single();
     if (insertError) throw insertError;
 
-    let finalAppointment = appointmentFromRow(newAppointmentRow);
+    let finalAppointment: Appointment = {
+        ...appointmentFromRow(newAppointmentRow),
+        client_phone: newAppointmentRow.client?.phone || null,
+        client_email: newAppointmentRow.client?.email || null,
+    };
 
     if (initialStatus === 'pending') {
         const { data: barbershop } = await supabase.from('barbershops').select('integrations').eq('id', appointment.barbershop_id).single();

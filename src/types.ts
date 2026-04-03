@@ -258,6 +258,8 @@ export interface Appointment {
   created_at: Date | null; // Converted from string for app use
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'declined' | 'paid';
   notes: string | null;
+  client_phone?: string | null;
+  client_email?: string | null;
   is_reward: boolean | null;
   review_id: string | null;
   cancellation_fee: number | null;
