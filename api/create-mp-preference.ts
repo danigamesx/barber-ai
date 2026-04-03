@@ -249,7 +249,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 barbershopId = appointmentData.barbershop_id;
                 metadata = appointmentData;
                 notificationUrlSuffix = `purchase_type=appointment&barbershop_id=${barbershopId}`;
-                payer = { name: appointmentData.client_name, email: '' };
+                payer = { name: appointmentData.client_name, email: appointmentData.client_email || '' };
                 items = [{
                     id: appointmentData.service_id,
                     title: appointmentData.service_name,

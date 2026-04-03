@@ -149,6 +149,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ barbershop, onClose, onInit
       return {
         client_id: user.id,
         client_name: user.name,
+        client_email: user.email,
+        client_phone: user.phone,
         barbershop_id: barbershop.id,
         barber_id: selectedBarber.id,
         barber_name: selectedBarber.name,
