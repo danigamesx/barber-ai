@@ -326,6 +326,7 @@ const BarbershopAppointmentsScreen: React.FC = () => {
     const { barbershopData, appointments } = useContext(AppContext);
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(new Date());
+    const [selectedBarberId, setSelectedBarberId] = useState<string>('all');
     const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
     const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
     const [isNewBookingModalOpen, setIsNewBookingModalOpen] = useState(false);
@@ -367,10 +368,11 @@ const BarbershopAppointmentsScreen: React.FC = () => {
             .filter(app => 
                 app.barbershop_id === barbershopData?.id &&
                 new Date(app.start_time).toDateString() === selectedDate.toDateString() &&
-                (app.status === 'confirmed' || app.status === 'paid')
+                (app.status === 'confirmed' || app.status === 'paid') &&
+                (selectedBarberId === 'all' || app.barber_id === selectedBarberId)
             )
             .sort((a, b) => a.start_time.getTime() - b.start_time.getTime());
-    }, [appointments, barbershopData, selectedDate]);
+    }, [appointments, barbershopData, selectedDate, selectedBarberId]);
     
     const completedAppointmentsToday = useMemo(() => {
         return appointments
@@ -439,15 +441,22 @@ const BarbershopAppointmentsScreen: React.FC = () => {
             while (currentTime < endTime) {
                 const timeString = currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 
-                const appointmentAtThisTime = appointmentsForSelectedDay.find(app =>
+                const appointmentsAtThisTime = appointmentsForSelectedDay.filter(app =>
                     app.start_time.getHours() === currentTime.getHours() &&
                     app.start_time.getMinutes() === currentTime.getMinutes()
                 );
     
-                if (appointmentAtThisTime) {
-                    items.push({ type: 'appointment', data: appointmentAtThisTime });
-                    const duration = (appointmentAtThisTime.end_time.getTime() - appointmentAtThisTime.start_time.getTime()) / (1000 * 60);
-                    currentTime.setMinutes(currentTime.getMinutes() + duration);
+                if (appointmentsAtThisTime.length > 0) {
+                    appointmentsAtThisTime.forEach(app => {
+                        items.push({ type: 'appointment', data: app });
+                    });
+                    
+                    if (selectedBarberId !== 'all') {
+                        const duration = (appointmentsAtThisTime[0].end_time.getTime() - appointmentsAtThisTime[0].start_time.getTime()) / (1000 * 60);
+                        currentTime.setMinutes(currentTime.getMinutes() + duration);
+                    } else {
+                        currentTime.setMinutes(currentTime.getMinutes() + 30);
+                    }
                 } else {
                     const isPast = currentTime < now;
                     items.push({ type: 'free', time: timeString, isPast });
@@ -506,6 +515,21 @@ const BarbershopAppointmentsScreen: React.FC = () => {
                     </section>
                 )}
                 
+                {/* Barber Filter */}
+                <div className="bg-brand-secondary p-4 rounded-lg mb-4 flex items-center gap-3">
+                    <span className="text-sm font-medium text-gray-400">Filtrar por Barbeiro:</span>
+                    <select 
+                        value={selectedBarberId}
+                        onChange={(e) => setSelectedBarberId(e.target.value)}
+                        className="bg-brand-dark border border-gray-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-primary flex-grow"
+                    >
+                        <option value="all">Todos os Barbeiros</option>
+                        {barbershopData?.barbers && (barbershopData.barbers as Barber[]).map(barber => (
+                            <option key={barber.id} value={barber.id}>{barber.name}</option>
+                        ))}
+                    </select>
+                </div>
+
                 {/* Calendar Section */}
                 <section className="bg-brand-secondary p-4 rounded-lg">
                     <div className="flex justify-between items-center mb-4">
