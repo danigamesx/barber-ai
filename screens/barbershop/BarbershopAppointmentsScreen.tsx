@@ -131,6 +131,12 @@ const AppointmentActionModal: React.FC<{
                     <h2 className="text-xl font-bold">{appointment.client_name}</h2>
                     <p className="text-gray-400">{appointment.service_name}</p>
                     <p className="text-brand-primary font-semibold">{appointment.start_time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {appointment.end_time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                    {appointment.notes && (
+                        <div className="mt-4 p-3 bg-gray-800 rounded-lg text-left">
+                            <p className="text-xs text-gray-400 uppercase font-semibold mb-1">Observações</p>
+                            <p className="text-sm text-gray-200">{appointment.notes}</p>
+                        </div>
+                    )}
                 </div>
                 <div className="mt-6 space-y-3">
                     <Button onClick={() => handleStatusChange('completed')} className="bg-green-600 hover:bg-green-700 focus:ring-green-500">Marcar como Concluído</Button>

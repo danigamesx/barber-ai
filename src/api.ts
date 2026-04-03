@@ -318,7 +318,19 @@ export const addToWaitingList = async (barbershopId: string, date: string, user:
     if (!shop) return;
 
     const newEntry: WaitingListEntry = { clientId: user.id, clientName: user.name, requestedAt: new Date().toISOString() };
-    const waitingList = (shop.waiting_list as { [date: string]: WaitingListEntry[] } || {});
+    
+    let waitingList: { [date: string]: WaitingListEntry[] } = {};
+    if (typeof shop.waiting_list === 'string') {
+        try {
+            const parsed = JSON.parse(shop.waiting_list);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                waitingList = parsed;
+            }
+        } catch (e) {}
+    } else if (shop.waiting_list && typeof shop.waiting_list === 'object' && !Array.isArray(shop.waiting_list)) {
+        waitingList = shop.waiting_list as { [date: string]: WaitingListEntry[] };
+    }
+
     const dayEntries = waitingList[date] || [];
     if (dayEntries.some(e => e.clientId === user.id)) return;
     const updatedWaitingList = { ...waitingList, [date]: [...dayEntries, newEntry] };
@@ -330,7 +342,18 @@ export const removeFromWaitingList = async (barbershopId: string, date: string, 
     const shop = barbershops.find(b => b.id === barbershopId);
     if (!shop) return;
     
-    const waitingList = (shop.waiting_list as { [date: string]: WaitingListEntry[] } || {});
+    let waitingList: { [date: string]: WaitingListEntry[] } = {};
+    if (typeof shop.waiting_list === 'string') {
+        try {
+            const parsed = JSON.parse(shop.waiting_list);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                waitingList = parsed;
+            }
+        } catch (e) {}
+    } else if (shop.waiting_list && typeof shop.waiting_list === 'object' && !Array.isArray(shop.waiting_list)) {
+        waitingList = shop.waiting_list as { [date: string]: WaitingListEntry[] };
+    }
+
     const updatedWaitingList = { ...waitingList, [date]: (waitingList[date] || []).filter(e => e.clientId !== clientId) };
     await updateBarbershop(barbershopId, { waiting_list: updatedWaitingList as unknown as Json });
 };

@@ -6,7 +6,18 @@ const WaitingListScreen: React.FC = () => {
     const { barbershopData, removeFromWaitingList } = useContext(AppContext);
 
     const waitingList = useMemo(() => {
-        const list = (barbershopData?.waiting_list as { [date: string]: WaitingListEntry[] }) || {};
+        let list: { [date: string]: WaitingListEntry[] } = {};
+        if (typeof barbershopData?.waiting_list === 'string') {
+            try {
+                const parsed = JSON.parse(barbershopData.waiting_list);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                    list = parsed;
+                }
+            } catch (e) {}
+        } else if (barbershopData?.waiting_list && typeof barbershopData.waiting_list === 'object' && !Array.isArray(barbershopData.waiting_list)) {
+            list = barbershopData.waiting_list as { [date: string]: WaitingListEntry[] };
+        }
+        
         return Object.entries(list)
             .filter(([, entries]) => entries && entries.length > 0)
             .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime());

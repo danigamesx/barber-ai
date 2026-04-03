@@ -478,12 +478,20 @@ const App: React.FC = () => {
     },
     addToWaitingList: async (barbershopId: string, date: string) => {
       if(!user) return;
-      await api.addToWaitingList(barbershopId, date, user, barbershops);
-      setBarbershops(await api.getBarbershops());
+      try {
+        await api.addToWaitingList(barbershopId, date, user, barbershops);
+        setBarbershops(await api.getBarbershops());
+      } catch (error) {
+        console.error("Error adding to waiting list:", error);
+      }
     },
     removeFromWaitingList: async (barbershopId: string, date: string, clientId: string) => {
-      await api.removeFromWaitingList(barbershopId, date, clientId, barbershops);
-      setBarbershops(await api.getBarbershops());
+      try {
+        await api.removeFromWaitingList(barbershopId, date, clientId, barbershops);
+        setBarbershops(await api.getBarbershops());
+      } catch (error) {
+        console.error("Error removing from waiting list:", error);
+      }
     },
     deleteBarbershopAccount: async () => {
         if (barbershopData) {

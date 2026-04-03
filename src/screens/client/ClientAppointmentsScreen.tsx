@@ -72,6 +72,11 @@ const AppointmentCard: React.FC<{
           {start_time.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
           {isDatePast && isStatusActive && <span className="ml-2 text-xs text-red-400">(Data Passada)</span>}
       </p>
+      {appointment.notes && (
+          <p className="mt-2 text-sm text-gray-400 italic">
+              <strong>Observações:</strong> "{appointment.notes}"
+          </p>
+      )}
 
       {showActiveActions && (
           <div className="mt-4 flex flex-col sm:flex-row gap-2">
@@ -191,8 +196,19 @@ const ClientAppointmentsScreen: React.FC = () => {
   const waitingLists = useMemo(() => {
       if(!user) return [];
       return barbershops.flatMap(shop => {
-          const wl = shop.waiting_list as { [date: string]: WaitingListEntry[] } | null;
-          if (!wl) return [];
+          let wl: { [date: string]: WaitingListEntry[] } = {};
+          if (typeof shop.waiting_list === 'string') {
+              try {
+                  const parsed = JSON.parse(shop.waiting_list);
+                  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                      wl = parsed;
+                  }
+              } catch (e) {}
+          } else if (shop.waiting_list && typeof shop.waiting_list === 'object' && !Array.isArray(shop.waiting_list)) {
+              wl = shop.waiting_list as { [date: string]: WaitingListEntry[] };
+          }
+          
+          if (Object.keys(wl).length === 0) return [];
           return Object.entries(wl)
             .filter(([, entries]) => Array.isArray(entries) && entries.some(e => e.clientId === user.id))
             .map(([date]) => ({

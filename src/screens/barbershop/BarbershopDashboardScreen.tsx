@@ -174,14 +174,14 @@ const BarbershopDashboardScreen: React.FC = () => {
     const { barbershopData, appointments, users, updateAppointmentStatus } = useContext(AppContext);
     const [modalType, setModalType] = useState<'revenue' | 'appointments' | 'clients' | 'occupancy' | null>(null);
     const [copySuccess, setCopySuccess] = useState('');
-    const today = new Date();
+    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     
     const dashboardData = useMemo(() => {
         if (!barbershopData) return null;
         
         const todaysAppointments = appointments.filter(app => 
             app.barbershop_id === barbershopData.id &&
-            new Date(app.start_time).toDateString() === today.toDateString()
+            new Date(app.start_time).toDateString() === selectedDate.toDateString()
         );
         
         const todaysRevenueBreakdown = [
@@ -202,11 +202,11 @@ const BarbershopDashboardScreen: React.FC = () => {
         const todaysRevenueFromFees = todaysRevenueBreakdown.filter(i => i.type === 'fee').reduce((sum, i) => sum + i.amount, 0);
         const todaysNetRevenue = (todaysRevenueFromServices - todaysCommissions) + todaysRevenueFromFees;
 
-        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const startOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
         const monthAppointments = appointments.filter(app => {
             if (app.barbershop_id !== barbershopData.id) return false;
             const appDate = new Date(app.start_time);
-            return appDate >= startOfMonth && appDate <= today && (app.status === 'completed' || app.status === 'paid');
+            return appDate >= startOfMonth && appDate <= selectedDate && (app.status === 'completed' || app.status === 'paid');
         });
 
         const monthRevenue = monthAppointments.reduce((sum, app) => sum + (app.price || 0), 0);
@@ -238,7 +238,7 @@ const BarbershopDashboardScreen: React.FC = () => {
             recentActivities
         };
 
-    }, [barbershopData, appointments, users, today]);
+    }, [barbershopData, appointments, users, selectedDate]);
 
     if (!dashboardData || !barbershopData) {
         return <div className="p-4 text-center">Carregando dados do painel...</div>;
@@ -275,13 +275,35 @@ const BarbershopDashboardScreen: React.FC = () => {
     return (
         <>
             <div className="p-4 md:p-6 space-y-6">
-                <h1 className="text-2xl font-bold text-brand-light">Painel</h1>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <h1 className="text-2xl font-bold text-brand-light">Painel</h1>
+                    <div className="flex items-center gap-2 bg-brand-secondary p-2 rounded-lg">
+                        <label htmlFor="dashboard-date" className="text-sm text-gray-400 font-medium">Data:</label>
+                        <input 
+                            id="dashboard-date"
+                            type="date" 
+                            className="bg-brand-dark border border-gray-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-brand-primary"
+                            value={new Date(selectedDate.getTime() - (selectedDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0]}
+                            onChange={(e) => {
+                                if (e.target.value) {
+                                    setSelectedDate(new Date(e.target.value + 'T00:00:00'));
+                                }
+                            }}
+                        />
+                        <button 
+                            onClick={() => setSelectedDate(new Date())}
+                            className="text-xs bg-brand-dark hover:bg-gray-700 px-2 py-1 rounded text-gray-300 transition-colors"
+                        >
+                            Hoje
+                        </button>
+                    </div>
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <StatCard title="Receita Bruta (Dia)" value={`R$ ${dashboardData.todaysGrossRevenue.toFixed(2)}`} icon={CurrencyDollarIcon} onClick={() => setModalType('revenue')} />
-                    <StatCard title="Comissões (Dia)" value={`R$ ${dashboardData.todaysCommissions.toFixed(2)}`} icon={UsersIcon} onClick={() => setModalType('revenue')} />
-                    <StatCard title="Receita Líquida (Dia)" value={`R$ ${dashboardData.todaysNetRevenue.toFixed(2)}`} icon={ChartBarIcon} onClick={() => setModalType('revenue')} />
-                    <StatCard title="Agendamentos Hoje" value={dashboardData.todaysBookingsCount.toString()} icon={CalendarIcon} onClick={() => setModalType('appointments')} />
+                    <StatCard title="Receita Bruta (Dia Selecionado)" value={`R$ ${dashboardData.todaysGrossRevenue.toFixed(2)}`} icon={CurrencyDollarIcon} onClick={() => setModalType('revenue')} />
+                    <StatCard title="Comissões (Dia Selecionado)" value={`R$ ${dashboardData.todaysCommissions.toFixed(2)}`} icon={UsersIcon} onClick={() => setModalType('revenue')} />
+                    <StatCard title="Receita Líquida (Dia Selecionado)" value={`R$ ${dashboardData.todaysNetRevenue.toFixed(2)}`} icon={ChartBarIcon} onClick={() => setModalType('revenue')} />
+                    <StatCard title="Agendamentos (Dia Selecionado)" value={dashboardData.todaysBookingsCount.toString()} icon={CalendarIcon} onClick={() => setModalType('appointments')} />
                 </div>
                 
                 <div className="bg-brand-secondary p-4 rounded-lg">
